@@ -323,6 +323,16 @@ service-names = [
         run_once = true
         ports.tcp = [139, 445]
 
+    [smb.manual]
+
+        [smb.manual.smb-vulns]
+        description = 'Nmap scans for SMB vulnerabilities that could potentially cause a DoS if scanned (according to Nmap). Be careful:'
+        commands = [
+            'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="smb-vuln-ms06-025" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms06-025.txt" -oX "{scandir}/{protocol}_{port}_smb_ms06-025.xml" {address}',
+            'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="smb-vuln-ms07-029" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms07-029.txt" -oX "{scandir}/{protocol}_{port}_smb_ms07-029.xml" {address}',
+            'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="smb-vuln-ms08-067" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms08-067.txt" -oX "{scandir}/{protocol}_{port}_smb_ms08-067.xml" {address}'
+        ]
+
 [smtp]
 
 service-names = [
