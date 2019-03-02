@@ -31,9 +31,9 @@
     [udp.udp-top-20]
 
         [udp.udp-top-20.port-scan]
-        command = 'unicornscan -mU -p 631,161,137,123,138,1434,445,135,67,53,139,500,68,520,1900,4500,514,49152,162,69 {address} 2>&1 | tee "{scandir}/_udp_top20_unicornscan.txt"'
+        command = 'unicornscan -mU -p 631,161,137,123,138,1434,445,135,67,53,139,500,68,520,1900,4500,514,49152,162,69 {address} 2>&1 | tee "{scandir}/_top_20_udp_unicornscan.txt"'
         pattern = '^UDP open\s*[\w-]+\[\s*(?P<port>\d+)\].*$'
 
         [udp.udp-top-20.service-detection]
-        command = 'nmap -vv --reason -Pn -sU -A -p {ports} --version-all -oN "{scandir}/_udp_top20_nmap.txt" -oX "{scandir}/_udp_top20_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sU -A -p {ports} --version-all -oN "{scandir}/_top_20_udp_nmap.txt" -oX "{scandir}/_top_20_udp_nmap.xml" {address}'
         pattern = '^(?P<port>\d+)\/(?P<protocol>(udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
