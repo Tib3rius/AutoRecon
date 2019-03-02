@@ -361,15 +361,14 @@ async def scan_services(loop, semaphore, target):
                                                 file.writelines(e('[*] {service} on {protocol}/{port}\n\n'))
                                                 heading = True
                                             description = service_scans_config[service_scan]['manual'][manual]['description']
-                                            file.writelines(e('[-] {description}\n\n'))
+                                            file.writelines(e('\t[-] {description}\n\n'))
                                         if 'commands' in service_scans_config[service_scan]['manual'][manual]:
                                             if not heading:
                                                 file.writelines(e('[*] {service} on {protocol}/{port}\n\n'))
                                                 heading = True
                                             for manual_command in service_scans_config[service_scan]['manual'][manual]['commands']:
                                                 manual_command = e(manual_command)
-                                                file.writelines(e('{manual_command}\n'))
-                                            file.writelines('\n')
+                                                file.writelines('\t\t' + e('{manual_command}\n\n'))
                                     if heading:
                                         file.writelines('\n')
 
