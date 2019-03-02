@@ -245,15 +245,15 @@ Here is a more complicated example:
 ```toml
 [udp]
 
-    [udp.top20]
+    [udp.udp-top-20]
 
-        [udp.top20.port-scan]
-        command = 'unicornscan -mU -p 631,161,137,123,138,1434,445,135,67,53,139,500,68,520,1900,4500,514,49152,162,69 {address} 2&>1 | tee "{scandir}/_udp_top20_unicornscan.txt"'
+        [udp.udp-top-20.port-scan]
+        command = 'unicornscan -mU -p 631,161,137,123,138,1434,445,135,67,53,139,500,68,520,1900,4500,514,49152,162,69 {address} 2>&1 | tee "{scandir}/_udp_top20_unicornscan.txt"'
         pattern = '^UDP open\s*[\w-]+\[\s*(?P<port>\d+)\].*$'
 
-        [udp.top20.service-detection]
+        [udp.udp-top-20.service-detection]
         command = 'nmap -vv --reason -Pn -sU -A -p {ports} --version-all -oN "{scandir}/_udp_top20_nmap.txt" -oX "{scandir}/_udp_top20_nmap.xml" {address}'
-        pattern = '^(?P<port>\d+)\/(?P<protocol>(udp)(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
+        pattern = '^(?P<port>\d+)\/(?P<protocol>(udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
 ```
 
 In this example, a profile called "udp" defines a scan called "top20". This scan has two commands, one is a port-scan and the other is a service-detection. When a port-scan command is defined, it will always be run first. The corresponding pattern must match a named group "port" which extracts the port number from the output.
