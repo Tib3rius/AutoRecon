@@ -470,33 +470,8 @@ class Target:
         self.scandir = ''
         self.scans = []
 
-if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser(description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
-    parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="+")
-    parser.add_argument('-ct', '--concurrent-targets', action='store', metavar='<number>', type=int, default=5, help='The maximum number of target hosts to scan concurrently. Default: %(default)s')
-    parser.add_argument('-cs', '--concurrent-scans', action='store', metavar='<number>', type=int, default=10, help='The maximum number of scans to perform per target host. Default: %(default)s')
-    parser.add_argument('--profile', action='store', default='default', help='The port scanning profile to use (defined in port-scan-profiles.toml).')
-    parser.add_argument('-v', '--verbose', action='count', help='enable verbose output, repeat for more verbosity')
-    parser.add_argument('-o', '--output', action='store', default='results', help='output directory for the results')
-    parser.add_argument('--disable-sanity-checks', action='store_true', default=False, help='Disable sanity checks that would otherwise prevent the scans from running.')
-    parser.error = lambda s: fail(s[0].upper() + s[1:])
-    args = parser.parse_args()
-
+def valid_scan_profile(port_scan_profile, port_scan_profiles_config):
     errors = False
-
-    if args.concurrent_targets <= 0:
-        error('Argument -ch/--concurrent-targets: must be greater or equal to 1.')
-        errors = True
-
-    concurrent_scans = args.concurrent_scans
-
-    if concurrent_scans <= 0:
-        error('Argument -ct/--concurrent-scans: must be greater or equal to 1.')
-        errors = True
-
-    port_scan_profile = args.profile
-
     found_scan_profile = False
     for profile in port_scan_profiles_config:
         if profile == port_scan_profile:
@@ -535,9 +510,38 @@ if __name__ == '__main__':
                             error('The {profile}.{scan}.port-scan pattern does not contain a port matching group. Ensure that the port matching group is defined and captures the relevant data, e.g. (?P<port>\d+)')
                             errors = True
             break
-
     if not found_scan_profile:
         error('Argument --profile: must reference a port scan profile defined in {port_scan_profiles_config_file}. No such profile found: {port_scan_profile}')
+        errors = True
+    return not errors
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
+    parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="+")
+    parser.add_argument('-ct', '--concurrent-targets', action='store', metavar='<number>', type=int, default=5, help='The maximum number of target hosts to scan concurrently. Default: %(default)s')
+    parser.add_argument('-cs', '--concurrent-scans', action='store', metavar='<number>', type=int, default=10, help='The maximum number of scans to perform per target host. Default: %(default)s')
+    parser.add_argument('--profile', action='store', default='default', help='The port scanning profile to use (defined in port-scan-profiles.toml).')
+    parser.add_argument('-v', '--verbose', action='count', help='enable verbose output, repeat for more verbosity')
+    parser.add_argument('-o', '--output', action='store', default='results', help='output directory for the results')
+    parser.add_argument('--disable-sanity-checks', action='store_true', default=False, help='Disable sanity checks that would otherwise prevent the scans from running.')
+    parser.error = lambda s: fail(s[0].upper() + s[1:])
+    args = parser.parse_args()
+
+    errors = False
+
+    if args.concurrent_targets <= 0:
+        error('Argument -ch/--concurrent-targets: must be greater or equal to 1.')
+        errors = True
+
+    concurrent_scans = args.concurrent_scans
+
+    if concurrent_scans <= 0:
+        error('Argument -ct/--concurrent-scans: must be greater or equal to 1.')
+        errors = True
+
+    port_scan_profile = args.profile
+    if not valid_scan_profile(port_scan_profile, port_scan_profiles_config):
         errors = True
 
     outdir = args.output
