@@ -272,7 +272,7 @@ The service-scans.toml file is where you can define service enumeration scans an
 
 Here is an example of a simple configuration:
 
-```
+```toml
 [ftp]
 
 service-names = [
@@ -305,7 +305,7 @@ The ftp.manual section defines a group of manual commands called "bruteforce". T
 
 Here is a more complicated configuration:
 
-```
+```toml
 [smb]
 
 service-names = [
