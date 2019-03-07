@@ -417,8 +417,6 @@ async def scan_services(loop, semaphore, target):
 
                                         pending.add(asyncio.ensure_future(run_cmd(semaphore, e(command), target, tag)))
 
-    loop.stop()
-
 def scan_host(target, concurrent_scans):
     info('Scanning target {byellow}{target.address}{rst}')
 
@@ -453,14 +451,10 @@ def scan_host(target, concurrent_scans):
     semaphore = asyncio.Semaphore(concurrent_scans)
 
     try:
-        loop.create_task(scan_services(loop, semaphore, target))
-        loop.run_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        loop.close()
+        loop.run_until_complete(scan_services(loop, semaphore, target))
         info('Finished scanning target {byellow}{target.address}{rst}')
-        return
+    except KeyboardInterrupt:
+        sys.exit(1)
 
 class Target:
     def __init__(self, address):
