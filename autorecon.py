@@ -7,18 +7,17 @@
 #    option) any later version.
 #
 
+import argparse
+import asyncio
+from colorama import Fore, Style
+from concurrent.futures import ProcessPoolExecutor, as_completed, FIRST_COMPLETED
+import ipaddress
 import os
 import re
-import sys
 import socket
 import string
-import asyncio
-import argparse
-import ipaddress
-from concurrent.futures import ProcessPoolExecutor, as_completed, FIRST_COMPLETED
-
+import sys
 import toml
-from colorama import Fore, Style
 
 verbose = 0
 nmap = ''
