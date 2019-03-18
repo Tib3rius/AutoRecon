@@ -471,7 +471,7 @@ if __name__ == '__main__':
     parser.add_argument('-ct', '--concurrent-targets', action='store', metavar='<number>', type=int, default=5, help='The maximum number of target hosts to scan concurrently. Default: %(default)s')
     parser.add_argument('-cs', '--concurrent-scans', action='store', metavar='<number>', type=int, default=10, help='The maximum number of scans to perform per target host. Default: %(default)s')
     parser.add_argument('--profile', action='store', default='default', help='The port scanning profile to use (defined in port-scan-profiles.toml).')
-    parser.add_argument('-v', '--verbose', action='count', help='enable verbose output, repeat for more verbosity')
+    parser.add_argument('-v', '--verbose', action='count', default=0, help='enable verbose output, repeat for more verbosity')
     parser.add_argument('-o', '--output', action='store', default='results', help='output directory for the results')
     parser.add_argument('--disable-sanity-checks', action='store_true', default=False, help='Disable sanity checks that would otherwise prevent the scans from running.')
     parser.error = lambda s: fail(s[0].upper() + s[1:])
@@ -480,13 +480,13 @@ if __name__ == '__main__':
     errors = False
 
     if args.concurrent_targets <= 0:
-        error('Argument -ch/--concurrent-targets: must be greater or equal to 1.')
+        error('Argument -ch/--concurrent-targets: must be at least 1.')
         errors = True
 
     concurrent_scans = args.concurrent_scans
 
     if concurrent_scans <= 0:
-        error('Argument -ct/--concurrent-scans: must be greater or equal to 1.')
+        error('Argument -ct/--concurrent-scans: must be at least 1.')
         errors = True
 
     port_scan_profile = args.profile
@@ -536,7 +536,7 @@ if __name__ == '__main__':
 
     outdir = args.output
     srvname = ''
-    verbose = args.verbose if args.verbose is not None else 0
+    verbose = args.verbose
 
     if len(args.targets) == 0:
         error('You must specify at least one target to scan!')
