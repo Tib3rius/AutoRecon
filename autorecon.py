@@ -9,7 +9,7 @@
 
 import argparse
 import asyncio
-from colorama import init, Fore, Back, Style
+from colorama import Fore, Style
 from concurrent.futures import ProcessPoolExecutor, as_completed, FIRST_COMPLETED
 import ipaddress
 import os
@@ -569,7 +569,7 @@ if __name__ == '__main__':
 
                     if target not in targets:
                         targets.append(target)
-                except:
+                except socket.gaierror:
                     error(target + ' does not appear to be a valid IP address, IP range, or resolvable hostname.')
                     errors = True
 
