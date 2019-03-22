@@ -78,10 +78,10 @@ ignore-service-names = [
         command = 'curl -sSik {scheme}://{address}:{port}/robots.txt -m 10 -o "{scandir}/{protocol}_{port}_{scheme}_robots.txt"'
 
         [http.scans.whatweb]
-        command = 'whatweb --color=never --no-errors -a 3 -v {scheme}://{address}:{port} | tee "{scandir}/{protocol}_{port}_{scheme}_whatweb.txt"'
+        command = 'whatweb --color=never --no-errors -a 3 -v {scheme}://{address}:{port} 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_whatweb.txt"'
 
         [http.scans.nikto]
-        command = 'nikto -ask=no -h {scheme}://{address}:{port} | tee "{scandir}/{protocol}_{port}_{scheme}_nikto.txt"'
+        command = 'nikto -ask=no -h {scheme}://{address}:{port} 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_nikto.txt"'
 
     [http.manual]
 
@@ -112,7 +112,7 @@ ignore-service-names = [
         [http.manual.wpscan]
         description = '(wpscan) WordPress Security Scanner (useful if WordPress is found):'
         commands = [
-            'wpscan --url {scheme}://{address}:{port}/ --no-update -e vp,vt,tt,cb,dbe,u,m -f cli-no-color | tee "{scandir}/{protocol}_{port}_{scheme}_wpscan.txt"'
+            'wpscan --url {scheme}://{address}:{port}/ --no-update -e vp,vt,tt,cb,dbe,u,m -f cli-no-color 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_wpscan.txt"'
         ]
 
         [http.manual.bruteforce]
@@ -158,7 +158,7 @@ service-names = [
         command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(ldap* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_ldap_nmap.txt" -oX "{scandir}/{protocol}_{port}_ldap_nmap.xml" {address}'
 
         [ldap.scans.enum4linux]
-        command = 'enum4linux -a -M -l -d {address} | tee "{scandir}/enum4linux.txt"'
+        command = 'enum4linux -a -M -l -d {address} 2>&1 | tee "{scandir}/enum4linux.txt"'
         run_once = true
         ports.tcp = [139, 389, 445]
         ports.udp = [137]
@@ -318,18 +318,18 @@ service-names = [
         command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(nbstat or smb* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_nmap.txt" -oX "{scandir}/{protocol}_{port}_smb_nmap.xml" {address}'
 
         [smb.scans.enum4linux]
-        command = 'enum4linux -a -M -l -d {address} | tee "{scandir}/enum4linux.txt"'
+        command = 'enum4linux -a -M -l -d {address} 2>&1 | tee "{scandir}/enum4linux.txt"'
         run_once = true
         ports.tcp = [139, 389, 445]
         ports.udp = [137]
 
         [smb.scans.nbtscan]
-        command = 'nbtscan -rvh {address} | tee "{scandir}/nbtscan.txt"'
+        command = 'nbtscan -rvh {address} 2>&1 | tee "{scandir}/nbtscan.txt"'
         run_once = true
         ports.udp = [137]
 
         [smb.scans.smbclient]
-        command = 'smbclient -L\\ -N -I {address} | tee "{scandir}/smbclient.txt"'
+        command = 'smbclient -L\\ -N -I {address} 2>&1 | tee "{scandir}/smbclient.txt"'
         run_once = true
         ports.tcp = [139, 445]
 
@@ -355,7 +355,7 @@ service-names = [
         command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(smtp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_smtp_nmap.txt" -oX "{scandir}/{protocol}_{port}_smtp_nmap.xml" {address}'
 
         [smtp.scans.smtp-user-enum]
-        command = 'smtp-user-enum -M VRFY -U "{username_wordlist}" -t {address} -p {port} | tee "{scandir}/{protocol}_{port}_smtp_user-enum.txt"'
+        command = 'smtp-user-enum -M VRFY -U "{username_wordlist}" -t {address} -p {port} 2>&1 | tee "{scandir}/{protocol}_{port}_smtp_user-enum.txt"'
 
 [snmp]
 
@@ -374,42 +374,42 @@ service-names = [
         ports.udp = [161]
 
         [snmp.scans.snmpwalk]
-        command = 'snmpwalk -c public -v 1 {address} | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk.txt"'
+        command = 'snmpwalk -c public -v 1 {address} 2>&1 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk.txt"'
         run_once = true
         ports.udp = [161]
 
         [snmp.scans.snmpwalk-system-processes]
-        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.25.1.6.0 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_system_processes.txt"'
+        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.25.1.6.0 2>&1 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_system_processes.txt"'
         run_once = true
         ports.udp = [161]
 
         [snmp.scans.snmpwalk-running-processes]
-        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.25.4.2.1.2 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_running_processes.txt"'
+        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.25.4.2.1.2 2>&1 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_running_processes.txt"'
         run_once = true
         ports.udp = [161]
 
         [snmp.scans.snmpwalk-process-paths]
-        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.25.4.2.1.4 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_process_paths.txt"'
+        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.25.4.2.1.4 2>&1 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_process_paths.txt"'
         run_once = true
         ports.udp = [161]
 
         [snmp.scans.snmpwalk-storage-units]
-        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.25.2.3.1.4 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_storage_units.txt"'
+        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.25.2.3.1.4 2>&1 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_storage_units.txt"'
         run_once = true
         ports.udp = [161]
 
         [snmp.scans.snmpwalk-software-names]
-        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.25.6.3.1.2 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_software_names.txt"'
+        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.25.6.3.1.2 2>&1 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_software_names.txt"'
         run_once = true
         ports.udp = [161]
 
         [snmp.scans.snmpwalk-user-accounts]
-        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.4.1.77.1.2.25 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_user_accounts.txt"'
+        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.4.1.77.1.2.25 2>&1 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_user_accounts.txt"'
         run_once = true
         ports.udp = [161]
 
         [snmp.scans.snmpwalk-tcp-ports]
-        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.6.13.1.3 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_tcp_ports.txt"'
+        command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.6.13.1.3 2>&1 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_tcp_ports.txt"'
         run_once = true
         ports.udp = [161]
 
