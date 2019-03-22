@@ -85,8 +85,16 @@ ignore-service-names = [
 
     [http.manual]
 
+        [http.manual.dirsearch]
+        description = '(dirsearch) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:'
+        commands = [
+            'dirsearch -u {scheme}://{address}:{port}/ --plain-text-report="{scandir}/{protocol}_{port}_{scheme}_dirsearch_big.txt" -t 16 -r -e html,php,asp,aspx -f -w /usr/share/seclists/Discovery/Web-Content/big.txt',
+            'dirsearch -u {scheme}://{address}:{port}/ --plain-text-report="{scandir}/{protocol}_{port}_{scheme}_dirsearch_common.txt" -t 16 -r -e html,php,asp,aspx -f -w /usr/share/seclists/Discovery/Web-Content/common.txt',
+            'dirsearch -u {scheme}://{address}:{port}/ --plain-text-report="{scandir}/{protocol}_{port}_{scheme}_dirsearch_dirbuster.txt" -t 16 -r -e html,php,asp,aspx -f -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt'
+        ]
+
         [http.manual.dirb]
-        description = '(dirb) Recursive directory/file enumeration for web servers using various wordlists:'
+        description = '(dirb) Recursive directory/file enumeration for web servers using various wordlists (same as dirsearch above):'
         commands = [
             'dirb {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_dirb_big.txt" /usr/share/seclists/Discovery/Web-Content/big.txt',
             'dirb {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_dirb_common.txt" /usr/share/seclists/Discovery/Web-Content/common.txt',
@@ -94,7 +102,7 @@ ignore-service-names = [
         ]
 
         [http.manual.gobuster]
-        description = '(gobuster) Directory/file enumeration for web servers using various wordlists (same as dirb above, in case you prefer gobuster):'
+        description = '(gobuster) Directory/file enumeration for web servers using various wordlists (same as dirb above):'
         commands = [
             'gobuster -u {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_big.txt" -w /usr/share/seclists/Discovery/Web-Content/big.txt -s "200,204,301,302,307,403,500" -e',
             'gobuster -u {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_common.txt" -w /usr/share/seclists/Discovery/Web-Content/common.txt -s "200,204,301,302,307,403,500" -e',
@@ -182,7 +190,9 @@ service-names = [
 
         [mssql.manual.sqsh]
         description = '(sqsh) interactive database shell'
-        command = 'sqsh -U <username> -P <password> -S {address}:{port}'
+        commands = [
+            'sqsh -U <username> -P <password> -S {address}:{port}'
+        ]
 
 [mysql]
 
