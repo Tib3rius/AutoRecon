@@ -399,7 +399,6 @@ async def scan_services(loop, semaphore, target):
                                                 warn(Fore.YELLOW + '[' + Style.BRIGHT + tag + Style.NORMAL + '] Scan cannot be run against {protocol} port {port}. Skipping.' + Fore.RESET)
                                                 continue
 
-                                        #scan_tuple = (protocol, port, service, scan)
                                         if 'run_once' in service_scans_config[service_scan]['scans'][scan] and service_scans_config[service_scan]['scans'][scan]['run_once'] == True:
                                             scan_tuple = (service, scan)
                                             if scan_tuple in target.scans:
