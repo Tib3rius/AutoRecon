@@ -400,7 +400,7 @@ async def scan_services(loop, semaphore, target):
                                                 continue
 
                                         if 'run_once' in service_scans_config[service_scan]['scans'][scan] and service_scans_config[service_scan]['scans'][scan]['run_once'] == True:
-                                            scan_tuple = (service, scan)
+                                            scan_tuple = (scan,)
                                             if scan_tuple in target.scans:
                                                 warn(Fore.YELLOW + '[' + Style.BRIGHT + tag + ' on ' + address + Style.NORMAL + '] Scan should only be run once and it appears to have already been queued. Skipping.' + Fore.RESET)
                                                 continue
@@ -439,6 +439,8 @@ def scan_host(target, concurrent_scans):
     scandir = os.path.abspath(os.path.join(basedir, 'scans'))
     target.scandir = scandir
     os.makedirs(scandir, exist_ok=True)
+
+    os.makedirs(os.path.abspath(os.path.join(scandir, 'xml')), exist_ok=True)
 
     open(os.path.abspath(os.path.join(reportdir, 'local.txt')), 'a').close()
     open(os.path.abspath(os.path.join(reportdir, 'proof.txt')), 'a').close()

@@ -11,7 +11,7 @@ service-names = [
     [cassandra.scans]
 
         [cassandra.scans.nmap-cassandra]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(cassandra* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_cassandra_nmap.txt" -oX "{scandir}/{protocol}_{port}_cassandra_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(cassandra* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_cassandra_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_cassandra_nmap.xml" {address}'
 
 [cups]
 
@@ -22,7 +22,7 @@ service-names = [
     [cups.scans]
 
         [cups.scans.nmap-cups]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(cups* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_cups_nmap.txt" -oX "{scandir}/{protocol}_{port}_cups_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(cups* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_cups_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_cups_nmap.xml" {address}'
 
 [dns]
 
@@ -33,7 +33,7 @@ service-names = [
     [dns.scans]
 
         [dns.scans.nmap-dns]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(dns* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_dns_nmap.txt" -oX "{scandir}/{protocol}_{port}_dns_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(dns* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_dns_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_dns_nmap.xml" {address}'
 
 [ftp]
 
@@ -45,7 +45,7 @@ service-names = [
     [ftp.scans]
 
         [ftp.scans.nmap-ftp]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(ftp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_ftp_nmap.txt" -oX "{scandir}/{protocol}_{port}_ftp_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(ftp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_ftp_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_ftp_nmap.xml" {address}'
 
     [ftp.manual]
 
@@ -69,7 +69,7 @@ ignore-service-names = [
     [http.scans]
 
         [http.scans.nmap-http]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(http* or ssl*) and not (broadcast or dos or external or http-slowloris* or fuzzer)" -oN "{scandir}/{protocol}_{port}_http_nmap.txt" -oX "{scandir}/{protocol}_{port}_{scheme}_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(http* or ssl*) and not (broadcast or dos or external or http-slowloris* or fuzzer)" -oN "{scandir}/{protocol}_{port}_http_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_{scheme}_nmap.xml" {address}'
 
         [http.scans.curl-index]
         command = 'curl -sSik {scheme}://{address}:{port}/ -m 10 -o "{scandir}/{protocol}_{port}_{scheme}_index.html"'
@@ -133,7 +133,7 @@ service-names = [
     [imap.scans]
 
         [imap.scans.nmap-imap]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(imap* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_imap_nmap.txt" -oX "{scandir}/{protocol}_{port}_imap_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(imap* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_imap_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_imap_nmap.xml" {address}'
 
 [kerberos]
 
@@ -144,7 +144,7 @@ service-names = [
     [kerberos.scans]
 
         [kerberos.scans.nmap-kerberos]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script=krb5-enum-users -oN "{scandir}/{protocol}_{port}_kerberos_nmap.txt" -oX "{scandir}/{protocol}_{port}_kerberos_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script=krb5-enum-users -oN "{scandir}/{protocol}_{port}_kerberos_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_kerberos_nmap.xml" {address}'
 
 [ldap]
 
@@ -155,7 +155,7 @@ service-names = [
     [ldap.scans]
 
         [ldap.scans.nmap-ldap]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(ldap* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_ldap_nmap.txt" -oX "{scandir}/{protocol}_{port}_ldap_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(ldap* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_ldap_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_ldap_nmap.xml" {address}'
 
         [ldap.scans.enum4linux]
         command = 'enum4linux -a -M -l -d {address} 2>&1 | tee "{scandir}/enum4linux.txt"'
@@ -172,7 +172,7 @@ service-names = [
     [mongodb.scans]
 
         [mongodb.scans.nmap-mongodb]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="mongodb*" -oN "{scandir}/{protocol}_{port}_mongodb_nmap.txt" -oX "{scandir}/{protocol}_{port}_mongodb_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="mongodb*" -oN "{scandir}/{protocol}_{port}_mongodb_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_mongodb_nmap.xml" {address}'
 
 [mssql]
 
@@ -184,7 +184,7 @@ service-names = [
     [mssql.scans]
 
         [mssql.scans.nmap-mssql]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(ms-sql* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" --script-args=mssql.instance-port={port},mssql.username=sa,mssql.password=sa -oN "{scandir}/{protocol}_{port}_mssql_nmap.txt" -oX "{scandir}/{protocol}_{port}_mssql_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(ms-sql* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" --script-args=mssql.instance-port={port},mssql.username=sa,mssql.password=sa -oN "{scandir}/{protocol}_{port}_mssql_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_mssql_nmap.xml" {address}'
 
     [mssql.manual]
 
@@ -203,7 +203,7 @@ service-names = [
     [mysql.scans]
 
         [mysql.scans.nmap-mysql]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(mysql* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_mysql_nmap.txt" -oX "{scandir}/{protocol}_{port}_mysql_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(mysql* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_mysql_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_mysql_nmap.xml" {address}'
 
 [nfs]
 
@@ -215,7 +215,7 @@ service-names = [
     [nfs.scans]
 
         [nfs.scans.nmap-nfs]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(rpcinfo or nfs*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_nfs_nmap.txt" -oX "{scandir}/{protocol}_{port}_nfs_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(rpcinfo or nfs*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_nfs_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_nfs_nmap.xml" {address}'
 
 [oracle]
 
@@ -226,7 +226,7 @@ service-names = [
     [oracle.scans]
 
         [oracle.scans.nmap-oracle]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(oracle* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_oracle_nmap.txt" -oX "{scandir}/{protocol}_{port}_oracle_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(oracle* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_oracle_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_oracle_nmap.xml" {address}'
 
 [pop3]
 
@@ -237,7 +237,7 @@ service-names = [
     [pop3.scans]
 
         [pop3.scans.nmap-pop3]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(pop3* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_pop3_nmap.txt" -oX "{scandir}/{protocol}_{port}_pop3_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(pop3* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_pop3_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_pop3_nmap.xml" {address}'
 
 [rdp]
 
@@ -250,7 +250,7 @@ service-names = [
     [rdp.scans]
 
         [rdp.scans.nmap-rdp]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(rdp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_rdp_nmap.txt" -oX "{scandir}/{protocol}_{port}_rdp_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(rdp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_rdp_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_rdp_nmap.xml" {address}'
 
     [rdp.manual]
 
@@ -270,7 +270,7 @@ service-names = [
     [rmi.scans]
 
         [rmi.scans.nmap-rmi]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script=rmi-vuln-classloader,rmi-dumpregistry -oN "{scandir}/{protocol}_{port}_rmi_nmap.txt" -oX "{scandir}/{protocol}_{port}_rmi_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script=rmi-vuln-classloader,rmi-dumpregistry -oN "{scandir}/{protocol}_{port}_rmi_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_rmi_nmap.xml" {address}'
 
 [rpc]
 
@@ -283,7 +283,7 @@ service-names = [
     [msrpc.scans]
 
         [msrpc.scans.nmap-msrpc]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script=msrpc-enum,rpc-grind,rpcinfo -oN "{scandir}/{protocol}_{port}_rpc_nmap.txt" -oX "{scandir}/{protocol}_{port}_rpc_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script=msrpc-enum,rpc-grind,rpcinfo -oN "{scandir}/{protocol}_{port}_rpc_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_rpc_nmap.xml" {address}'
 
 [ssh]
 
@@ -294,7 +294,7 @@ service-names = [
     [ssh.scans]
 
         [ssh.scans.nmap-ssh]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script=ssh2-enum-algos,ssh-hostkey,ssh-auth-methods -oN "{scandir}/{protocol}_{port}_ssh_nmap.txt" -oX "{scandir}/{protocol}_{port}_ssh_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script=ssh2-enum-algos,ssh-hostkey,ssh-auth-methods -oN "{scandir}/{protocol}_{port}_ssh_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_ssh_nmap.xml" {address}'
 
     [ssh.manual]
 
@@ -315,7 +315,7 @@ service-names = [
     [smb.scans]
 
         [smb.scans.nmap-smb]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(nbstat or smb* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_nmap.txt" -oX "{scandir}/{protocol}_{port}_smb_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(nbstat or smb* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_nmap.xml" {address}'
 
         [smb.scans.enum4linux]
         command = 'enum4linux -a -M -l -d {address} 2>&1 | tee "{scandir}/enum4linux.txt"'
@@ -338,9 +338,9 @@ service-names = [
         [smb.manual.smb-vulns]
         description = 'Nmap scans for SMB vulnerabilities that could potentially cause a DoS if scanned (according to Nmap). Be careful:'
         commands = [
-            'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="smb-vuln-ms06-025" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms06-025.txt" -oX "{scandir}/{protocol}_{port}_smb_ms06-025.xml" {address}',
-            'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="smb-vuln-ms07-029" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms07-029.txt" -oX "{scandir}/{protocol}_{port}_smb_ms07-029.xml" {address}',
-            'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="smb-vuln-ms08-067" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms08-067.txt" -oX "{scandir}/{protocol}_{port}_smb_ms08-067.xml" {address}'
+            'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="smb-vuln-ms06-025" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms06-025.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_ms06-025.xml" {address}',
+            'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="smb-vuln-ms07-029" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms07-029.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_ms07-029.xml" {address}',
+            'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="smb-vuln-ms08-067" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms08-067.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_ms08-067.xml" {address}'
         ]
 
 [smtp]
@@ -352,7 +352,7 @@ service-names = [
     [smtp.scans]
 
         [smtp.scans.nmap-smtp]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(smtp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_smtp_nmap.txt" -oX "{scandir}/{protocol}_{port}_smtp_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(smtp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_smtp_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_smtp_nmap.xml" {address}'
 
         [smtp.scans.smtp-user-enum]
         command = 'smtp-user-enum -M VRFY -U "{username_wordlist}" -t {address} -p {port} 2>&1 | tee "{scandir}/{protocol}_{port}_smtp_user-enum.txt"'
@@ -366,7 +366,7 @@ service-names = [
     [snmp.scans]
 
         [snmp.scans.nmap-snmp]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(snmp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_snmp-nmap.txt" -oX "{scandir}/{protocol}_{port}_snmp_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(snmp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_snmp-nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_snmp_nmap.xml" {address}'
 
         [snmp.scans.onesixtyone]
         command = 'onesixtyone -c /usr/share/seclists/Discovery/SNMP/common-snmp-community-strings.txt -dd -o "{scandir}/{protocol}_{port}_snmp_onesixtyone.txt" {address}'
@@ -422,7 +422,7 @@ service-names = [
     [telnet.scans]
 
         [telnet.scans.nmap-telnet]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script=telnet-encryption,telnet-ntlm-info -oN "{scandir}/{protocol}_{port}_telnet-nmap.txt" -oX "{scandir}/{protocol}_{port}_telnet_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script=telnet-encryption,telnet-ntlm-info -oN "{scandir}/{protocol}_{port}_telnet-nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_telnet_nmap.xml" {address}'
 
 [tftp]
 
@@ -433,7 +433,7 @@ service-names = [
     [tftp.scans]
 
         [tftp.scans.nmap-tftp]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script=tftp-enum -oN "{scandir}/{protocol}_{port}_tftp-nmap.txt" -oX "{scandir}/{protocol}_{port}_tftp_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script=tftp-enum -oN "{scandir}/{protocol}_{port}_tftp-nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_tftp_nmap.xml" {address}'
 
 [vnc]
 
@@ -444,4 +444,4 @@ service-names = [
     [vnc.scans]
 
         [vnc.scans.nmap-vnc]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(vnc* or realvnc* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_vnc_nmap.txt" -oX "{scandir}/{protocol}_{port}_vnc_nmap.xml" {address}'
+        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(vnc* or realvnc* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_vnc_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_vnc_nmap.xml" {address}'
