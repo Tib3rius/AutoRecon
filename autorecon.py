@@ -26,6 +26,7 @@ port_scan_profile = None
 
 port_scan_profiles_config = None
 service_scans_config = None
+global_patterns = None
 
 username_wordlist = '/usr/share/seclists/Usernames/top-usernames-shortlist.txt'
 password_wordlist = '/usr/share/seclists/Passwords/darkweb2017-top100.txt'
@@ -85,7 +86,7 @@ def cprint(*args, color=Fore.RESET, char='*', sep=' ', end='\n', frame_index=1, 
     print(fmted, sep=sep, end=end, file=file)
 
 def debug(*args, color=Fore.BLUE, sep=' ', end='\n', file=sys.stdout, **kvargs):
-    if verbose >= 1:
+    if verbose >= 2:
         cprint(*args, color=color, char='-', sep=sep, end=end, file=file, frame_index=2, **kvargs)
 
 def info(*args, sep=' ', end='\n', file=sys.stdout, **kvargs):
@@ -102,7 +103,7 @@ def fail(*args, sep=' ', end='\n', file=sys.stderr, **kvargs):
     exit(-1)
 
 port_scan_profiles_config_file = 'port-scan-profiles.toml'
-with open(os.path.join(__location__, port_scan_profiles_config_file), "r") as p:
+with open(os.path.join(__location__, port_scan_profiles_config_file), 'r') as p:
     try:
         port_scan_profiles_config = toml.load(p)
 
@@ -112,11 +113,21 @@ with open(os.path.join(__location__, port_scan_profiles_config_file), "r") as p:
     except toml.decoder.TomlDecodeError as e:
         fail('Error: Couldn\'t parse {port_scan_profiles_config_file} config file. Check syntax and duplicate tags.')
 
-with open(os.path.join(__location__, "service-scans.toml"), "r") as c:
+with open(os.path.join(__location__, 'service-scans.toml'), 'r') as c:
     try:
         service_scans_config = toml.load(c)
     except toml.decoder.TomlDecodeError as e:
         fail('Error: Couldn\'t parse service-scans.toml config file. Check syntax and duplicate tags.')
+
+with open(os.path.join(__location__, 'patterns.toml'), 'r') as p:
+    try:
+        global_patterns = toml.load(p)
+        if 'pattern' in global_patterns:
+            global_patterns = global_patterns['pattern']
+        else:
+            global_patterns = None
+    except toml.decoder.TomlDecodeError as e:
+        fail('Error: Couldn\'t parse patterns.toml config file. Check syntax and duplicate tags.')
 
 if 'username_wordlist' in service_scans_config:
     if isinstance(service_scans_config['username_wordlist'], str):
@@ -132,6 +143,11 @@ async def read_stream(stream, address, tag='?', color=Fore.BLUE):
         if line:
             line = str(line.rstrip(), 'utf8', 'ignore')
             debug(color + '[' + Style.BRIGHT + address + ' ' + tag + Style.NORMAL + '] ' + Fore.RESET + '{line}', color=color)
+            if verbose >= 1:
+                for p in global_patterns:
+                    matches = re.findall(p['pattern'], line)
+                    for match in matches:
+                        info('{bgreen}{tag}{rst} on {byellow}{address}{rst} - ' + p['description'])
         else:
             break
 
@@ -175,6 +191,12 @@ async def parse_port_scan(stream, tag, address, pattern):
             parse_match = re.search(pattern, line)
             if parse_match:
                 ports.append(parse_match.group('port'))
+
+            if verbose >= 1:
+                for p in global_patterns:
+                    matches = re.findall(p['pattern'], line)
+                    for match in matches:
+                        info('{bgreen}{tag}{rst} on {byellow}{address}{rst} - ' + p['description'])
         else:
             break
 
@@ -192,6 +214,12 @@ async def parse_service_detection(stream, tag, address, pattern):
             parse_match = re.search(pattern, line)
             if parse_match:
                 services.append((parse_match.group('protocol').lower(), int(parse_match.group('port')), parse_match.group('service')))
+
+            if verbose >= 1:
+                for p in global_patterns:
+                    matches = re.findall(p['pattern'], line)
+                    for match in matches:
+                        info('{bgreen}{tag}{rst} on {byellow}{address}{rst} - ' + p['description'])
         else:
             break
 
