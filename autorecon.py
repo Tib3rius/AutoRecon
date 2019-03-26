@@ -20,7 +20,7 @@ import sys
 import toml
 
 verbose = 0
-nmap = ''
+nmap = '-vv --reason -Pn'
 srvname = ''
 port_scan_profile = None
 
@@ -202,6 +202,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
 
         address = target.address
         scandir = target.scandir
+        nmap_extra = nmap
 
         ports = ''
         if port_scan is not None:
@@ -269,7 +270,6 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
         return {'returncode': process.returncode, 'name': 'run_portscan', 'services': services}
 
 async def scan_services(loop, semaphore, target):
-    global nmap
     address = target.address
     scandir = target.scandir
     pending = []
@@ -471,9 +471,12 @@ if __name__ == '__main__':
     parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="+")
     parser.add_argument('-ct', '--concurrent-targets', action='store', metavar='<number>', type=int, default=5, help='The maximum number of target hosts to scan concurrently. Default: %(default)s')
     parser.add_argument('-cs', '--concurrent-scans', action='store', metavar='<number>', type=int, default=10, help='The maximum number of scans to perform per target host. Default: %(default)s')
-    parser.add_argument('--profile', action='store', default='default', help='The port scanning profile to use (defined in port-scan-profiles.toml).')
-    parser.add_argument('-v', '--verbose', action='count', default=0, help='enable verbose output, repeat for more verbosity')
-    parser.add_argument('-o', '--output', action='store', default='results', help='output directory for the results')
+    parser.add_argument('--profile', action='store', default='default', help='The port scanning profile to use (defined in port-scan-profiles.toml). Default: %(default)s')
+    parser.add_argument('-o', '--output', action='store', default='results', help='The output directory for results. Default: %(default)s')
+    nmap_group = parser.add_mutually_exclusive_group()
+    nmap_group.add_argument('--nmap', action='store', default='-vv --reason -Pn', help='Override the {nmap_extra} variable in scans. Default: %(default)s')
+    nmap_group.add_argument('--nmap-append', action='store', default='', help='Append to the default {nmap_extra} variable in scans.')
+    parser.add_argument('-v', '--verbose', action='count', default=0, help='Enable verbose output. Repeat for more verbosity.')
     parser.add_argument('--disable-sanity-checks', action='store_true', default=False, help='Disable sanity checks that would otherwise prevent the scans from running.')
     parser.error = lambda s: fail(s[0].upper() + s[1:])
     args = parser.parse_args()
@@ -534,6 +537,10 @@ if __name__ == '__main__':
     if not found_scan_profile:
         error('Argument --profile: must reference a port scan profile defined in {port_scan_profiles_config_file}. No such profile found: {port_scan_profile}')
         errors = True
+
+    nmap = args.nmap
+    if args.nmap_append:
+        nmap += " " + args.nmap_append
 
     outdir = args.output
     srvname = ''
