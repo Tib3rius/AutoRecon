@@ -43,6 +43,10 @@ service-names = [
     name = 'nmap-ftp'
     command = 'nmap {nmap_extra} -sV -p {port} --script="(ftp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_ftp_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_ftp_nmap.xml" {address}'
 
+        [[ftp.scan.pattern]]
+        description = 'Anonymous FTP Enabled!'
+        pattern = 'Anonymous FTP login allowed'
+
     [[ftp.manual]]
     description = 'Bruteforce logins:'
     commands = [

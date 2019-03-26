@@ -52,11 +52,13 @@ def cprint(*args, color=Fore.RESET, char='*', sep=' ', end='\n', frame_index=1, 
         'bred':    Fore.RED    + Style.BRIGHT,
         'bblue':   Fore.BLUE   + Style.BRIGHT,
         'byellow': Fore.YELLOW + Style.BRIGHT,
+        'bmagenta': Fore.MAGENTA + Style.BRIGHT,
 
         'green':  Fore.GREEN,
         'red':    Fore.RED,
         'blue':   Fore.BLUE,
         'yellow': Fore.YELLOW,
+        'magenta': Fore.MAGENTA,
 
         'bright': Style.BRIGHT,
         'srst':   Style.NORMAL,
@@ -137,7 +139,7 @@ if 'password_wordlist' in service_scans_config:
     if isinstance(service_scans_config['password_wordlist'], str):
         password_wordlist = service_scans_config['password_wordlist']
 
-async def read_stream(stream, address, tag='?', color=Fore.BLUE):
+async def read_stream(stream, address, tag='?', patterns=None, color=Fore.BLUE):
     while True:
         line = await stream.readline()
         if line:
@@ -146,12 +148,25 @@ async def read_stream(stream, address, tag='?', color=Fore.BLUE):
             if verbose >= 1:
                 for p in global_patterns:
                     matches = re.findall(p['pattern'], line)
-                    for match in matches:
-                        info('{bgreen}{tag}{rst} on {byellow}{address}{rst} - ' + p['description'])
+                    if 'description' in p:
+                        for match in matches:
+                            info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}' + p['description'].replace('{match}', '{bblue}{match}{crst}{bmagenta}') + '{rst}')
+                    else:
+                        for match in matches:
+                            info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}Matched Pattern: {bblue}{match}{rst}')
+
+                for p in patterns:
+                    matches = re.findall(p['pattern'], line)
+                    if 'description' in p:
+                        for match in matches:
+                            info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}' + p['description'].replace('{match}', '{bblue}{match}{crst}{bmagenta}') + '{rst}')
+                    else:
+                        for match in matches:
+                            info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}Matched Pattern: {bblue}{match}{rst}')
         else:
             break
 
-async def run_cmd(semaphore, cmd, target, tag='?'):
+async def run_cmd(semaphore, cmd, target, tag='?', patterns=None):
     async with semaphore:
         address = target.address
         scandir = target.scandir
@@ -164,8 +179,8 @@ async def run_cmd(semaphore, cmd, target, tag='?'):
         process = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
         await asyncio.wait([
-            read_stream(process.stdout, address, tag),
-            read_stream(process.stderr, address, tag, Fore.RED)
+            read_stream(process.stdout, address, tag=tag, patterns=patterns),
+            read_stream(process.stderr, address, tag=tag, patterns=patterns, color=Fore.RED)
         ])
 
         await process.wait()
@@ -195,8 +210,12 @@ async def parse_port_scan(stream, tag, address, pattern):
             if verbose >= 1:
                 for p in global_patterns:
                     matches = re.findall(p['pattern'], line)
-                    for match in matches:
-                        info('{bgreen}{tag}{rst} on {byellow}{address}{rst} - ' + p['description'])
+                    if 'description' in p:
+                        for match in matches:
+                            info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}' + p['description'].replace('{match}', '{bblue}{match}{crst}{bmagenta}') + '{rst}')
+                    else:
+                        for match in matches:
+                            info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}Matched Pattern: {bblue}{match}{rst}')
         else:
             break
 
@@ -218,8 +237,12 @@ async def parse_service_detection(stream, tag, address, pattern):
             if verbose >= 1:
                 for p in global_patterns:
                     matches = re.findall(p['pattern'], line)
-                    for match in matches:
-                        info('{bgreen}{tag}{rst} on {byellow}{address}{rst} - ' + p['description'])
+                    if 'description' in p:
+                        for match in matches:
+                            info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}' + p['description'].replace('{match}', '{bblue}{match}{crst}{bmagenta}') + '{rst}')
+                    else:
+                        for match in matches:
+                            info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}Matched Pattern: {bblue}{match}{rst}')
         else:
             break
 
@@ -246,7 +269,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
 
             output = [
                 parse_port_scan(process.stdout, tag, address, pattern),
-                read_stream(process.stderr, address, tag, Fore.RED)
+                read_stream(process.stderr, address, tag=tag, color=Fore.RED)
             ]
 
             results = await asyncio.gather(*output)
@@ -279,7 +302,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
 
         output = [
             parse_service_detection(process.stdout, tag, address, pattern),
-            read_stream(process.stderr, address, tag, Fore.RED)
+            read_stream(process.stderr, address, tag=tag, color=Fore.RED)
         ]
 
         results = await asyncio.gather(*output)
@@ -444,7 +467,11 @@ async def scan_services(loop, semaphore, target):
                                                 else:
                                                     target.scans.append(scan_tuple)
 
-                                            pending.add(asyncio.ensure_future(run_cmd(semaphore, e(command), target, tag)))
+                                            patterns = []
+                                            if 'pattern' in scan:
+                                                patterns = scan['pattern']
+
+                                            pending.add(asyncio.ensure_future(run_cmd(semaphore, e(command), target, tag=tag, patterns=patterns)))
 
 def scan_host(target, concurrent_scans):
     info('Scanning target {byellow}{target.address}{rst}')

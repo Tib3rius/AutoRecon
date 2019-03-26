@@ -1,7 +1,7 @@
 [[pattern]]
-description = 'Nmap script found a potential vulnerability. ({bblue}{match}{rst})'
-pattern = 'State: (?:LIKELY|VULNERABLE)'
+description = 'Nmap script found a potential vulnerability. ({match})'
+pattern = 'State: (?:(?:LIKELY\_?)?VULNERABLE)'
 
 [[pattern]]
-description = 'HTTP Server: {bblue}{match}{rst}'
+description = 'Identified HTTP Server: {match}'
 pattern = 'Server: ([^\n]+)'
