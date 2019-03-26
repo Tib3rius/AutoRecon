@@ -45,7 +45,8 @@ AutoRecon uses Python 3 specific functionality and does not support Python 2.
 
 ```
 usage: autorecon.py [-h] [-ct <number>] [-cs <number>] [--profile PROFILE]
-                    [-v] [-o OUTPUT] [--disable-sanity-checks]
+                    [-o OUTPUT] [--nmap NMAP | --nmap-append NMAP_APPEND] [-v]
+                    [--disable-sanity-checks]
                     targets [targets ...]
 
 Network reconnaissance tool to port scan and automatically enumerate services
@@ -65,10 +66,14 @@ optional arguments:
                         The maximum number of scans to perform per target
                         host. Default: 10
   --profile PROFILE     The port scanning profile to use (defined in port-
-                        scan-profiles.toml).
-  -v, --verbose         enable verbose output, repeat for more verbosity
+                        scan-profiles.toml). Default: default
   -o OUTPUT, --output OUTPUT
-                        output directory for the results
+                        The output directory for results. Default: results
+  --nmap NMAP           Override the {nmap_extra} variable in scans. Default:
+                        -vv --reason -Pn
+  --nmap-append NMAP_APPEND
+                        Append to the default {nmap_extra} variable in scans.
+  -v, --verbose         Enable verbose output. Repeat for more verbosity.
   --disable-sanity-checks
                         Disable sanity checks that would otherwise prevent the
                         scans from running.
@@ -232,13 +237,21 @@ Here is an example profile called "quick":
     [quick.nmap-quick]
 
         [quick.nmap-quick.service-detection]
-        command = 'nmap -vv --reason -Pn -sV --version-all -oN "{scandir}/_quick_tcp_nmap.txt" -oX "{scandir}/_quick_tcp_nmap.xml" {address}'
+        command = 'nmap {nmap_extra} -sV --version-all -oN "{scandir}/_quick_tcp_nmap.txt" -oX "{scandir}/xml/_quick_tcp_nmap.xml" {address}'
+        pattern = '^(?P<port>\d+)\/(?P<protocol>(tcp|udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
+
+    [quick.nmap-top-20-udp]
+
+        [quick.nmap-top-20-udp.service-detection]
+        command = 'nmap {nmap_extra} -sU -A --top-ports=20 --version-all -oN "{scandir}/_top_20_udp_nmap.txt" -oX "{scandir}/xml/_top_20_udp_nmap.xml" {address}'
         pattern = '^(?P<port>\d+)\/(?P<protocol>(tcp|udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
 ```
 
 Note that indentation is optional, it is used here purely for aesthetics. The "quick" profile defines a scan called "nmap-quick". This scan has a service-detection command which uses nmap to scan the top 1000 TCP ports. The command uses two references: {scandir} is the location of the scans directory for the target, and {address} is the address of the target.
 
 A regex pattern is defined which matches three named groups (port, protocol, and service) in the output. Every service-detection command must have a corresponding pattern that matches all three of those groups. AutoRecon will attempt to do some checks and refuse to scan if any of these groups are missing.
+
+An almost identical scan called "nmap-top-20-udp" is also defined. This scans the top 20 UDP ports.
 
 Here is a more complicated example:
 
@@ -252,7 +265,7 @@ Here is a more complicated example:
         pattern = '^UDP open\s*[\w-]+\[\s*(?P<port>\d+)\].*$'
 
         [udp.udp-top-20.service-detection]
-        command = 'nmap -vv --reason -Pn -sU -A -p {ports} --version-all -oN "{scandir}/_top_20_udp_nmap.txt" -oX "{scandir}/_top_20_udp_nmap.xml" {address}'
+        command = 'nmap {nmap_extra} -sU -A -p {ports} --version-all -oN "{scandir}/_top_20_udp_nmap.txt" -oX "{scandir}/xml/_top_20_udp_nmap.xml" {address}'
         pattern = '^(?P<port>\d+)\/(?P<protocol>(udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
 ```
 
@@ -280,28 +293,30 @@ service-names = [
     '^ftp\-data'
 ]
 
-    [ftp.scans]
+    [[ftp.scan]]
+    name = 'nmap-ftp'
+    command = 'nmap {nmap_extra} -sV -p {port} --script="(ftp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_ftp_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_ftp_nmap.xml" {address}'
 
-        [ftp.scans.nmap-ftp]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(ftp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_ftp_nmap.txt" -oX "{scandir}/{protocol}_{port}_ftp_nmap.xml" {address}'
-
-    [ftp.manual]
-
-        [ftp.manual.bruteforce]
-        description = 'Bruteforce logins:'
-        commands = [
-            'hydra -L "{username_wordlist}" -P "{password_wordlist}" -e nsr -s {port} -o "{scandir}/{protocol}_{port}_ftp_hydra.txt" ftp://{address}',
-            'medusa -U "{username_wordlist}" -P "{password_wordlist}" -e ns -n {port} -O "{scandir}/{protocol}_{port}_ftp_medusa.txt" -M ftp -h {address}'
-        ]
+    [[ftp.manual]]
+    description = 'Bruteforce logins:'
+    commands = [
+        'hydra -L "{username_wordlist}" -P "{password_wordlist}" -e nsr -s {port} -o "{scandir}/{protocol}_{port}_ftp_hydra.txt" ftp://{address}',
+        'medusa -U "{username_wordlist}" -P "{password_wordlist}" -e ns -n {port} -O "{scandir}/{protocol}_{port}_ftp_medusa.txt" -M ftp -h {address}'
+    ]
 ```
 
 Note that indentation is optional, it is used here purely for aesthetics. The service "ftp" is defined here. The service-names array contains regex strings which should match the service name from the service-detection scans. Regex is used to be as flexible as possible. The service-names array works on a whitelist basis; as long as one of the regex strings matches, the service will get scanned.
 
 An optional ignore-service-names array can also be defined, if you want to blacklist certain regex strings from matching.
 
-The ftp.scans section defines a single scan, named nmap-ftp. This scan defines a command which runs nmap with several ftp-related scripts. Several references are used here: {nmap_extra} will be blank unless the port is UDP, at which point it will be set to -sU, {port} is the port that the service is running on, {scandir} is the location of the scans directory for the target, {protocol} is the protocol being used (either tcp or udp), and {address} is the address of the target.
+The ftp.scan section defines a single scan, named nmap-ftp. This scan defines a command which runs nmap with several ftp-related scripts. Several references are used here:
+* {nmap_extra} by default is set to "-vv --reason -Pn" but this can be overridden or appended to using the --nmap or --nmap-append command line options respectively. If the protocol is UDP, "-sU" will also be appended.
+* {port} is the port that the service is running on.
+* {scandir} is the location of the scans directory for the target.
+* {protocol} is the protocol being used (either tcp or udp).
+* {address} is the address of the target.
 
-The ftp.manual section defines a group of manual commands called "bruteforce". This group contains a description for the user, and a commands array which contains the commands that a user can run. Two new references are defined here: {username_wordlist} and {password_wordlist} which are configured at the very top of the service-scans.toml file, and default to a username and password wordlist provided by SecLists.
+The ftp.manual section defines a group of manual commands. This group contains a description for the user, and a commands array which contains the commands that a user can run. Two new references are defined here: {username_wordlist} and {password_wordlist} which are configured at the very top of the service-scans.toml file, and default to a username and password wordlist provided by SecLists.
 
 Here is a more complicated configuration:
 
@@ -314,26 +329,36 @@ service-names = [
     '^netbios'
 ]
 
-    [smb.scans]
+    [[smb.scan]]
+    name = 'nmap-smb'
+    command = 'nmap {nmap_extra} -sV -p {port} --script="(nbstat or smb* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_nmap.xml" {address}'
 
-        [smb.scans.nmap-smb]
-        command = 'nmap -vv --reason -Pn -sV {nmap_extra} -p {port} --script="(nbstat or smb* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_nmap.txt" -oX "{scandir}/{protocol}_{port}_smb_nmap.xml" {address}'
+    [[smb.scan]]
+    name = 'enum4linux'
+    command = 'enum4linux -a -M -l -d {address} 2>&1 | tee "{scandir}/enum4linux.txt"'
+    run_once = true
+    ports.tcp = [139, 389, 445]
+    ports.udp = [137]
 
-        [smb.scans.enum4linux]
-        command = 'enum4linux -a -M -l -d {address} | tee "{scandir}/enum4linux.txt"'
-        run_once = true
-        ports.tcp = [139, 389, 445]
-        ports.udp = [137]
+    [[smb.scan]]
+    name = 'nbtscan'
+    command = 'nbtscan -rvh {address} 2>&1 | tee "{scandir}/nbtscan.txt"'
+    run_once = true
+    ports.udp = [137]
 
-        [smb.scans.nbtscan]
-        command = 'nbtscan -rvh {address} | tee "{scandir}/nbtscan.txt"'
-        run_once = true
-        ports.udp = [137]
+    [[smb.scan]]
+    name = 'smbclient'
+    command = 'smbclient -L\\ -N -I {address} 2>&1 | tee "{scandir}/smbclient.txt"'
+    run_once = true
+    ports.tcp = [139, 445]
 
-        [smb.scans.smbclient]
-        command = 'smbclient -L\\ -N -I {address} | tee "{scandir}/smbclient.txt"'
-        run_once = true
-        ports.tcp = [139, 445]
+    [[smb.manual]]
+    description = 'Nmap scans for SMB vulnerabilities that could potentially cause a DoS if scanned (according to Nmap). Be careful:'
+    commands = [
+        'nmap {nmap_extra} -sV -p {port} --script="smb-vuln-ms06-025" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms06-025.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_ms06-025.xml" {address}',
+        'nmap {nmap_extra} -sV -p {port} --script="smb-vuln-ms07-029" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms07-029.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_ms07-029.xml" {address}',
+        'nmap {nmap_extra} -sV -p {port} --script="smb-vuln-ms08-067" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms08-067.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_ms08-067.xml" {address}'
+    ]
 ```
 
 The main difference here is that several scans have some new settings:

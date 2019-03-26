@@ -356,65 +356,67 @@ async def scan_services(loop, semaphore, target):
                                 heading = False
                                 with open(os.path.join(scandir, '_manual_commands.txt'), 'a') as file:
                                     for manual in service_scans_config[service_scan]['manual']:
-                                        if 'description' in service_scans_config[service_scan]['manual'][manual]:
+                                        if 'description' in manual:
                                             if not heading:
                                                 file.writelines(e('[*] {service} on {protocol}/{port}\n\n'))
                                                 heading = True
-                                            description = service_scans_config[service_scan]['manual'][manual]['description']
+                                            description = manual['description']
                                             file.writelines(e('\t[-] {description}\n\n'))
-                                        if 'commands' in service_scans_config[service_scan]['manual'][manual]:
+                                        if 'commands' in manual:
                                             if not heading:
                                                 file.writelines(e('[*] {service} on {protocol}/{port}\n\n'))
                                                 heading = True
-                                            for manual_command in service_scans_config[service_scan]['manual'][manual]['commands']:
+                                            for manual_command in manual['commands']:
                                                 manual_command = e(manual_command)
                                                 file.writelines('\t\t' + e('{manual_command}\n\n'))
                                     if heading:
                                         file.writelines('\n')
 
-                            if 'scans' in service_scans_config[service_scan]:
-                                for scan in service_scans_config[service_scan]['scans']:
+                            if 'scan' in service_scans_config[service_scan]:
+                                for scan in service_scans_config[service_scan]['scan']:
 
-                                    if 'command' in service_scans_config[service_scan]['scans'][scan]:
-                                        tag = e('{protocol}/{port}/{scan}')
-                                        command = service_scans_config[service_scan]['scans'][scan]['command']
+                                    if 'name' in scan:
+                                        name = scan['name']
+                                        if 'command' in scan:
+                                            tag = e('{protocol}/{port}/{name}')
+                                            command = scan['command']
 
-                                        if 'ports' in service_scans_config[service_scan]['scans'][scan]:
-                                            port_match = False
+                                            if 'ports' in scan:
+                                                port_match = False
 
-                                            if protocol == 'tcp':
-                                                if 'tcp' in service_scans_config[service_scan]['scans'][scan]['ports']:
-                                                    for tcp_port in service_scans_config[service_scan]['scans'][scan]['ports']['tcp']:
-                                                        if port == tcp_port:
-                                                            port_match = True
-                                                            break
-                                            elif protocol == 'udp':
-                                                if 'udp' in service_scans_config[service_scan]['scans'][scan]['ports']:
-                                                    for udp_port in service_scans_config[service_scan]['scans'][scan]['ports']['udp']:
-                                                        if port == udp_port:
-                                                            port_match = True
-                                                            break
+                                                if protocol == 'tcp':
+                                                    if 'tcp' in scan['ports']:
+                                                        for tcp_port in scan['ports']['tcp']:
+                                                            if port == tcp_port:
+                                                                port_match = True
+                                                                break
+                                                elif protocol == 'udp':
+                                                    if 'udp' in scan['ports']:
+                                                        for udp_port in scan['ports']['udp']:
+                                                            if port == udp_port:
+                                                                port_match = True
+                                                                break
 
-                                            if port_match == False:
-                                                warn(Fore.YELLOW + '[' + Style.BRIGHT + tag + Style.NORMAL + '] Scan cannot be run against {protocol} port {port}. Skipping.' + Fore.RESET)
-                                                continue
+                                                if port_match == False:
+                                                    warn(Fore.YELLOW + '[' + Style.BRIGHT + tag + Style.NORMAL + '] Scan cannot be run against {protocol} port {port}. Skipping.' + Fore.RESET)
+                                                    continue
 
-                                        if 'run_once' in service_scans_config[service_scan]['scans'][scan] and service_scans_config[service_scan]['scans'][scan]['run_once'] == True:
-                                            scan_tuple = (scan,)
-                                            if scan_tuple in target.scans:
-                                                warn(Fore.YELLOW + '[' + Style.BRIGHT + tag + ' on ' + address + Style.NORMAL + '] Scan should only be run once and it appears to have already been queued. Skipping.' + Fore.RESET)
-                                                continue
+                                            if 'run_once' in scan and scan['run_once'] == True:
+                                                scan_tuple = (name,)
+                                                if scan_tuple in target.scans:
+                                                    warn(Fore.YELLOW + '[' + Style.BRIGHT + tag + ' on ' + address + Style.NORMAL + '] Scan should only be run once and it appears to have already been queued. Skipping.' + Fore.RESET)
+                                                    continue
+                                                else:
+                                                    target.scans.append(scan_tuple)
                                             else:
-                                                target.scans.append(scan_tuple)
-                                        else:
-                                            scan_tuple = (protocol, port, service, scan)
-                                            if scan_tuple in target.scans:
-                                                warn(Fore.YELLOW + '[' + Style.BRIGHT + tag + ' on ' + address + Style.NORMAL + '] Scan appears to have already been queued, but it is not marked as run_once in service-scans.toml. Possible duplicate tag? Skipping.' + Fore.RESET)
-                                                continue
-                                            else:
-                                                target.scans.append(scan_tuple)
+                                                scan_tuple = (protocol, port, service, name)
+                                                if scan_tuple in target.scans:
+                                                    warn(Fore.YELLOW + '[' + Style.BRIGHT + tag + ' on ' + address + Style.NORMAL + '] Scan appears to have already been queued, but it is not marked as run_once in service-scans.toml. Possible duplicate tag? Skipping.' + Fore.RESET)
+                                                    continue
+                                                else:
+                                                    target.scans.append(scan_tuple)
 
-                                        pending.add(asyncio.ensure_future(run_cmd(semaphore, e(command), target, tag)))
+                                            pending.add(asyncio.ensure_future(run_cmd(semaphore, e(command), target, tag)))
 
 def scan_host(target, concurrent_scans):
     info('Scanning target {byellow}{target.address}{rst}')
