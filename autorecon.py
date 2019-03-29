@@ -26,7 +26,7 @@ port_scan_profile = None
 
 port_scan_profiles_config = None
 service_scans_config = None
-global_patterns = None
+global_patterns = []
 
 username_wordlist = '/usr/share/seclists/Usernames/top-usernames-shortlist.txt'
 password_wordlist = '/usr/share/seclists/Passwords/darkweb2017-top100.txt'
@@ -127,7 +127,7 @@ with open(os.path.join(__location__, 'patterns.toml'), 'r') as p:
         if 'pattern' in global_patterns:
             global_patterns = global_patterns['pattern']
         else:
-            global_patterns = None
+            global_patterns = []
     except toml.decoder.TomlDecodeError as e:
         fail('Error: Couldn\'t parse patterns.toml config file. Check syntax and duplicate tags.')
 
@@ -139,7 +139,7 @@ if 'password_wordlist' in service_scans_config:
     if isinstance(service_scans_config['password_wordlist'], str):
         password_wordlist = service_scans_config['password_wordlist']
 
-async def read_stream(stream, target, tag='?', patterns=None, color=Fore.BLUE):
+async def read_stream(stream, target, tag='?', patterns=[], color=Fore.BLUE):
     address = target.address
     while True:
         line = await stream.readline()
@@ -183,7 +183,7 @@ async def read_stream(stream, target, tag='?', patterns=None, color=Fore.BLUE):
         else:
             break
 
-async def run_cmd(semaphore, cmd, target, tag='?', patterns=None):
+async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
     async with semaphore:
         address = target.address
         scandir = target.scandir
