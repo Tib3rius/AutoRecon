@@ -139,30 +139,47 @@ if 'password_wordlist' in service_scans_config:
     if isinstance(service_scans_config['password_wordlist'], str):
         password_wordlist = service_scans_config['password_wordlist']
 
-async def read_stream(stream, address, tag='?', patterns=None, color=Fore.BLUE):
+async def read_stream(stream, target, tag='?', patterns=None, color=Fore.BLUE):
+    address = target.address
     while True:
         line = await stream.readline()
         if line:
             line = str(line.rstrip(), 'utf8', 'ignore')
             debug(color + '[' + Style.BRIGHT + address + ' ' + tag + Style.NORMAL + '] ' + Fore.RESET + '{line}', color=color)
-            if verbose >= 1:
-                for p in global_patterns:
-                    matches = re.findall(p['pattern'], line)
-                    if 'description' in p:
-                        for match in matches:
-                            info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}' + p['description'].replace('{match}', '{bblue}{match}{crst}{bmagenta}') + '{rst}')
-                    else:
-                        for match in matches:
-                            info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}Matched Pattern: {bblue}{match}{rst}')
 
-                for p in patterns:
-                    matches = re.findall(p['pattern'], line)
-                    if 'description' in p:
-                        for match in matches:
+            for p in global_patterns:
+                matches = re.findall(p['pattern'], line)
+                if 'description' in p:
+                    for match in matches:
+                        if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}' + p['description'].replace('{match}', '{bblue}{match}{crst}{bmagenta}') + '{rst}')
-                    else:
-                        for match in matches:
+                        async with target.lock:
+                            with open(os.path.join(target.scandir, 'patterns.log'), 'a') as file:
+                                file.writelines(e('{tag} - ' + p['description'] + '\n\n'))
+                else:
+                    for match in matches:
+                        if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}Matched Pattern: {bblue}{match}{rst}')
+                        async with target.lock:
+                            with open(os.path.join(target.scandir, 'patterns.log'), 'a') as file:
+                                file.writelines(e('{tag} - Matched Pattern: {match}\n\n'))
+
+            for p in patterns:
+                matches = re.findall(p['pattern'], line)
+                if 'description' in p:
+                    for match in matches:
+                        if verbose >= 1:
+                            info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}' + p['description'].replace('{match}', '{bblue}{match}{crst}{bmagenta}') + '{rst}')
+                        async with target.lock:
+                            with open(os.path.join(target.scandir, 'patterns.log'), 'a') as file:
+                                file.writelines(e('{tag} - ' + p['description'] + '\n\n'))
+                else:
+                    for match in matches:
+                        if verbose >= 1:
+                            info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}Matched Pattern: {bblue}{match}{rst}')
+                        async with target.lock:
+                            with open(os.path.join(target.scandir, 'patterns.log'), 'a') as file:
+                                file.writelines(e('{tag} - Matched Pattern: {match}\n\n'))
         else:
             break
 
@@ -173,22 +190,24 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=None):
 
         info('Running task {bgreen}{tag}{rst} on {byellow}{address}{rst}' + (' with {bblue}{cmd}{rst}' if verbose >= 1 else ''))
 
-        with open(os.path.join(scandir, '_commands.log'), 'a') as file:
-            file.writelines(e('{cmd}\n\n'))
+        async with target.lock:
+            with open(os.path.join(scandir, '_commands.log'), 'a') as file:
+                file.writelines(e('{cmd}\n\n'))
 
         process = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
         await asyncio.wait([
-            read_stream(process.stdout, address, tag=tag, patterns=patterns),
-            read_stream(process.stderr, address, tag=tag, patterns=patterns, color=Fore.RED)
+            read_stream(process.stdout, target, tag=tag, patterns=patterns),
+            read_stream(process.stderr, target, tag=tag, patterns=patterns, color=Fore.RED)
         ])
 
         await process.wait()
 
     if process.returncode != 0:
         error('Task {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}')
-        with open(os.path.join(scandir, '_errors.log'), 'a') as file:
-            file.writelines(e('[*] Task {tag} returned non-zero exit code: {process.returncode}. Command: {cmd}\n'))
+        async with target.lock:
+            with open(os.path.join(scandir, '_errors.log'), 'a') as file:
+                file.writelines(e('[*] Task {tag} returned non-zero exit code: {process.returncode}. Command: {cmd}\n'))
     else:
         info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully')
 
@@ -207,15 +226,23 @@ async def parse_port_scan(stream, tag, address, pattern):
             if parse_match:
                 ports.append(parse_match.group('port'))
 
-            if verbose >= 1:
-                for p in global_patterns:
-                    matches = re.findall(p['pattern'], line)
-                    if 'description' in p:
-                        for match in matches:
+
+            for p in global_patterns:
+                matches = re.findall(p['pattern'], line)
+                if 'description' in p:
+                    for match in matches:
+                        if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}' + p['description'].replace('{match}', '{bblue}{match}{crst}{bmagenta}') + '{rst}')
-                    else:
-                        for match in matches:
+                        async with target.lock:
+                            with open(os.path.join(target.scandir, 'patterns.log'), 'a') as file:
+                                file.writelines(e('{tag} - ' + p['description'] + '\n\n'))
+                else:
+                    for match in matches:
+                        if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}Matched Pattern: {bblue}{match}{rst}')
+                        async with target.lock:
+                            with open(os.path.join(target.scandir, 'patterns.log'), 'a') as file:
+                                file.writelines(e('{tag} - Matched Pattern: {match}\n\n'))
         else:
             break
 
@@ -234,15 +261,22 @@ async def parse_service_detection(stream, tag, address, pattern):
             if parse_match:
                 services.append((parse_match.group('protocol').lower(), int(parse_match.group('port')), parse_match.group('service')))
 
-            if verbose >= 1:
-                for p in global_patterns:
-                    matches = re.findall(p['pattern'], line)
-                    if 'description' in p:
-                        for match in matches:
+            for p in global_patterns:
+                matches = re.findall(p['pattern'], line)
+                if 'description' in p:
+                    for match in matches:
+                        if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}' + p['description'].replace('{match}', '{bblue}{match}{crst}{bmagenta}') + '{rst}')
-                    else:
-                        for match in matches:
+                        async with target.lock:
+                            with open(os.path.join(target.scandir, 'patterns.log'), 'a') as file:
+                                file.writelines(e('{tag} - ' + p['description'] + '\n\n'))
+                else:
+                    for match in matches:
+                        if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}Matched Pattern: {bblue}{match}{rst}')
+                        async with target.lock:
+                            with open(os.path.join(target.scandir, 'patterns.log'), 'a') as file:
+                                file.writelines(e('{tag} - Matched Pattern: {match}\n\n'))
         else:
             break
 
@@ -262,14 +296,15 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
 
             info('Running port scan {bgreen}{tag}{rst} on {byellow}{address}{rst}' + (' with {bblue}{command}{rst}' if verbose >= 1 else ''))
 
-            with open(os.path.join(scandir, '_commands.log'), 'a') as file:
-                file.writelines(e('{command}\n\n'))
+            async with target.lock:
+                with open(os.path.join(scandir, '_commands.log'), 'a') as file:
+                    file.writelines(e('{command}\n\n'))
 
             process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
             output = [
                 parse_port_scan(process.stdout, tag, address, pattern),
-                read_stream(process.stderr, address, tag=tag, color=Fore.RED)
+                read_stream(process.stderr, target, tag=tag, color=Fore.RED)
             ]
 
             results = await asyncio.gather(*output)
@@ -278,8 +313,9 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
 
             if process.returncode != 0:
                 error('Port scan {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}')
-                with open(os.path.join(scandir, '_errors.log'), 'a') as file:
-                    file.writelines(e('[*] Port scan {tag} returned non-zero exit code: {process.returncode}. Command: {command}\n'))
+                async with target.lock:
+                    with open(os.path.join(scandir, '_errors.log'), 'a') as file:
+                        file.writelines(e('[*] Port scan {tag} returned non-zero exit code: {process.returncode}. Command: {command}\n'))
                 return {'returncode': process.returncode}
             else:
                 info('Port scan {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully')
@@ -295,14 +331,15 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
 
         info('Running service detection {bgreen}{tag}{rst} on {byellow}{address}{rst}' + (' with {bblue}{command}{rst}' if verbose >= 1 else ''))
 
-        with open(os.path.join(scandir, '_commands.log'), 'a') as file:
-            file.writelines(e('{command}\n\n'))
+        async with target.lock:
+            with open(os.path.join(scandir, '_commands.log'), 'a') as file:
+                file.writelines(e('{command}\n\n'))
 
         process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
         output = [
             parse_service_detection(process.stdout, tag, address, pattern),
-            read_stream(process.stderr, address, tag=tag, color=Fore.RED)
+            read_stream(process.stderr, target, tag=tag, color=Fore.RED)
         ]
 
         results = await asyncio.gather(*output)
@@ -311,8 +348,9 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
 
         if process.returncode != 0:
             error('Service detection {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}')
-            with open(os.path.join(scandir, '_errors.log'), 'a') as file:
-                file.writelines(e('[*] Service detection {tag} returned non-zero exit code: {process.returncode}. Command: {command}\n'))
+            async with target.lock:
+                with open(os.path.join(scandir, '_errors.log'), 'a') as file:
+                    file.writelines(e('[*] Service detection {tag} returned non-zero exit code: {process.returncode}. Command: {command}\n'))
         else:
             info('Service detection {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully')
 
@@ -498,9 +536,13 @@ def scan_host(target, concurrent_scans):
     os.makedirs(scandir, exist_ok=True)
 
     os.makedirs(os.path.abspath(os.path.join(scandir, 'xml')), exist_ok=True)
+    open(os.path.abspath(os.path.join(scandir, 'patterns.log')), 'a').close()
 
     open(os.path.abspath(os.path.join(reportdir, 'local.txt')), 'a').close()
     open(os.path.abspath(os.path.join(reportdir, 'proof.txt')), 'a').close()
+
+    # Use a lock when writing to specific files that may be written to by other asynchronous functions.
+    target.lock = asyncio.Lock()
 
     # Get event loop for current process.
     loop = asyncio.get_event_loop()
@@ -521,6 +563,7 @@ class Target:
         self.reportdir = ''
         self.scandir = ''
         self.scans = []
+        self.lock = None
 
 if __name__ == '__main__':
 

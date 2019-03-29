@@ -68,13 +68,17 @@ ignore-service-names = [
     name = 'nmap-http'
     command = 'nmap {nmap_extra} -sV -p {port} --script="(http* or ssl*) and not (broadcast or dos or external or http-slowloris* or fuzzer)" -oN "{scandir}/{protocol}_{port}_http_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_{scheme}_nmap.xml" {address}'
 
+        [[http.scan.pattern]]
+        description = 'Identified HTTP Server: {match}'
+        pattern = 'Server: ([^\n]+)'
+
     [[http.scan]]
     name = 'curl-index'
-    command = 'curl -sSik {scheme}://{address}:{port}/ -m 10 -o "{scandir}/{protocol}_{port}_{scheme}_index.html"'
+    command = 'curl -sSik {scheme}://{address}:{port}/ -m 10 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_index.html"'
 
     [[http.scan]]
     name = 'curl-robots'
-    command = 'curl -sSik {scheme}://{address}:{port}/robots.txt -m 10 -o "{scandir}/{protocol}_{port}_{scheme}_robots.txt"'
+    command = 'curl -sSik {scheme}://{address}:{port}/robots.txt -m 10 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_robots.txt"'
 
     [[http.scan]]
     name = 'whatweb'
@@ -84,10 +88,13 @@ ignore-service-names = [
     name = 'nikto'
     command = 'nikto -ask=no -h {scheme}://{address}:{port} 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_nikto.txt"'
 
+    [[http.scan]]
+    name = 'gobuster'
+    command = 'gobuster -u {scheme}://{address}:{port}/ -w /usr/share/seclists/Discovery/Web-Content/big.txt -e -k -l -s "200,204,301,302,307,403" -x "txt,html,php,asp,aspx" 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_gobuster.txt"'
+
     [[http.manual]]
     description = '(dirsearch) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:'
     commands = [
-        'dirsearch -u {scheme}://{address}:{port}/ --plain-text-report="{scandir}/{protocol}_{port}_{scheme}_dirsearch_big.txt" -t 16 -r -e html,php,asp,aspx -f -w /usr/share/seclists/Discovery/Web-Content/big.txt',
         'dirsearch -u {scheme}://{address}:{port}/ --plain-text-report="{scandir}/{protocol}_{port}_{scheme}_dirsearch_common.txt" -t 16 -r -e html,php,asp,aspx -f -w /usr/share/seclists/Discovery/Web-Content/common.txt',
         'dirsearch -u {scheme}://{address}:{port}/ --plain-text-report="{scandir}/{protocol}_{port}_{scheme}_dirsearch_dirbuster.txt" -t 16 -r -e html,php,asp,aspx -f -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt'
     ]
@@ -95,7 +102,6 @@ ignore-service-names = [
     [[http.manual]]
     description = '(dirb) Recursive directory/file enumeration for web servers using various wordlists (same as dirsearch above):'
     commands = [
-        'dirb {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_dirb_big.txt" /usr/share/seclists/Discovery/Web-Content/big.txt',
         'dirb {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_dirb_common.txt" /usr/share/seclists/Discovery/Web-Content/common.txt',
         'dirb {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_dirb_dirbuster.txt" /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt'
     ]
@@ -103,9 +109,8 @@ ignore-service-names = [
     [[http.manual]]
     description = '(gobuster) Directory/file enumeration for web servers using various wordlists (same as dirb above):'
     commands = [
-        'gobuster -u {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_big.txt" -w /usr/share/seclists/Discovery/Web-Content/big.txt -s "200,204,301,302,307,403,500" -e',
-        'gobuster -u {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_common.txt" -w /usr/share/seclists/Discovery/Web-Content/common.txt -s "200,204,301,302,307,403,500" -e',
-        'gobuster -u {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_dirbuster.txt" -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -s "200,204,301,302,307,403,500" -e'
+        'gobuster -u {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_common.txt" -w /usr/share/seclists/Discovery/Web-Content/common.txt -s "200,204,301,302,307,403" -e',
+        'gobuster -u {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_dirbuster.txt" -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -s "200,204,301,302,307,403" -e'
     ]
 
     [[http.manual]]
@@ -351,7 +356,7 @@ service-names = [
 
     [[snmp.scan]]
     name = 'onesixtyone'
-    command = 'onesixtyone -c /usr/share/seclists/Discovery/SNMP/common-snmp-community-strings.txt -dd -o "{scandir}/{protocol}_{port}_snmp_onesixtyone.txt" {address}'
+    command = 'onesixtyone -c /usr/share/seclists/Discovery/SNMP/common-snmp-community-strings.txt -dd {address} 2>&1 | tee "{scandir}/{protocol}_{port}_snmp_onesixtyone.txt"'
     run_once = true
     ports.udp = [161]
 
