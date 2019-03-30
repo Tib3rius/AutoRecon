@@ -1,0 +1,8 @@
+# Patterns defined in this file will be checked against every line of output (e.g. port scans and service scans)
+
+[[pattern]]
+description = 'Nmap script found a potential vulnerability. ({match})'
+pattern = 'State: (?:(?:LIKELY\_?)?VULNERABLE)'
+
+[[pattern]]
+pattern = '(?i)unauthorized'

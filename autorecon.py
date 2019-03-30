@@ -105,7 +105,7 @@ def fail(*args, sep=' ', end='\n', file=sys.stderr, **kvargs):
     exit(-1)
 
 port_scan_profiles_config_file = 'port-scan-profiles.toml'
-with open(os.path.join(__location__, port_scan_profiles_config_file), 'r') as p:
+with open(os.path.join(__location__, 'config', port_scan_profiles_config_file), 'r') as p:
     try:
         port_scan_profiles_config = toml.load(p)
 
@@ -115,13 +115,13 @@ with open(os.path.join(__location__, port_scan_profiles_config_file), 'r') as p:
     except toml.decoder.TomlDecodeError as e:
         fail('Error: Couldn\'t parse {port_scan_profiles_config_file} config file. Check syntax and duplicate tags.')
 
-with open(os.path.join(__location__, 'service-scans.toml'), 'r') as c:
+with open(os.path.join(__location__, 'config', 'service-scans.toml'), 'r') as c:
     try:
         service_scans_config = toml.load(c)
     except toml.decoder.TomlDecodeError as e:
         fail('Error: Couldn\'t parse service-scans.toml config file. Check syntax and duplicate tags.')
 
-with open(os.path.join(__location__, 'patterns.toml'), 'r') as p:
+with open(os.path.join(__location__, 'config', 'global-patterns.toml'), 'r') as p:
     try:
         global_patterns = toml.load(p)
         if 'pattern' in global_patterns:
@@ -129,7 +129,7 @@ with open(os.path.join(__location__, 'patterns.toml'), 'r') as p:
         else:
             global_patterns = []
     except toml.decoder.TomlDecodeError as e:
-        fail('Error: Couldn\'t parse patterns.toml config file. Check syntax and duplicate tags.')
+        fail('Error: Couldn\'t parse global-patterns.toml config file. Check syntax and duplicate tags.')
 
 if 'username_wordlist' in service_scans_config:
     if isinstance(service_scans_config['username_wordlist'], str):
@@ -213,7 +213,8 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
 
     return {'returncode': process.returncode, 'name': 'run_cmd'}
 
-async def parse_port_scan(stream, tag, address, pattern):
+async def parse_port_scan(stream, tag, target, pattern):
+    address = target.address
     ports = []
 
     while True:
@@ -248,7 +249,8 @@ async def parse_port_scan(stream, tag, address, pattern):
 
     return ports
 
-async def parse_service_detection(stream, tag, address, pattern):
+async def parse_service_detection(stream, tag, target, pattern):
+    address = target.address
     services = []
 
     while True:
@@ -303,7 +305,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
             process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
             output = [
-                parse_port_scan(process.stdout, tag, address, pattern),
+                parse_port_scan(process.stdout, tag, target, pattern),
                 read_stream(process.stderr, target, tag=tag, color=Fore.RED)
             ]
 
@@ -338,7 +340,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
         process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
         output = [
-            parse_service_detection(process.stdout, tag, address, pattern),
+            parse_service_detection(process.stdout, tag, target, pattern),
             read_stream(process.stderr, target, tag=tag, color=Fore.RED)
         ]
 
@@ -397,7 +399,7 @@ async def scan_services(loop, semaphore, target):
                         port = service_tuple[1]
                         service = service_tuple[2]
 
-                        info(Fore.BLUE + '[' + Style.BRIGHT + address + Style.NORMAL + '] {service} found on {protocol}/{port}'  + Fore.RESET)
+                        info('Found {bmagenta}{service}{rst} on {bmagenta}{protocol}/{port}{rst} on target {byellow}{address}{rst}')
 
                         with open(os.path.join(target.reportdir, 'notes.txt'), 'a') as file:
                             file.writelines(e('[*] {service} found on {protocol}/{port}.\n\n\n\n'))
