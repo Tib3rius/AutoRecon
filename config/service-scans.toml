@@ -261,6 +261,43 @@ service-names = [
     name = 'nmap-oracle'
     command = 'nmap {nmap_extra} -sV -p {port} --script="(oracle* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_oracle_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_oracle_nmap.xml" {address}'
 
+    [[oracle.scan]]
+    name = 'oracle-tnscmd-ping'
+    command = 'tnscmd10g ping -h {address} -p {port} 2>&1 | tee "{scandir}/{protocol}_{port}_oracle_tnscmd_ping.txt"'
+
+    [[oracle.scan]]
+    name = 'oracle-tnscmd-version'
+    command = 'tnscmd10g version -h {address} -p {port} 2>&1 | tee "{scandir}/{protocol}_{port}_oracle_tnscmd_version.txt"'
+
+    [[oracle.scan]]
+    name = 'oracle-tnscmd-version'
+    command = 'tnscmd10g version -h {address} -p {port} 2>&1 | tee "{scandir}/{protocol}_{port}_oracle_tnscmd_version.txt"'
+
+    [[oracle.scan]]
+    name = 'oracle-scanner'
+    command = 'oscanner -v -s {address} -P {port} 2>&1 | tee "{scandir}/{protocol}_{port}_oracle_scanner.txt"'
+
+    [[oracle.manual]]
+    description = 'Brute-force SIDs using Nmap'
+    command = 'nmap {nmap_extra} -sV -p {port} --script="oracle-sid-brute" -oN "{scandir}/{protocol}_{port}_oracle_sid-brute_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_oracle_sid-brute_nmap.xml" {address}'
+
+    [[oracle.manual]]
+    description = 'Install ODAT (https://github.com/quentinhardy/odat) and run the following commands:'
+    commands = [
+        'python odat.py tnscmd -s {address} -p {port} --ping',
+        'python odat.py tnscmd -s {address} -p {port} --version',
+        'python odat.py tnscmd -s {address} -p {port} --status',
+        'python odat.py sidguesser -s {address} -p {port}',
+        'python odat.py passwordguesser -s {address} -p {port} -d <sid> --accounts-file accounts/accounts_multiple.txt',
+        'python odat.py tnspoison -s {address} -p {port} -d <sid> --test-module'
+    ]
+
+    [[oracle.manual]]
+    description = 'Install Oracle Instant Client (https://github.com/rapid7/metasploit-framework/wiki/How-to-get-Oracle-Support-working-with-Kali-Linux) and then bruteforce with patator:'
+    commands = [
+        'patator oracle_login host={address} port={port} user=COMBO00 password=COMBO01 0=/usr/share/seclists/Passwords/Default-Credentials/oracle-betterdefaultpasslist.txt -x ignore:code=ORA-01017 -x ignore:code=ORA-28000'
+    ]
+
 [pop3]
 
 service-names = [
@@ -329,6 +366,10 @@ service-names = [
     name = 'nmap-sip'
     command = 'nmap {nmap_extra} -sV -p {port} --script="sip-enum-users,sip-methods" -oN "{scandir}/{protocol}_{port}_sip_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_sip_nmap.xml" {address}'
 
+    [[sip.scan]]
+    name = 'svwar'
+    command = 'svwar -D -m INVITE -p {port} {address}'
+
 [ssh]
 
 service-names = [
@@ -375,6 +416,18 @@ service-names = [
     command = 'smbclient -L\\ -N -I {address} 2>&1 | tee "{scandir}/smbclient.txt"'
     run_once = true
     ports.tcp = [139, 445]
+
+    [[smb.scan]]
+    name = 'smbmap-share-permissions'
+    command = 'smbmap -H {address} -P {port} 2>&1 | tee -a "{scandir}/smbmap-share-permissions.txt"; smbmap -u null -p "" -H {address} -P {port} 2>&1 | tee -a "{scandir}/smbmap-share-permissions.txt"'
+
+    [[smb.scan]]
+    name = 'smbmap-list-contents'
+    command = 'smbmap -H {address} -P {port} -R 2>&1 | tee -a "{scandir}/smbmap-list-contents.txt"; smbmap -u null -p "" -H {address} -P {port} -R 2>&1 | tee -a "{scandir}/smbmap-list-contents.txt"'
+
+    [[smb.scan]]
+    name = 'smbmap-execute-command'
+    command = 'smbmap -H {address} -P {port} -x "ipconfig /all" 2>&1 | tee -a "{scandir}/smbmap-execute-command.txt"; smbmap -u null -p "" -H {address} -P {port} -x "ipconfig /all" 2>&1 | tee -a "{scandir}/smbmap-execute-command.txt"'
 
     [[smb.manual]]
     description = 'Nmap scans for SMB vulnerabilities that could potentially cause a DoS if scanned (according to Nmap). Be careful:'
