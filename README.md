@@ -13,11 +13,12 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 ## Features
 
 * Supports multiple targets in the form of IP addresses, IP ranges (CIDR notation), and resolvable hostnames.
-* Can scan targets concurrently, utilizing multiple processors.
+* Can scan targets concurrently, utilizing multiple processors if they are available.
 * Customizable port scanning profiles for flexibility in your initial scans.
 * Customizable service enumeration commands and suggested manual follow-up commands.
 * An intuitive directory structure for results gathering.
-* Full logging of commands that were run.
+* Full logging of commands that were run, along with errors if they fail.
+* Global and per-scan pattern matching so you can highlight/extract important information from the noise.
 
 ## Requirements
 
@@ -38,6 +39,28 @@ $ sudo apt install seclists
 ```
 
 AutoRecon will still run if you do not install SecLists, though several commands may fail, and some manual commands may not run either.
+
+Additionally the following commands may need to be installed, depending on your OS:
+
+```
+curl
+enum4linux
+gobuster
+nbtscan
+nikto
+nmap
+onesixtyone
+oscanner
+smbclient
+smbmap
+smtp-user-enum
+snmpwalk
+sslscan
+svwar
+tnscmd10g
+whatweb
+wkhtmltoimage
+```
 
 ## Usage
 
@@ -157,7 +180,7 @@ AutoRecon supports multiple targets per scan, and will expand IP ranges provided
 **Scanning multiple targets with advanced options**
 
 ```
-python3 autorecon.py -ct 2 -cs 2 -v -o outputdir 192.168.1.100 192.168.1.1/30 localhost
+python3 autorecon.py -ct 2 -cs 2 -vv -o outputdir 192.168.1.100 192.168.1.1/30 localhost
 [*] Scanning target 192.168.1.100
 [*] Scanning target 192.168.1.1
 [*] Running service detection nmap-quick on 192.168.1.100 with nmap -vv --reason -Pn -sV -sC --version-all -oN "/root/outputdir/192.168.1.100/scans/_quick_tcp_nmap.txt" -oX "/root/outputdir/192.168.1.100/scans/_quick_tcp_nmap.xml" 192.168.1.100
@@ -189,7 +212,15 @@ python3 autorecon.py -ct 2 -cs 2 -v -o outputdir 192.168.1.100 192.168.1.1/30 lo
 ...
 ```
 
-In this example, the -ct option limits the number of concurrent targets to 2, and the -cs option limits the number of concurrent scans per target to 2. The -v option makes the output verbose, showing the output of every scan being run. The -o option sets a custom output directory for scan results to be saved.
+In this example, the -ct option limits the number of concurrent targets to 2, and the -cs option limits the number of concurrent scans per target to 2. The -vv option makes the output very verbose, showing the output of every scan being run. The -o option sets a custom output directory for scan results to be saved.
+
+### Verbosity
+
+AutoRecon supports three levels of verbosity:
+
+* (none) Minimal output. AutoRecon will announce when target scans start and finish, as well as which services were identified.
+* (-v) Verbose output. AutoRecon will additionally specify the exact commands which are being run, as well as highlighting any patterns which are matched in command output.
+* (-vv) Very verbose output. AutoRecon will output everything. Literally every line from all commands which are currently running. When scanning multiple targets concurrently, this can lead to a ridiculous amount of output. It is not advised to use -vv unless you absolutely need to see live output from commands.
 
 ### Results
 
@@ -206,7 +237,8 @@ By default, results will be stored in the ./results directory. A new sub directo
 │   └── screenshots/
 └── scans/
     ├── _commands.log
-    └── _manual_commands.txt
+    ├── _manual_commands.txt
+    └── xml/
 ```
 
 The exploit directory is intended to contain any exploit code you download / write for the target.
@@ -224,6 +256,10 @@ The scans directory is where all results from scans performed by AutoRecon will 
 * \_manual_commands.txt contains any commands that are deemed "too dangerous" to run automatically, either because they are too intrusive, require modification based on human analysis, or just work better when there is a human monitoring them.
 
 If a scan results in an error, a file called \_errors.log will also appear in the scans directory with some details to alert the user.
+
+If output matches a defined pattern, a file called \_patterns.log will also appear in the scans directory with details about the matched output.
+
+The scans/xml directory stores any XML output (e.g. from Nmap scans) separately from the main scan outputs, so that the scans directory itself does not get too cluttered.
 
 ### Port Scan profiles
 
@@ -297,6 +333,10 @@ service-names = [
     name = 'nmap-ftp'
     command = 'nmap {nmap_extra} -sV -p {port} --script="(ftp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_ftp_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_ftp_nmap.xml" {address}'
 
+        [[ftp.scan.pattern]]
+        description = 'Anonymous FTP Enabled!'
+        pattern = 'Anonymous FTP login allowed'
+
     [[ftp.manual]]
     description = 'Bruteforce logins:'
     commands = [
@@ -316,6 +356,8 @@ The ftp.scan section defines a single scan, named nmap-ftp. This scan defines a 
 * {protocol} is the protocol being used (either tcp or udp).
 * {address} is the address of the target.
 
+A pattern is defined for the nmap-ftp scan, which matches the simple pattern "Anonymous FTP login allowed". In the event that this pattern matches output of the nmap-ftp command, the pattern description ("Anonymous FTP Enabled!") will be saved to the \_patterns.log file in the scans directory. A special reference {match} can be used in the description to reference the entire match, or the first capturing group.
+
 The ftp.manual section defines a group of manual commands. This group contains a description for the user, and a commands array which contains the commands that a user can run. Two new references are defined here: {username_wordlist} and {password_wordlist} which are configured at the very top of the service-scans.toml file, and default to a username and password wordlist provided by SecLists.
 
 Here is a more complicated configuration:
@@ -331,7 +373,7 @@ service-names = [
 
     [[smb.scan]]
     name = 'nmap-smb'
-    command = 'nmap {nmap_extra} -sV -p {port} --script="(nbstat or smb* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_nmap.xml" {address}'
+    command = 'nmap {nmap_extra} -sV -p {port} --script="(nbstat or smb* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" --script-args="unsafe=1" -oN "{scandir}/{protocol}_{port}_smb_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_nmap.xml" {address}'
 
     [[smb.scan]]
     name = 'enum4linux'
@@ -352,12 +394,24 @@ service-names = [
     run_once = true
     ports.tcp = [139, 445]
 
+    [[smb.scan]]
+    name = 'smbmap-share-permissions'
+    command = 'smbmap -H {address} -P {port} 2>&1 | tee -a "{scandir}/smbmap-share-permissions.txt"; smbmap -u null -p "" -H {address} -P {port} 2>&1 | tee -a "{scandir}/smbmap-share-permissions.txt"'
+
+    [[smb.scan]]
+    name = 'smbmap-list-contents'
+    command = 'smbmap -H {address} -P {port} -R 2>&1 | tee -a "{scandir}/smbmap-list-contents.txt"; smbmap -u null -p "" -H {address} -P {port} -R 2>&1 | tee -a "{scandir}/smbmap-list-contents.txt"'
+
+    [[smb.scan]]
+    name = 'smbmap-execute-command'
+    command = 'smbmap -H {address} -P {port} -x "ipconfig /all" 2>&1 | tee -a "{scandir}/smbmap-execute-command.txt"; smbmap -u null -p "" -H {address} -P {port} -x "ipconfig /all" 2>&1 | tee -a "{scandir}/smbmap-execute-command.txt"'
+
     [[smb.manual]]
     description = 'Nmap scans for SMB vulnerabilities that could potentially cause a DoS if scanned (according to Nmap). Be careful:'
     commands = [
-        'nmap {nmap_extra} -sV -p {port} --script="smb-vuln-ms06-025" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms06-025.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_ms06-025.xml" {address}',
-        'nmap {nmap_extra} -sV -p {port} --script="smb-vuln-ms07-029" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms07-029.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_ms07-029.xml" {address}',
-        'nmap {nmap_extra} -sV -p {port} --script="smb-vuln-ms08-067" --script-args=unsafe=1 -oN "{scandir}/{protocol}_{port}_smb_ms08-067.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_ms08-067.xml" {address}'
+        'nmap {nmap_extra} -sV -p {port} --script="smb-vuln-ms06-025" --script-args="unsafe=1" -oN "{scandir}/{protocol}_{port}_smb_ms06-025.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_ms06-025.xml" {address}',
+        'nmap {nmap_extra} -sV -p {port} --script="smb-vuln-ms07-029" --script-args="unsafe=1" -oN "{scandir}/{protocol}_{port}_smb_ms07-029.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_ms07-029.xml" {address}',
+        'nmap {nmap_extra} -sV -p {port} --script="smb-vuln-ms08-067" --script-args="unsafe=1" -oN "{scandir}/{protocol}_{port}_smb_ms08-067.txt" -oX "{scandir}/xml/{protocol}_{port}_smb_ms08-067.xml" {address}'
     ]
 ```
 

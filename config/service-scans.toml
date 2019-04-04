@@ -2,6 +2,16 @@
 username_wordlist = '/usr/share/seclists/Usernames/top-usernames-shortlist.txt'
 password_wordlist = '/usr/share/seclists/Passwords/darkweb2017-top100.txt'
 
+[all-services] # Define scans here that you want to run against all services.
+
+service-names = [
+    '.+'
+]
+
+    [[all-services.scan]]
+    name = 'sslscan'
+    command = 'if [ "{secure}" == "True" ]; then sslscan --show-certificate --no-colour {address}:{port} 2>&1 | tee "{scandir}/{protocol}_{port}_sslscan.txt"; fi'
+
 [cassandra]
 
 service-names = [
@@ -106,6 +116,10 @@ ignore-service-names = [
     [[http.scan]]
     name = 'curl-robots'
     command = 'curl -sSik {scheme}://{address}:{port}/robots.txt -m 10 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_robots.txt"'
+
+    [[http.scan]]
+    name = 'wkhtmltoimage'
+    command = 'if hash wkhtmltoimage 2> /dev/null; then wkhtmltoimage --format png {scheme}://{address}:{port}/ {scandir}/{protocol}_{port}_{scheme}_screenshot.png; fi'
 
     [[http.scan]]
     name = 'whatweb'
