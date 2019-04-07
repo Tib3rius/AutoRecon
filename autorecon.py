@@ -31,7 +31,7 @@ global_patterns = []
 username_wordlist = '/usr/share/seclists/Usernames/top-usernames-shortlist.txt'
 password_wordlist = '/usr/share/seclists/Passwords/darkweb2017-top100.txt'
 
-__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+rootdir = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 def e(*args, frame_index=1, **kvargs):
     frame = sys._getframe(frame_index)
@@ -105,7 +105,7 @@ def fail(*args, sep=' ', end='\n', file=sys.stderr, **kvargs):
     exit(-1)
 
 port_scan_profiles_config_file = 'port-scan-profiles.toml'
-with open(os.path.join(__location__, 'config', port_scan_profiles_config_file), 'r') as p:
+with open(os.path.join(rootdir, 'config', port_scan_profiles_config_file), 'r') as p:
     try:
         port_scan_profiles_config = toml.load(p)
 
@@ -115,13 +115,13 @@ with open(os.path.join(__location__, 'config', port_scan_profiles_config_file), 
     except toml.decoder.TomlDecodeError as e:
         fail('Error: Couldn\'t parse {port_scan_profiles_config_file} config file. Check syntax and duplicate tags.')
 
-with open(os.path.join(__location__, 'config', 'service-scans.toml'), 'r') as c:
+with open(os.path.join(rootdir, 'config', 'service-scans.toml'), 'r') as c:
     try:
         service_scans_config = toml.load(c)
     except toml.decoder.TomlDecodeError as e:
         fail('Error: Couldn\'t parse service-scans.toml config file. Check syntax and duplicate tags.')
 
-with open(os.path.join(__location__, 'config', 'global-patterns.toml'), 'r') as p:
+with open(os.path.join(rootdir, 'config', 'global-patterns.toml'), 'r') as p:
     try:
         global_patterns = toml.load(p)
         if 'pattern' in global_patterns:
