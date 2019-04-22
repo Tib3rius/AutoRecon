@@ -451,3 +451,7 @@ In fact, enum4linux will always try these ports when it is run. So if the SMB se
 > "If you have to do a task more than twice a day, you need to automate it." That's a piece of advice that an old boss gave to me. AutoRecon takes that lesson to heart. Whether you're sitting in the exam, or in the PWK labs, you can fire off AutoRecon and let it work its magic. I had it running during my last exam while I worked on the buffer overflow. By the time I finished, all the enum data I needed was there for me to go through. 10/10 would recommend for anyone getting into CTF, and anyone who has been at this a long time.
 >
 >\- whoisflynn
+
+> I love this tool so much I wrote it.
+>
+>\- Tib3rius (rooted 5/5 exam hosts)
