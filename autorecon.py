@@ -20,6 +20,9 @@ from datetime import datetime
 import sys
 import toml
 
+
+__version__ = '0.1.1'
+
 verbose = 0
 nmap_default_options = '--reason -Pn'
 srvname = ''
@@ -688,6 +691,24 @@ def get_ip_address(target, targets, disable_sanity_checks):
 
     return (targets, errors)
 
+def get_header():
+
+    logo = r'''
+           _____          __        __________                            
+          /  _  \  __ ___/  |_  ____\______   \ ____   ____  ____   ____  
+         /  /_\  \|  |  \   __\/  _ \|       _// __ \_/ ___\/  _ \ /    \ 
+        /    |    \  |  /|  | (  <_> )    |   \  ___/\  \__(  <_> )   |  \
+        \____|__  /____/ |__|  \____/|____|_  /\___  >\___  >____/|___|  /
+                \/                          \/     \/     \/           \/ 
+    '''
+
+    print('\n{0}'.format('-' * 85))
+    print('{0}'.format(logo))
+    print('{0} v{1}'.format(' ' * (85 - len(__version__) - 2), __version__))
+    print('\n\tAutomated network reconnaissance and service enumeration.')
+    print('\n{0}\n\n'.format('-' * 85))
+
+
 class Target:
     def __init__(self, address):
         self.address = address
@@ -699,7 +720,7 @@ class Target:
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
+    parser = argparse.ArgumentParser(description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.', epilog = get_header())
     parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="*")
     parser.add_argument('-ct', '--concurrent-targets', action='store', metavar='<number>', type=int, default=5, help='The maximum number of target hosts to scan concurrently. Default: %(default)s')
     parser.add_argument('-cs', '--concurrent-scans', action='store', metavar='<number>', type=int, default=10, help='The maximum number of scans to perform per target host. Default: %(default)s')
@@ -709,7 +730,7 @@ if __name__ == '__main__':
     nmap_group.add_argument('--nmap', action='store', default=nmap_default_options, help='Override the {nmap_extra} variable in scans. Default: %(default)s')
     nmap_group.add_argument('--nmap-append', action='store', default='', help='Append to the default {nmap_extra} variable in scans.')
     parser.add_argument('--skip-service-scan', action='store_true', default=False, help='Do not perfom extended service scanning but only document commands.')
-    parser.add_argument('--run-level', action='store', type=int, default=0, nargs="+", help='During extended service scanning, only run scanners of a certain complexity level or below.')
+    parser.add_argument('--run-level', action='store', type=int, default=[0], nargs="+", help='During extended service scanning, only run scanners of a certain complexity level or below.')
     parser.add_argument('--run-only', action='store_true', default=False, help='If enabled, only run scanners of the specified complexity level during extended service scanning.')
     parser.add_argument('-r', '--read', action='store', type=str, default='', dest='target_file', help='Read targets from file.')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='Enable verbose output. Repeat for more verbosity.')
