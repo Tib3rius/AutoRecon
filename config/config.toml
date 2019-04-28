@@ -1,0 +1,42 @@
+# configuration for program paths
+[applications]
+
+    nmap = '/usr/bin/nmap'
+
+    # password brute-forcing programs
+    hydra = '/usr/bin/hydra'
+    medusa = '/usr/bin/medusa'
+    patator = '/usr/bin/patator'
+
+    # programs for web servers and application
+    sslscan = '/usr/bin/sslscan'
+    curl = '/usr/bin/curl'
+    dirb = '/usr/bin/dirb'
+    wkhtmltoimage = '/usr/bin/wkhtmltoimage'
+    whatweb = '/usr/bin/whatweb'
+    nikto = '/usr/bin/nikto'
+    gobuster = '/usr/bin/gobuster'
+    wpscan = '/usr/local/bin/wpscan'
+    dirsearch = ''
+
+    # Oracle programs
+    tnscmd10g = '/usr/bin/tnscmd10g'
+    oscanner = '/usr/bin/oscanner'
+    odat = '/usr/bin/python odat.py'
+
+    # RPC programs
+    rpcclient = '/usr/bin/rpcclient'
+
+    # SMB programs
+    enum4linux = '/usr/bin/enum4linux'
+    smbclient = '/usr/bin/smbclient'
+    smbmap = '/usr/bin/smbmap'
+    smb_version = '/usr/local/bin/get_smb_version'
+
+    # SMTP programs
+    smtp-user-enum = '/usr/bin/smtp-user-enum'
+
+    # SNMP programs
+    onesixtyone = '/usr/bin/onesixtyone'
+    snmpwalk = '/usr/bin/snmpwalk'
+

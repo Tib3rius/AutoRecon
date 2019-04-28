@@ -16,17 +16,19 @@ import os
 import re
 import socket
 import string
+from datetime import datetime
 import sys
 import toml
 
 verbose = 0
-nmap = '-vv --reason -Pn'
+nmap_default_options = '--reason -Pn'
 srvname = ''
 port_scan_profile = None
 
 port_scan_profiles_config = None
 service_scans_config = None
 global_patterns = []
+applications = {}
 
 username_wordlist = '/usr/share/seclists/Usernames/top-usernames-shortlist.txt'
 password_wordlist = '/usr/share/seclists/Passwords/darkweb2017-top100.txt'
@@ -70,9 +72,11 @@ def cprint(*args, color=Fore.RESET, char='*', sep=' ', end='\n', frame_index=1, 
     vals.update(frame.f_locals)
     vals.update(kvargs)
 
+    clock = datetime.now().strftime('%H:%M:%S')
+    clock = sep + '['  + Style.BRIGHT + Fore.YELLOW + clock + Style.NORMAL + Fore.RESET + ']'
     unfmt = ''
     if char is not None:
-        unfmt += color + '[' + Style.BRIGHT + char + Style.NORMAL + ']' + Fore.RESET + sep
+        unfmt += color + '[' + Style.BRIGHT + char + Style.NORMAL + ']' + Fore.RESET + clock + sep
     unfmt += sep.join(args)
 
     fmted = unfmt
@@ -104,40 +108,63 @@ def fail(*args, sep=' ', end='\n', file=sys.stderr, **kvargs):
     cprint(*args, color=Fore.RED, char='!', sep=sep, end=end, file=file, frame_index=2, **kvargs)
     exit(-1)
 
-port_scan_profiles_config_file = 'port-scan-profiles.toml'
-with open(os.path.join(rootdir, 'config', port_scan_profiles_config_file), 'r') as p:
+
+''' Reads a configuration file, and saves the data to a dictionary
+
+    @replace_values Dictionary with values that should be replaced in the configuration file
+'''
+def read_configuration_file(filename, replace_values = {}):
+    data = {}
     try:
-        port_scan_profiles_config = toml.load(p)
+        with open(os.path.join(rootdir, 'config', filename), 'r') as f:
+            data = f.read()
 
-        if len(port_scan_profiles_config) == 0:
-            fail('There do not appear to be any port scan profiles configured in the {port_scan_profiles_config_file} config file.')
+            for entry in replace_values:
+                data = re.sub('{' +entry + '}', replace_values[entry], data)
+            data = toml.loads(data)
+    except (OSError, toml.decoder.TomlDecodeError) as e:
+        fail('Error: The configuration file {filename} could not be read.')
 
-    except toml.decoder.TomlDecodeError as e:
-        fail('Error: Couldn\'t parse {port_scan_profiles_config_file} config file. Check syntax and duplicate tags.')
+    return data
 
-with open(os.path.join(rootdir, 'config', 'service-scans.toml'), 'r') as c:
-    try:
-        service_scans_config = toml.load(c)
-    except toml.decoder.TomlDecodeError as e:
-        fail('Error: Couldn\'t parse service-scans.toml config file. Check syntax and duplicate tags.')
 
-with open(os.path.join(rootdir, 'config', 'global-patterns.toml'), 'r') as p:
-    try:
-        global_patterns = toml.load(p)
-        if 'pattern' in global_patterns:
-            global_patterns = global_patterns['pattern']
-        else:
-            global_patterns = []
-    except toml.decoder.TomlDecodeError as e:
-        fail('Error: Couldn\'t parse global-patterns.toml config file. Check syntax and duplicate tags.')
+def get_configuration():
+    applications_config = read_configuration_file('config.toml')
+    if len(applications_config) > 0 and 'applications' in applications_config:
+        global applications 
+        applications = applications_config['applications']
+        for application in applications:
+            if not os.path.isfile(applications[application]): 
+                warn('Warning: The application {application} was not found on the system in the specified path.')
+    else:
+        warn('Warning: The section for application paths was not found in the {application_config_file} configuration file.')
 
-if 'username_wordlist' in service_scans_config:
-    if isinstance(service_scans_config['username_wordlist'], str):
-        username_wordlist = service_scans_config['username_wordlist']
+    global port_scan_profiles_config 
+    port_scan_profiles_config = read_configuration_file('port-scan-profiles.toml', applications)
+    if len(port_scan_profiles_config) == 0:
+        fail('There do not appear to be any port scan profiles configured in the {port_scan_profiles_config_file} config file.')
+        return False
 
-if 'password_wordlist' in service_scans_config:
-    if isinstance(service_scans_config['password_wordlist'], str):
-        password_wordlist = service_scans_config['password_wordlist']
+    global service_scans_config 
+    service_scans_config = read_configuration_file('service-scans.toml', applications)
+
+    global global_patterns 
+    global_patterns = read_configuration_file('global-patterns.toml')
+    if 'pattern' in global_patterns:
+        global_patterns = global_patterns['pattern']
+    else:
+        global_patterns = []
+
+    if 'username_wordlist' in service_scans_config:
+        if isinstance(service_scans_config['username_wordlist'], str):
+            username_wordlist = service_scans_config['username_wordlist']
+
+    if 'password_wordlist' in service_scans_config:
+        if isinstance(service_scans_config['password_wordlist'], str):
+            password_wordlist = service_scans_config['password_wordlist']
+
+    return True
+
 
 async def read_stream(stream, target, tag='?', patterns=[], color=Fore.BLUE):
     address = target.address
@@ -188,11 +215,13 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
         address = target.address
         scandir = target.scandir
 
-        info('Running task {bgreen}{tag}{rst} on {byellow}{address}{rst}' + (' with {bblue}{cmd}{rst}' if verbose >= 1 else ''))
+        info('Running task {bgreen}{tag}{rst} on {byellow}{address}{rst}' + (' with {bblue}{cmd}{rst}.' if verbose >= 1 else '.'))
 
         async with target.lock:
             with open(os.path.join(scandir, '_commands.log'), 'a') as file:
                 file.writelines(e('{cmd}\n\n'))
+        
+        # TODO: check extended service scanning requested?
 
         process = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, executable='/bin/bash')
 
@@ -204,12 +233,12 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
         await process.wait()
 
     if process.returncode != 0:
-        error('Task {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}')
+        error('Task {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}.')
         async with target.lock:
             with open(os.path.join(scandir, '_errors.log'), 'a') as file:
                 file.writelines(e('[*] Task {tag} returned non-zero exit code: {process.returncode}. Command: {cmd}\n'))
     else:
-        info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully')
+        info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully.')
 
     return {'returncode': process.returncode, 'name': 'run_cmd'}
 
@@ -289,14 +318,14 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
 
         address = target.address
         scandir = target.scandir
-        nmap_extra = nmap
+        nmap_extra = nmap_default_options
 
         ports = ''
         if port_scan is not None:
             command = e(port_scan[0])
             pattern = port_scan[1]
 
-            info('Running port scan {bgreen}{tag}{rst} on {byellow}{address}{rst}' + (' with {bblue}{command}{rst}' if verbose >= 1 else ''))
+            info('Running port scan {bgreen}{tag}{rst} on {byellow}{address}{rst}' + (' with {bblue}{command}{rst}.' if verbose >= 1 else '.'))
 
             async with target.lock:
                 with open(os.path.join(scandir, '_commands.log'), 'a') as file:
@@ -310,9 +339,9 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
             ]
 
             results = await asyncio.gather(*output)
-
+            
             await process.wait()
-
+            
             if process.returncode != 0:
                 error('Port scan {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}')
                 async with target.lock:
@@ -331,7 +360,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
         command = e(service_detection[0])
         pattern = service_detection[1]
 
-        info('Running service detection {bgreen}{tag}{rst} on {byellow}{address}{rst}' + (' with {bblue}{command}{rst}' if verbose >= 1 else ''))
+        info('Running service detection {bgreen}{tag}{rst} on {byellow}{address}{rst}' + (' with {bblue}{command}{rst}.' if verbose >= 1 else '.'))
 
         async with target.lock:
             with open(os.path.join(scandir, '_commands.log'), 'a') as file:
@@ -354,7 +383,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
                 with open(os.path.join(scandir, '_errors.log'), 'a') as file:
                     file.writelines(e('[*] Service detection {tag} returned non-zero exit code: {process.returncode}. Command: {command}\n'))
         else:
-            info('Service detection {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully')
+            info('Service detection {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully.')
 
         services = results[0]
 
@@ -386,7 +415,6 @@ async def scan_services(loop, semaphore, target):
 
         for task in done:
             result = task.result()
-
             if result['returncode'] == 0:
                 if result['name'] == 'run_portscan':
                     for service_tuple in result['services']:
@@ -399,15 +427,15 @@ async def scan_services(loop, semaphore, target):
                         port = service_tuple[1]
                         service = service_tuple[2]
 
-                        info('Found {bmagenta}{service}{rst} on {bmagenta}{protocol}/{port}{rst} on target {byellow}{address}{rst}')
+                        info('Port {bmagenta}{protocol} {port}{rst} ({bmagenta}{service}{rst}) open on target {byellow}{address}{rst}.')
 
                         with open(os.path.join(target.reportdir, 'notes.txt'), 'a') as file:
-                            file.writelines(e('[*] {service} found on {protocol}/{port}.\n\n\n\n'))
+                            file.writelines(e('[*] Port {protocol} {port} ({service}) open on {address}.\n\n\n\n'))
 
                         if protocol == 'udp':
-                            nmap_extra = nmap + " -sU"
+                            nmap_extra = nmap_default_options + " -sU"
                         else:
-                            nmap_extra = nmap
+                            nmap_extra = nmap_default_options
 
                         secure = True if 'ssl' in service or 'tls' in service else False
 
@@ -442,6 +470,20 @@ async def scan_services(loop, semaphore, target):
 
                             if not matched_service:
                                 continue
+
+                            # NOTE: change for saving results in directories per service
+                            if not service_scan == 'all-services':
+                                category = '{0}/'.format(service_scan) 
+                            else:
+                                category = ''
+                            
+                            try:
+                                servicedir = os.path.join(scandir, category)
+                                if not os.path.exists(servicedir): os.mkdir(servicedir)
+                                xmldir = os.path.join(scandir, 'xml', category)
+                                if not os.path.exists(xmldir): os.mkdir(xmldir)
+                            except OSError:
+                                category = ''
 
                             if 'manual' in service_scans_config[service_scan]:
                                 heading = False
@@ -514,13 +556,16 @@ async def scan_services(loop, semaphore, target):
                                             pending.add(asyncio.ensure_future(run_cmd(semaphore, e(command), target, tag=tag, patterns=patterns)))
 
 def scan_host(target, concurrent_scans):
-    info('Scanning target {byellow}{target.address}{rst}')
-
+    info('Scanning target {byellow}{target.address}{rst}.')
+    
     basedir = os.path.abspath(os.path.join(outdir, target.address + srvname))
     target.basedir = basedir
     os.makedirs(basedir, exist_ok=True)
 
     exploitdir = os.path.abspath(os.path.join(basedir, 'exploit'))
+    os.makedirs(exploitdir, exist_ok=True)
+    
+    exploitdir = os.path.abspath(os.path.join(basedir, 'privilege_escalation'))
     os.makedirs(exploitdir, exist_ok=True)
 
     lootdir = os.path.abspath(os.path.join(basedir, 'loot'))
@@ -529,6 +574,8 @@ def scan_host(target, concurrent_scans):
     reportdir = os.path.abspath(os.path.join(basedir, 'report'))
     target.reportdir = reportdir
     os.makedirs(reportdir, exist_ok=True)
+    f = open(os.path.join(reportdir, 'notes.txt'), 'w')
+    f.close()
 
     screenshotdir = os.path.abspath(os.path.join(reportdir, 'screenshots'))
     os.makedirs(screenshotdir, exist_ok=True)
@@ -553,9 +600,67 @@ def scan_host(target, concurrent_scans):
 
     try:
         loop.run_until_complete(scan_services(loop, semaphore, target))
-        info('Finished scanning target {byellow}{target.address}{rst}')
+        info('Finished scanning target {byellow}{target.address}{rst}.')
     except KeyboardInterrupt:
         sys.exit(1)
+
+
+''' Reads a list of targets from a file
+    
+'''
+def read_targets_from_file(filename, targets, disable_sanity_checks):
+
+    if not os.path.isfile(filename):
+        error('The file {filename} with target information was not found.')
+        return (targets, True)
+
+    try:
+        with open(filename, 'r') as f:
+            entries = f.read()
+    except OSError:
+        error('The file {filename} with target information could not be read.')
+        return (targets, True)
+
+
+    error = False
+    for ip in entries.split('\n'):
+        if ip.startswith('#') or len(ip) == 0: continue
+        
+        targets, failed = get_ip_address(ip, targets, disable_sanity_checks)
+        if failed: error = True
+    
+    return (targets, error)
+
+
+def get_ip_address(target, targets, disable_sanity_checks):
+
+    errors = False
+    try:
+        ip = str(ipaddress.ip_address(target))
+
+        if ip not in targets:
+            targets.append(ip)
+    except ValueError:
+        try:
+            target_range = ipaddress.ip_network(target, strict=False)
+            if not disable_sanity_checks and target_range.num_addresses > 256:
+                error(target + ' contains ' + str(target_range.num_addresses) + ' addresses. Check that your CIDR notation is correct. If it is, re-run with the --disable-sanity-checks option to suppress this check.')
+                errors = True
+            else:
+                for ip in target_range.hosts():
+                    ip = str(ip)
+                    if ip not in targets:
+                        targets.append(ip)
+        except ValueError:
+            try:
+                ip = socket.gethostbyname(target)
+                if target not in targets:
+                    targets.append(target)
+            except socket.gaierror:
+                warn(target + ' does not appear to be a valid IP address, IP range, or resolvable hostname.')
+
+    return (targets, errors)
+
 
 class Target:
     def __init__(self, address):
@@ -569,18 +674,23 @@ class Target:
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
-    parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="+")
+    parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="*")
     parser.add_argument('-ct', '--concurrent-targets', action='store', metavar='<number>', type=int, default=5, help='The maximum number of target hosts to scan concurrently. Default: %(default)s')
     parser.add_argument('-cs', '--concurrent-scans', action='store', metavar='<number>', type=int, default=10, help='The maximum number of scans to perform per target host. Default: %(default)s')
     parser.add_argument('--profile', action='store', default='default', help='The port scanning profile to use (defined in port-scan-profiles.toml). Default: %(default)s')
     parser.add_argument('-o', '--output', action='store', default='results', help='The output directory for results. Default: %(default)s')
     nmap_group = parser.add_mutually_exclusive_group()
-    nmap_group.add_argument('--nmap', action='store', default='-vv --reason -Pn', help='Override the {nmap_extra} variable in scans. Default: %(default)s')
+    nmap_group.add_argument('--nmap', action='store', default=nmap_default_options, help='Override the {nmap_extra} variable in scans. Default: %(default)s')
     nmap_group.add_argument('--nmap-append', action='store', default='', help='Append to the default {nmap_extra} variable in scans.')
+    parser.add_argument('-r', '--read', action='store', type=str, default='', dest='target_file', help='Read targets from file.')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='Enable verbose output. Repeat for more verbosity.')
     parser.add_argument('--disable-sanity-checks', action='store_true', default=False, help='Disable sanity checks that would otherwise prevent the scans from running.')
+    parser.add_argument('--skip-service-scan', action='store_true', default=False, help='Do not perfom extended service scanning but only protocol commands.')
     parser.error = lambda s: fail(s[0].upper() + s[1:])
     args = parser.parse_args()
+
+    config_loaded = get_configuration()
+    if not config_loaded: sys.exit(-1)
 
     errors = False
 
@@ -639,48 +749,26 @@ if __name__ == '__main__':
         error('Argument --profile: must reference a port scan profile defined in {port_scan_profiles_config_file}. No such profile found: {port_scan_profile}')
         errors = True
 
-    nmap = args.nmap
+    nmap_default_options = args.nmap
     if args.nmap_append:
-        nmap += " " + args.nmap_append
+        nmap_default_options += " " + args.nmap_append
 
     outdir = args.output
     srvname = ''
     verbose = args.verbose
 
-    if len(args.targets) == 0:
+    if len(args.targets) == 0 and not len(args.target_file):
         error('You must specify at least one target to scan!')
         errors = True
 
     targets = []
 
     for target in args.targets:
-        try:
-            ip = str(ipaddress.ip_address(target))
+        targets, failed = get_ip_address(target, targets, args.disable_sanity_checks)
+        if failed: errors = True
 
-            if ip not in targets:
-                targets.append(ip)
-        except ValueError:
-
-            try:
-                target_range = ipaddress.ip_network(target, strict=False)
-                if not args.disable_sanity_checks and target_range.num_addresses > 256:
-                    error(target + ' contains ' + str(target_range.num_addresses) + ' addresses. Check that your CIDR notation is correct. If it is, re-run with the --disable-sanity-checks option to suppress this check.')
-                    errors = True
-                else:
-                    for ip in target_range.hosts():
-                        ip = str(ip)
-                        if ip not in targets:
-                            targets.append(ip)
-            except ValueError:
-
-                try:
-                    ip = socket.gethostbyname(target)
-
-                    if target not in targets:
-                        targets.append(target)
-                except socket.gaierror:
-                    error(target + ' does not appear to be a valid IP address, IP range, or resolvable hostname.')
-                    errors = True
+    if len(args.target_file) > 0:
+        targets, errors = read_targets_from_file(args.target_file, targets, args.disable_sanity_checks)
 
     if not args.disable_sanity_checks and len(targets) > 256:
         error('A total of ' + str(len(targets)) + ' targets would be scanned. If this is correct, re-run with the --disable-sanity-checks option to suppress this check.')
@@ -689,6 +777,7 @@ if __name__ == '__main__':
     if errors:
         sys.exit(1)
 
+    start_timer = datetime.now().strftime('%H:%M:%S')
     with ProcessPoolExecutor(max_workers=args.concurrent_targets) as executor:
         futures = []
 
@@ -704,3 +793,8 @@ if __name__ == '__main__':
                 future.cancel()
             executor.shutdown(wait=False)
             sys.exit(1)
+    end_timer = datetime.now().strftime('%H:%M:%S')
+    tdelta = datetime.strptime(end_timer, '%H:%M:%S') - datetime.strptime(start_timer, '%H:%M:%S')
+    print('\nScanning completed in {}.'.format(tdelta))
+
+    
