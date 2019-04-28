@@ -50,7 +50,7 @@
     [debug.nmap-quick]
 
         [debug.nmap-quick.service-detection]
-        command = '{nmap} {nmap_extra} --top-ports 10 -oN "{scandir}/_quick_tcp_nmap.txt" -oX "{scandir}/xml/_quick_tcp_nmap.xml" {address}'
+        command = '{nmap} {nmap_extra} -p 21,22,80,139,445,8000,8080 -oN "{scandir}/_quick_tcp_nmap.txt" -oX "{scandir}/xml/_quick_tcp_nmap.xml" {address}'
         pattern = '^(?P<port>\d+)\/(?P<protocol>(tcp|udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
 
 

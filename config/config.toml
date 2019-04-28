@@ -3,12 +3,15 @@
 
     nmap = '/usr/bin/nmap'
 
+    # system programs
+    tee = '/usr/bin/tee'
+
     # password brute-forcing programs
     hydra = '/usr/bin/hydra'
     medusa = '/usr/bin/medusa'
     patator = '/usr/bin/patator'
 
-    # programs for web servers and application
+    # programs for web servers and applications
     sslscan = '/usr/bin/sslscan'
     curl = '/usr/bin/curl'
     dirb = '/usr/bin/dirb'
@@ -18,14 +21,22 @@
     gobuster = '/usr/bin/gobuster'
     wpscan = '/usr/local/bin/wpscan'
     dirsearch = ''
+    
+    # WebDAV programs
+    davtest = '/usr/bin/davtest'
+    cadaver = '/usr/bin/cadaver'
 
-    # Oracle programs
+    # database programs
     tnscmd10g = '/usr/bin/tnscmd10g'
     oscanner = '/usr/bin/oscanner'
     odat = '/usr/bin/python odat.py'
+    sqsh = '/usr/bin/sqsh'
 
     # RPC programs
     rpcclient = '/usr/bin/rpcclient'
+
+    # SIP programs
+    svwar = '/usr/bin/svwar'
 
     # SMB programs
     enum4linux = '/usr/bin/enum4linux'
@@ -34,7 +45,7 @@
     smb_version = '/usr/local/bin/get_smb_version'
 
     # SMTP programs
-    smtp-user-enum = '/usr/bin/smtp-user-enum'
+    smtp_user_enum = '/usr/bin/smtp-user-enum'
 
     # SNMP programs
     onesixtyone = '/usr/bin/onesixtyone'

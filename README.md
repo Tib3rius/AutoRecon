@@ -13,9 +13,11 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 ## Features
 
 * Supports multiple targets in the form of IP addresses, IP ranges (CIDR notation), and resolvable hostnames.
+* Targets can either be specified via the command line or read from a file.
 * Can scan targets concurrently, utilizing multiple processors if they are available.
 * Customizable port scanning profiles for flexibility in your initial scans.
 * Customizable service enumeration commands and suggested manual follow-up commands.
+* Support for different complexity levels to better balance runtime and scanning depth during service enumeration.
 * An intuitive directory structure for results gathering.
 * Full logging of commands that were run, along with errors if they fail.
 * Global and per-scan pattern matching so you can highlight/extract important information from the noise.
@@ -62,15 +64,20 @@ whatweb
 wkhtmltoimage
 ```
 
+AutoRecon performs some checks during startup and will indicate any program that is missing and will potentially affect the result gathering process.
+
+
 ## Usage
 
 AutoRecon uses Python 3 specific functionality and does not support Python 2.
 
 ```
 usage: autorecon.py [-h] [-ct <number>] [-cs <number>] [--profile PROFILE]
-                    [-o OUTPUT] [--nmap NMAP | --nmap-append NMAP_APPEND] [-v]
-                    [--disable-sanity-checks]
-                    targets [targets ...]
+                    [-o OUTPUT] [--nmap NMAP | --nmap-append NMAP_APPEND]
+                    [--skip-service-scan]
+                    [--run-level RUN_LEVEL [RUN_LEVEL ...]] [--run-only]
+                    [-r TARGET_FILE] [-v] [--disable-sanity-checks]
+                    [targets [targets ...]]
 
 Network reconnaissance tool to port scan and automatically enumerate services
 found on multiple targets.
@@ -93,9 +100,18 @@ optional arguments:
   -o OUTPUT, --output OUTPUT
                         The output directory for results. Default: results
   --nmap NMAP           Override the {nmap_extra} variable in scans. Default:
-                        -vv --reason -Pn
+                        --reason -Pn
   --nmap-append NMAP_APPEND
                         Append to the default {nmap_extra} variable in scans.
+  --skip-service-scan   Do not perfom extended service scanning but only
+                        document commands.
+  --run-level RUN_LEVEL [RUN_LEVEL ...]
+                        During extended service scanning, only run scanners of
+                        a certain complexity level or below.
+  --run-only            If enabled, only run scanners of the specified
+                        complexity level during extended service scanning.
+  -r TARGET_FILE, --read TARGET_FILE
+                        Read targets from file.
   -v, --verbose         Enable verbose output. Repeat for more verbosity.
   --disable-sanity-checks
                         Disable sanity checks that would otherwise prevent the
@@ -227,23 +243,35 @@ AutoRecon supports three levels of verbosity:
 By default, results will be stored in the ./results directory. A new sub directory is created for every target. The structure of this sub directory is:
 
 ```
-.
-├── exploit/
-├── loot/
-├── report/
+├── exploit
+├── loot
+├── privilege_escalation
+├── report
 │   ├── local.txt
-│   ├── notes.txt
 │   ├── proof.txt
-│   └── screenshots/
-└── scans/
+│   └── screenshots
+└── scans
     ├── _commands.log
-    ├── _manual_commands.txt
-    └── xml/
+    ├── _errors.log
+    ├── _full_tcp_nmap.txt
+    ├── _manual_commands.log
+    ├── _notes.txt
+    ├── _patterns.log
+    ├── _quick_tcp_nmap.txt
+    ├── <service>
+    ├── <service>
+    ├── (...)
+    └── xml
+        ├── <service>
+        ├── <service>
+        ├── (...)
 ```
 
 The exploit directory is intended to contain any exploit code you download / write for the target.
 
 The loot directory is intended to contain any loot (e.g. hashes, interesting files) you find on the target.
+
+The privilege_escalation directory is intended to contain any code for escalating the privileges on the target once initial access has been gained
 
 The report directory contains some auto-generated files and directories that are useful for reporting:
 * local.txt can be used to store the local.txt flag found on targets.
@@ -251,13 +279,15 @@ The report directory contains some auto-generated files and directories that are
 * proof.txt can be used to store the proof.txt flag found on targets.
 * The screenshots directory is intended to contain the screenshots you use to document the exploitation of the target.
 
-The scans directory is where all results from scans performed by AutoRecon will go. This includes port scans / service detection scans, as well as any service enumeration scans. It also contains two other files:
+The scans directory (and respective subdirectories) is where all results from scans performed by AutoRecon will go. This includes port scans / service detection scans, as well as any service enumeration scans. It also contains two other files:
 * \_commands.log contains a list of every command AutoRecon ran against the target. This is useful if one of the commands fails and you want to run it again with modifications.
 * \_manual_commands.txt contains any commands that are deemed "too dangerous" to run automatically, either because they are too intrusive, require modification based on human analysis, or just work better when there is a human monitoring them.
 
 If a scan results in an error, a file called \_errors.log will also appear in the scans directory with some details to alert the user.
 
 If output matches a defined pattern, a file called \_patterns.log will also appear in the scans directory with details about the matched output.
+
+The file \_notes.txt contains information about any open ports discovered during scanning.
 
 The scans/xml directory stores any XML output (e.g. from Nmap scans) separately from the main scan outputs, so that the scans directory itself does not get too cluttered.
 
@@ -381,6 +411,7 @@ service-names = [
     run_once = true
     ports.tcp = [139, 389, 445]
     ports.udp = [137]
+    level = 2
 
     [[smb.scan]]
     name = 'nbtscan'
@@ -425,6 +456,19 @@ Why do these settings even exist? Well, some commands will only run against spec
 In fact, enum4linux will always try these ports when it is run. So if the SMB service is found on TCP ports 139 and 445, AutoRecon may attempt to run enum4linux twice for no reason. This is why the third setting exists:
 
 * If run_once is set to true, the command will only ever run once for that target, even if the SMB service is found on multiple ports.
+
+* The level variable indicates the complexity of performing the scan. For instance, the nikto security scanner is able to examine a running web server in depth. At the same time, the scanning process is also lengthy and significantly increases the runtime of AutoRecon when evaluating multiple targets. 
+
+With the help of the --run-level parameter, the user has the possibility of better balancing required scanning time and scanning depth. Programs that require a longer runtime can also be run individually by making use of the --run-only parameter. Thereby, the user may run a quick scan first, followed by a more in-depth scan, e.g., 
+
+# run any extended service enumeration program with a complexity level of 2 or lower
+python3 autorecon.py 127.0.0.1 --run-level 2
+
+# only run programs with a complexity level of 3
+python3 autorecon.py 127.0.0.1 --run-level 3 --run-only
+
+The user may also skip extended service scanning entirely by specifying the --skip-service-scan parameter. In this case, respective commands will be only documented but not executed, giving the tester a good check list for later service analysis and planning the attack more carefully.
+
 
 ## Testimonials
 

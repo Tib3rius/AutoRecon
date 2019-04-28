@@ -23,12 +23,23 @@ import toml
 verbose = 0
 nmap_default_options = '--reason -Pn'
 srvname = ''
-port_scan_profile = None
 
+# number of possible complexity levels for scanners
+max_level = 3
+
+port_scan_profile = None
 port_scan_profiles_config = None
 service_scans_config = None
 global_patterns = []
 applications = {}
+
+files = {
+            'commands'          :   '_commands.log',
+            'manual_commands'   :   '_manual_commands.log',
+            'patterns'          :   '_patterns.log',
+            'notes'             :   '_notes.txt',
+            'errors'            :   '_errors.log',
+        }
 
 username_wordlist = '/usr/share/seclists/Usernames/top-usernames-shortlist.txt'
 password_wordlist = '/usr/share/seclists/Passwords/darkweb2017-top100.txt'
@@ -181,14 +192,14 @@ async def read_stream(stream, target, tag='?', patterns=[], color=Fore.BLUE):
                         if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}' + p['description'].replace('{match}', '{bblue}{match}{crst}{bmagenta}') + '{rst}')
                         async with target.lock:
-                            with open(os.path.join(target.scandir, '_patterns.log'), 'a') as file:
+                            with open(os.path.join(target.scandir, files['patterns']), 'a') as file:
                                 file.writelines(e('{tag} - ' + p['description'] + '\n\n'))
                 else:
                     for match in matches:
                         if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}Matched Pattern: {bblue}{match}{rst}')
                         async with target.lock:
-                            with open(os.path.join(target.scandir, '_patterns.log'), 'a') as file:
+                            with open(os.path.join(target.scandir, files['patterns']), 'a') as file:
                                 file.writelines(e('{tag} - Matched Pattern: {match}\n\n'))
 
             for p in patterns:
@@ -198,31 +209,35 @@ async def read_stream(stream, target, tag='?', patterns=[], color=Fore.BLUE):
                         if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}' + p['description'].replace('{match}', '{bblue}{match}{crst}{bmagenta}') + '{rst}')
                         async with target.lock:
-                            with open(os.path.join(target.scandir, '_patterns.log'), 'a') as file:
+                            with open(os.path.join(target.scandir, files['patterns']), 'a') as file:
                                 file.writelines(e('{tag} - ' + p['description'] + '\n\n'))
                 else:
                     for match in matches:
                         if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}Matched Pattern: {bblue}{match}{rst}')
                         async with target.lock:
-                            with open(os.path.join(target.scandir, '_patterns.log'), 'a') as file:
+                            with open(os.path.join(target.scandir, files['patterns']), 'a') as file:
                                 file.writelines(e('{tag} - Matched Pattern: {match}\n\n'))
         else:
             break
 
-async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
+async def run_cmd(semaphore, cmd, target, category='?', tag='?', patterns=[]):
     async with semaphore:
         address = target.address
         scandir = target.scandir
 
+        if len(category) == 0: category = 'all'
+        category = category.strip('/')
+
         info('Running task {bgreen}{tag}{rst} on {byellow}{address}{rst}' + (' with {bblue}{cmd}{rst}.' if verbose >= 1 else '.'))
 
         async with target.lock:
-            with open(os.path.join(scandir, '_commands.log'), 'a') as file:
-                file.writelines(e('{cmd}\n\n'))
+            with open(os.path.join(scandir, files['commands']), 'a') as file:
+                file.writelines(e('{category} - {cmd}\n\n'))
         
-        # TODO: check extended service scanning requested?
-
+        # skip extended service scanning if only respective commands should be documented 
+        if args.skip_service_scan: return {'returncode': 0, 'name': 'run_cmd'}
+        
         process = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, executable='/bin/bash')
 
         await asyncio.wait([
@@ -235,7 +250,7 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
     if process.returncode != 0:
         error('Task {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}.')
         async with target.lock:
-            with open(os.path.join(scandir, '_errors.log'), 'a') as file:
+            with open(os.path.join(scandir, files['errors']), 'a') as file:
                 file.writelines(e('[*] Task {tag} returned non-zero exit code: {process.returncode}. Command: {cmd}\n'))
     else:
         info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully.')
@@ -264,14 +279,14 @@ async def parse_port_scan(stream, tag, target, pattern):
                         if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}' + p['description'].replace('{match}', '{bblue}{match}{crst}{bmagenta}') + '{rst}')
                         async with target.lock:
-                            with open(os.path.join(target.scandir, '_patterns.log'), 'a') as file:
+                            with open(os.path.join(target.scandir, files['patterns']), 'a') as file:
                                 file.writelines(e('{tag} - ' + p['description'] + '\n\n'))
                 else:
                     for match in matches:
                         if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}Matched Pattern: {bblue}{match}{rst}')
                         async with target.lock:
-                            with open(os.path.join(target.scandir, '_patterns.log'), 'a') as file:
+                            with open(os.path.join(target.scandir, files['patterns']), 'a') as file:
                                 file.writelines(e('{tag} - Matched Pattern: {match}\n\n'))
         else:
             break
@@ -299,14 +314,14 @@ async def parse_service_detection(stream, tag, target, pattern):
                         if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}' + p['description'].replace('{match}', '{bblue}{match}{crst}{bmagenta}') + '{rst}')
                         async with target.lock:
-                            with open(os.path.join(target.scandir, '_patterns.log'), 'a') as file:
+                            with open(os.path.join(target.scandir, files['patterns']), 'a') as file:
                                 file.writelines(e('{tag} - ' + p['description'] + '\n\n'))
                 else:
                     for match in matches:
                         if verbose >= 1:
                             info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} - {bmagenta}Matched Pattern: {bblue}{match}{rst}')
                         async with target.lock:
-                            with open(os.path.join(target.scandir, '_patterns.log'), 'a') as file:
+                            with open(os.path.join(target.scandir, files['patterns']), 'a') as file:
                                 file.writelines(e('{tag} - Matched Pattern: {match}\n\n'))
         else:
             break
@@ -328,7 +343,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
             info('Running port scan {bgreen}{tag}{rst} on {byellow}{address}{rst}' + (' with {bblue}{command}{rst}.' if verbose >= 1 else '.'))
 
             async with target.lock:
-                with open(os.path.join(scandir, '_commands.log'), 'a') as file:
+                with open(os.path.join(scandir, files['commands']), 'a') as file:
                     file.writelines(e('{command}\n\n'))
 
             process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, executable='/bin/bash')
@@ -345,7 +360,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
             if process.returncode != 0:
                 error('Port scan {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}')
                 async with target.lock:
-                    with open(os.path.join(scandir, '_errors.log'), 'a') as file:
+                    with open(os.path.join(scandir, files['errors']), 'a') as file:
                         file.writelines(e('[*] Port scan {tag} returned non-zero exit code: {process.returncode}. Command: {command}\n'))
                 return {'returncode': process.returncode}
             else:
@@ -363,7 +378,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
         info('Running service detection {bgreen}{tag}{rst} on {byellow}{address}{rst}' + (' with {bblue}{command}{rst}.' if verbose >= 1 else '.'))
 
         async with target.lock:
-            with open(os.path.join(scandir, '_commands.log'), 'a') as file:
+            with open(os.path.join(scandir, files['commands']), 'a') as file:
                 file.writelines(e('{command}\n\n'))
 
         process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, executable='/bin/bash')
@@ -380,7 +395,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
         if process.returncode != 0:
             error('Service detection {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}')
             async with target.lock:
-                with open(os.path.join(scandir, '_errors.log'), 'a') as file:
+                with open(os.path.join(scandir, files['errors']), 'a') as file:
                     file.writelines(e('[*] Service detection {tag} returned non-zero exit code: {process.returncode}. Command: {command}\n'))
         else:
             info('Service detection {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully.')
@@ -429,8 +444,8 @@ async def scan_services(loop, semaphore, target):
 
                         info('Port {bmagenta}{protocol} {port}{rst} ({bmagenta}{service}{rst}) open on target {byellow}{address}{rst}.')
 
-                        with open(os.path.join(target.reportdir, 'notes.txt'), 'a') as file:
-                            file.writelines(e('[*] Port {protocol} {port} ({service}) open on {address}.\n\n\n\n'))
+                        with open(os.path.join(target.scandir, files['notes']), 'a') as file:
+                            file.writelines(e('[*] Port {protocol} {port} ({service}) open on {address}.\n\n'))
 
                         if protocol == 'udp':
                             nmap_extra = nmap_default_options + " -sU"
@@ -471,7 +486,7 @@ async def scan_services(loop, semaphore, target):
                             if not matched_service:
                                 continue
 
-                            # NOTE: change for saving results in directories per service
+                            # INFO: change for saving results in directories per service
                             if not service_scan == 'all-services':
                                 category = '{0}/'.format(service_scan) 
                             else:
@@ -487,7 +502,7 @@ async def scan_services(loop, semaphore, target):
 
                             if 'manual' in service_scans_config[service_scan]:
                                 heading = False
-                                with open(os.path.join(scandir, '_manual_commands.txt'), 'a') as file:
+                                with open(os.path.join(scandir, files['manual_commands']), 'a') as file:
                                     for manual in service_scans_config[service_scan]['manual']:
                                         if 'description' in manual:
                                             if not heading:
@@ -507,9 +522,16 @@ async def scan_services(loop, semaphore, target):
 
                             if 'scan' in service_scans_config[service_scan]:
                                 for scan in service_scans_config[service_scan]['scan']:
-
                                     if 'name' in scan:
                                         name = scan['name']
+                                        
+                                        # INFO: change for supporting different complexity levels during service scanning
+                                        run_level = scan['level'] if 'level' in scan else 0
+                                        if (not args.run_only and run_level > max(args.run_level)) or (args.run_only and not run_level in args.run_level):    
+                                            if verbose >= 1:
+                                                info('Scan profile {bgreen}{name}{rst} is at a {bgree}different complexity level{rst} and is ignored.')
+                                            continue
+
                                         if 'command' in scan:
                                             tag = e('{protocol}/{port}/{name}')
                                             command = scan['command']
@@ -553,7 +575,7 @@ async def scan_services(loop, semaphore, target):
                                             if 'pattern' in scan:
                                                 patterns = scan['pattern']
 
-                                            pending.add(asyncio.ensure_future(run_cmd(semaphore, e(command), target, tag=tag, patterns=patterns)))
+                                            pending.add(asyncio.ensure_future(run_cmd(semaphore, e(command), target, category=category, tag=tag, patterns=patterns)))
 
 def scan_host(target, concurrent_scans):
     info('Scanning target {byellow}{target.address}{rst}.')
@@ -574,8 +596,6 @@ def scan_host(target, concurrent_scans):
     reportdir = os.path.abspath(os.path.join(basedir, 'report'))
     target.reportdir = reportdir
     os.makedirs(reportdir, exist_ok=True)
-    f = open(os.path.join(reportdir, 'notes.txt'), 'w')
-    f.close()
 
     screenshotdir = os.path.abspath(os.path.join(reportdir, 'screenshots'))
     os.makedirs(screenshotdir, exist_ok=True)
@@ -583,6 +603,7 @@ def scan_host(target, concurrent_scans):
     scandir = os.path.abspath(os.path.join(basedir, 'scans'))
     target.scandir = scandir
     os.makedirs(scandir, exist_ok=True)
+    prepare_log_files(scandir, target)
 
     os.makedirs(os.path.abspath(os.path.join(scandir, 'xml')), exist_ok=True)
 
@@ -604,10 +625,18 @@ def scan_host(target, concurrent_scans):
     except KeyboardInterrupt:
         sys.exit(1)
 
+def prepare_log_files(scandir, target):
 
-''' Reads a list of targets from a file
-    
-'''
+    for filename in files:
+        try:
+            caption = 'Log session started for host {0} - {1}\n'.format(target.address, datetime.now().strftime('%B %d, %Y - %H:%M:%S'))
+            with open(os.path.join(scandir, files[filename]), 'a') as f:
+                f.write('\n{}\n'.format('=' * len(caption)))
+                f.write(caption)
+                f.write('{}\n\n'.format('=' * len(caption)))
+        except OSError:
+            fail('Error while setting up log file {filename}.')
+
 def read_targets_from_file(filename, targets, disable_sanity_checks):
 
     if not os.path.isfile(filename):
@@ -621,7 +650,6 @@ def read_targets_from_file(filename, targets, disable_sanity_checks):
         error('The file {filename} with target information could not be read.')
         return (targets, True)
 
-
     error = False
     for ip in entries.split('\n'):
         if ip.startswith('#') or len(ip) == 0: continue
@@ -630,7 +658,6 @@ def read_targets_from_file(filename, targets, disable_sanity_checks):
         if failed: error = True
     
     return (targets, error)
-
 
 def get_ip_address(target, targets, disable_sanity_checks):
 
@@ -661,7 +688,6 @@ def get_ip_address(target, targets, disable_sanity_checks):
 
     return (targets, errors)
 
-
 class Target:
     def __init__(self, address):
         self.address = address
@@ -682,12 +708,17 @@ if __name__ == '__main__':
     nmap_group = parser.add_mutually_exclusive_group()
     nmap_group.add_argument('--nmap', action='store', default=nmap_default_options, help='Override the {nmap_extra} variable in scans. Default: %(default)s')
     nmap_group.add_argument('--nmap-append', action='store', default='', help='Append to the default {nmap_extra} variable in scans.')
+    parser.add_argument('--skip-service-scan', action='store_true', default=False, help='Do not perfom extended service scanning but only document commands.')
+    parser.add_argument('--run-level', action='store', type=int, default=0, nargs="+", help='During extended service scanning, only run scanners of a certain complexity level or below.')
+    parser.add_argument('--run-only', action='store_true', default=False, help='If enabled, only run scanners of the specified complexity level during extended service scanning.')
     parser.add_argument('-r', '--read', action='store', type=str, default='', dest='target_file', help='Read targets from file.')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='Enable verbose output. Repeat for more verbosity.')
     parser.add_argument('--disable-sanity-checks', action='store_true', default=False, help='Disable sanity checks that would otherwise prevent the scans from running.')
-    parser.add_argument('--skip-service-scan', action='store_true', default=False, help='Do not perfom extended service scanning but only protocol commands.')
     parser.error = lambda s: fail(s[0].upper() + s[1:])
     args = parser.parse_args()
+
+    if not os.getuid() == 0:
+        warn('Warning: You are not running the program with superuser privileges. Service scanning may be impacted.')
 
     config_loaded = get_configuration()
     if not config_loaded: sys.exit(-1)
@@ -702,6 +733,10 @@ if __name__ == '__main__':
 
     if concurrent_scans <= 0:
         error('Argument -ct/--concurrent-scans: must be at least 1.')
+        errors = True
+
+    if min(args.run_level) < 0 or max(args.run_level) > max_level:
+        error('Argument --run-level: must be between 0 (default) and {}.'.format(max_level))
         errors = True
 
     port_scan_profile = args.profile
