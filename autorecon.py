@@ -19,6 +19,7 @@ import string
 from datetime import datetime
 import sys
 import toml
+import glob
 
 
 __version__ = '0.1.1'
@@ -39,9 +40,10 @@ applications = {}
 files = {
             'commands'          :   '_commands.log',
             'manual_commands'   :   '_manual_commands.log',
-            'patterns'          :   '_patterns.log',
-            'notes'             :   '_notes.txt',
             'errors'            :   '_errors.log',
+            'notes'             :   '_notes.txt',
+            'patterns'          :   '_patterns.txt',
+            'report'            :   'report.pdf',
         }
 
 username_wordlist = '/usr/share/seclists/Usernames/top-usernames-shortlist.txt'
@@ -141,7 +143,6 @@ def read_configuration_file(filename, replace_values = {}):
 
     return data
 
-
 def get_configuration():
     applications_config = read_configuration_file('config.toml')
     if len(applications_config) > 0 and 'applications' in applications_config:
@@ -178,7 +179,6 @@ def get_configuration():
             password_wordlist = service_scans_config['password_wordlist']
 
     return True
-
 
 async def read_stream(stream, target, tag='?', patterns=[], color=Fore.BLUE):
     address = target.address
@@ -273,7 +273,6 @@ async def parse_port_scan(stream, tag, target, pattern):
             parse_match = re.search(pattern, line)
             if parse_match:
                 ports.append(parse_match.group('port'))
-
 
             for p in global_patterns:
                 matches = re.findall(p['pattern'], line)
@@ -428,7 +427,7 @@ async def scan_services(loop, semaphore, target):
     while True:
         if not pending:
             break
-
+        
         done, pending = await asyncio.wait(pending, return_when=FIRST_COMPLETED)
 
         for task in done:
@@ -580,6 +579,9 @@ async def scan_services(loop, semaphore, target):
 
                                             pending.add(asyncio.ensure_future(run_cmd(semaphore, e(command), target, category=category, tag=tag, patterns=patterns)))
 
+#        if not args.no_report:
+#            pending.add(asyncio.ensure_future(create_report(semaphore, target)))
+
 def scan_host(target, concurrent_scans):
     info('Scanning target {byellow}{target.address}{rst}.')
     
@@ -625,8 +627,35 @@ def scan_host(target, concurrent_scans):
     try:
         loop.run_until_complete(scan_services(loop, semaphore, target))
         info('Finished scanning target {byellow}{target.address}{rst}.')
+        
+        if not args.no_report:
+            loop.run_until_complete(create_report(target)) 
     except KeyboardInterrupt:
         sys.exit(1)
+
+async def create_report(target):
+    address = target.address
+    scandir = target.scandir
+    reportdir = target.reportdir
+
+    #types = ('*.txt') 
+    #filenames = []
+    #[filenames.extend(glob.glob(os.path.join(scandir, '*', filetype), recursive=True)) for filetype in types]
+    filenames = glob.glob(os.path.join(scandir, '**', '*.txt'), recursive=True)
+    filenames.sort()
+    report_order = ' '.join(filenames)
+    
+    # TODO: make us of config file
+    cmd = '/usr/bin/enscript {0} -o - | /usr/bin/ps2pdf - {1}'.format(report_order, os.path.join(reportdir, files['report']))
+
+    info('Creating report for target {byellow}{address}{rst}.')
+    process = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, executable='/bin/bash')
+    await process.communicate()
+    
+    if process.returncode != 0:
+        error('{bred}Report creation{rst} for target {byellow}{address}{rst} returned non-zero exit code: {process.returncode}.')
+    else:
+        info('Report for target {byellow}{address}{rst} was created successfully.')
 
 def prepare_log_files(scandir, target):
 
@@ -733,6 +762,7 @@ if __name__ == '__main__':
     parser.add_argument('--run-level', action='store', type=int, default=[0], nargs="+", help='During extended service scanning, only run scanners of a certain complexity level or below.')
     parser.add_argument('--run-only', action='store_true', default=False, help='If enabled, only run scanners of the specified complexity level during extended service scanning.')
     parser.add_argument('-r', '--read', action='store', type=str, default='', dest='target_file', help='Read targets from file.')
+    parser.add_argument('--no-report', action='store_true', default=False, help='Do not create a summary report after completing scanning a target.')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='Enable verbose output. Repeat for more verbosity.')
     parser.add_argument('--disable-sanity-checks', action='store_true', default=False, help='Disable sanity checks that would otherwise prevent the scans from running.')
     parser.error = lambda s: fail(s[0].upper() + s[1:])

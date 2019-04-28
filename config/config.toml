@@ -6,6 +6,10 @@
     # system programs
     tee = '/usr/bin/tee'
 
+    # not installed on Kali by default
+    # install with (sudo) apt-get install enscript
+    enscript = '/usr/bin/enscript'
+
     # password brute-forcing programs
     hydra = '/usr/bin/hydra'
     medusa = '/usr/bin/medusa'

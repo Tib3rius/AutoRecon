@@ -25,10 +25,11 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 ## Requirements
 
 * Python 3
+* enscript
 * colorama
 * toml
 
-Once Python 3 is installed, pip3 can be used to install the other requirements:
+Once Python 3 and enscript are installed, pip3 can be used to install the other requirements:
 
 ```bash
 $ pip3 install -r requirements.txt
@@ -461,14 +462,15 @@ In fact, enum4linux will always try these ports when it is run. So if the SMB se
 
 With the help of the --run-level parameter, the user has the possibility of better balancing required scanning time and scanning depth. Programs that require a longer runtime can also be run individually by making use of the --run-only parameter. Thereby, the user may run a quick scan first, followed by a more in-depth scan, e.g., 
 
+```
 # run any extended service enumeration program with a complexity level of 2 or lower
-python3 autorecon.py 127.0.0.1 --run-level 2
+$ python3 autorecon.py 127.0.0.1 --run-level 2
 
 # only run programs with a complexity level of 3
-python3 autorecon.py 127.0.0.1 --run-level 3 --run-only
+$ python3 autorecon.py 127.0.0.1 --run-level 3 --run-only
 
 The user may also skip extended service scanning entirely by specifying the --skip-service-scan parameter. In this case, respective commands will be only documented but not executed, giving the tester a good check list for later service analysis and planning the attack more carefully.
-
+```
 
 ## Testimonials
 
