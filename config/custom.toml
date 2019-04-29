@@ -1,0 +1,30 @@
+[port-scan.quick]
+
+    [port-scan.quick.nmap-quick]
+
+        [port-scan.quick.nmap-quick.service-detection]
+        command = '{nmap} {nmap_extra} -sV --version-all --top-ports 20 -oN "{scandir}/_quick_tcp_nmap.txt" -oX "{scandir}/xml/_quick_tcp_nmap.xml" {address}'
+        pattern = '^(?P<port>\d+)\/(?P<protocol>(tcp|udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
+
+    [port-scan.quick.nmap-top-20-udp]
+
+        [port-scan.quick.nmap-top-20-udp.service-detection]
+        command = '{nmap} {nmap_extra} -sU -A --top-ports=20 --version-all -oN "{scandir}/_top_20_udp_nmap.txt" -oX "{scandir}/xml/_top_20_udp_nmap.xml" {address}'
+        pattern = '^(?P<port>\d+)\/(?P<protocol>(tcp|udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
+
+
+[port-scan.debug]
+
+    [port-scan.debug.nmap-quick]
+
+        [port-scan.debug.nmap-quick.service-detection]
+        command = '{nmap} {nmap_extra} -p 21,22,80,139,445,8000,8080 -oN "{scandir}/_quick_tcp_nmap.txt" -oX "{scandir}/xml/_quick_tcp_nmap.xml" {address}'
+        pattern = '^(?P<port>\d+)\/(?P<protocol>(tcp|udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
+
+    [port-scan.debug.nmap-top-20-udp]
+
+        [port-scan.debug.nmap-top-20-udp.service-detection]
+        command = '{nmap} {nmap_extra} -sU -A --top-ports=20 --version-all -oN "{scandir}/_top_20_udp_nmap.txt" -oX "{scandir}/xml/_top_20_udp_nmap.xml" {address}'
+        pattern = '^(?P<port>\d+)\/(?P<protocol>(tcp|udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
+
+

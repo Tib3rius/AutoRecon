@@ -47,6 +47,7 @@
     smbclient = '/usr/bin/smbclient'
     smbmap = '/usr/bin/smbmap'
     smb_version = '/usr/local/bin/get_smb_version'
+    nbtscan = '/usr/bin/nbtscan'
 
     # SMTP programs
     smtp_user_enum = '/usr/bin/smtp-user-enum'
