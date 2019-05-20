@@ -257,7 +257,7 @@ service-names = [
 
     [[nfs.scan]]
     name = 'showmount'
-    command = 'showmount -e {address} > "{scandir}/showmount.txt"'
+    command = 'showmount -e {address} 2>&1 | tee "{scandir}/{protocol}_{port}_showmount.txt"'
 
 [nntp]
 
