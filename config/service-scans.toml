@@ -143,8 +143,8 @@ ignore-service-names = [
     [[http.manual]]
     description = '(dirb) Recursive directory/file enumeration for web servers using various wordlists (same as dirsearch above):'
     commands = [
-        'dirb {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_dirb_big.txt" /usr/share/seclists/Discovery/Web-Content/big.txt',
-        'dirb {scheme}://{address}:{port}/ -o "{scandir}/{protocol}_{port}_{scheme}_dirb_dirbuster.txt" /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt'
+        'dirb {scheme}://{address}:{port}/ /usr/share/seclists/Discovery/Web-Content/big.txt -o "{scandir}/{protocol}_{port}_{scheme}_dirb_big.txt"',
+        'dirb {scheme}://{address}:{port}/ /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -o "{scandir}/{protocol}_{port}_{scheme}_dirb_dirbuster.txt"'
     ]
 
     [[http.manual]]
@@ -157,7 +157,7 @@ ignore-service-names = [
     [[http.manual]]
     description = '(wpscan) WordPress Security Scanner (useful if WordPress is found):'
     commands = [
-        'wpscan --url {scheme}://{address}:{port}/ --no-update -e vp,vt,tt,cb,dbe,u,m -f cli-no-color 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_wpscan.txt"'
+        'wpscan --url {scheme}://{address}:{port}/ --no-update -e vp,vt,tt,cb,dbe,u,m --plugins-detection aggressive --plugins-version-detection aggressive -f cli-no-color 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_wpscan.txt"'
     ]
 
     [[http.manual]]
@@ -206,6 +206,12 @@ service-names = [
     run_once = true
     ports.tcp = [139, 389, 445]
     ports.udp = [137]
+
+    [[ldap.manual]]
+    description = 'ldapsearch command (modify before running)'
+    commands = [
+        'ldapsearch -x -D "<username>" -w "<password>"" -p {port} -h {address} -b "dc=example,dc=com" -s sub "(objectclass=*) 2>&1 | tee > "{scandir}/{protocol}_{port}_ldap_all-entries.txt"'
+    ]
 
 [mongodb]
 
