@@ -261,6 +261,10 @@ service-names = [
     name = 'nmap-nfs'
     command = 'nmap {nmap_extra} -sV -p {port} --script="(rpcinfo or nfs*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_nfs_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_nfs_nmap.xml" {address}'
 
+    [[nfs.scan]]
+    name = 'showmount'
+    command = 'showmount -e {address} 2>&1 | tee "{scandir}/{protocol}_{port}_showmount.txt"'
+
 [nntp]
 
 service-names = [
