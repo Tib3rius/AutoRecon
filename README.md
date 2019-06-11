@@ -455,3 +455,7 @@ In fact, enum4linux will always try these ports when it is run. So if the SMB se
 > I love this tool so much I wrote it.
 >
 >\- Tib3rius (rooted 5/5 exam hosts)
+
+> I highly recommend anyone going for their OSCP, doing CTFs or on HTB to checkout this tool. Been using AutoRecon on HTB for a month before using it over on the PWK labs and it helped me pass my OSCP exam. If you're having a hard time getting settled with an enumeration methodology I encourage you to follow the flow and techniques this script uses. It takes out a lot of the tedious work that you're probably used to while at the same time provide well-organized subdirectories to quickly look over so you don't lose your head. The manual commands it provides are great for those specific situations that need it when you have run out of options. It's a very valuable tool, cannot recommend enough.
+>
+>\- d0hnuts (rooted 5/5 exam hosts)
