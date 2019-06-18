@@ -704,3 +704,5 @@ if __name__ == '__main__':
                 future.cancel()
             executor.shutdown(wait=False)
             sys.exit(1)
+
+        info('{bgreen}Finished scanning all targets!{rst}')
