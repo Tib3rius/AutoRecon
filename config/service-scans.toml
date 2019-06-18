@@ -96,7 +96,7 @@ ignore-service-names = [
 
     [[http.scan]]
     name = 'nmap-http'
-    command = 'nmap {nmap_extra} -sV -p {port} --script="(http* or ssl*) and not (broadcast or dos or external or http-slowloris* or fuzzer)" -oN "{scandir}/{protocol}_{port}_http_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_{scheme}_nmap.xml" {address}'
+    command = 'nmap {nmap_extra} -sV -p {port} --script="(http* or ssl*) and not (brute or broadcast or dos or external or http-slowloris* or fuzzer)" -oN "{scandir}/{protocol}_{port}_http_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_{scheme}_nmap.xml" {address}'
 
         [[http.scan.pattern]]
         description = 'Identified HTTP Server: {match}'
