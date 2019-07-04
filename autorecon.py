@@ -7,8 +7,10 @@
 #    option) any later version.
 #
 
+import atexit
 import argparse
 import asyncio
+import colorama
 from colorama import Fore, Style
 from concurrent.futures import ProcessPoolExecutor, as_completed, FIRST_COMPLETED
 import ipaddress
@@ -18,6 +20,12 @@ import socket
 import string
 import sys
 import toml
+
+
+def _quit():
+    colorama.deinit()
+
+atexit.register(_quit)
 
 verbose = 0
 nmap = '-vv --reason -Pn'
