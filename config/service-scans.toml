@@ -130,8 +130,8 @@ ignore-service-names = [
     command = 'nikto -ask=no -h {scheme}://{address}:{port} 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_nikto.txt"'
 
     [[http.scan]]
-    name = 'gobuster'
-    command = 'gobuster -u {scheme}://{address}:{port}/ -w /usr/share/seclists/Discovery/Web-Content/common.txt -e -k -l -s "200,204,301,302,307,403" -x "txt,html,php,asp,aspx" 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_gobuster.txt"'
+    name = 'dirb'
+    command = 'dirb {scheme}://{address}:{port}/ /usr/share/seclists/Discovery/Web-Content/common.txt -l -r -S -X ",.txt,.html,.php,.asp,.aspx" -o "{scandir}/{protocol}_{port}_{scheme}_dirb.txt"'
 
     [[http.manual]]
     description = '(dirsearch) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:'
@@ -143,8 +143,8 @@ ignore-service-names = [
     [[http.manual]]
     description = '(dirb) Recursive directory/file enumeration for web servers using various wordlists (same as dirsearch above):'
     commands = [
-        'dirb {scheme}://{address}:{port}/ /usr/share/seclists/Discovery/Web-Content/big.txt -o "{scandir}/{protocol}_{port}_{scheme}_dirb_big.txt"',
-        'dirb {scheme}://{address}:{port}/ /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -o "{scandir}/{protocol}_{port}_{scheme}_dirb_dirbuster.txt"'
+        'dirb {scheme}://{address}:{port}/ /usr/share/seclists/Discovery/Web-Content/big.txt -l -r -S -X ",.txt,.html,.php,.asp,.aspx" -o "{scandir}/{protocol}_{port}_{scheme}_dirb_big.txt"',
+        'dirb {scheme}://{address}:{port}/ /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -l -r -S -X ",.txt,.html,.php,.asp,.aspx" -o "{scandir}/{protocol}_{port}_{scheme}_dirb_dirbuster.txt"'
     ]
 
     [[http.manual]]
