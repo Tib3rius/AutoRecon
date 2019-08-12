@@ -32,6 +32,15 @@ Once Python 3 is installed, pip3 can be used to install the other requirements:
 $ pip3 install -r requirements.txt
 ```
 
+Several people have indicated that installing pip3 via apt on the OSCP Kali version makes the host unstable. In these cases, pip3 can be installed by running the following commands:
+
+```bash
+$ curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+$ python3 get-pip.py
+```
+
+The "pip3" command should now be usable.
+
 Several commands used in AutoRecon reference the SecLists project, in the directory /usr/share/seclists/. You can either manually download the SecLists project to this directory (https://github.com/danielmiessler/SecLists), or if you are using Kali Linux (**highly recommended**) you can run the following:
 
 ```bash
