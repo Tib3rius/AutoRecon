@@ -472,3 +472,7 @@ In fact, enum4linux will always try these ports when it is run. So if the SMB se
 > Autorecon is not just any other tool, it is a recon correlation framwork for engagements. This helped me fire a whole bunch of scans while I was working on other targets. This can help a lot in time management. This assisted me to own 4/5 boxes in pwk exam! Result: Passed!
 >
 >\- Wh0ami (rooted 4/5 exam hosts)
+
+> The first time I heard of AutoRecon I asked whether I actually needed this, my enumeration was OK... I tried it with an open mind and straight away was a little floored on the amount of information that it would generate. Once I got used to it, and started reading the output I realized how much I was missing.  I used it for the OSCP exam, and it found things I would never have otherwise found. I firmly believe, without AutoRecon I would have failed. It's a great tool, and I'm very impressed what Tib3rius was able to craft up. Definitely something I'm already recommending to others, including you!
+>
+>\- othornew
