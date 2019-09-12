@@ -52,6 +52,30 @@ service-names = [
     name = 'nmap-dns'
     command = 'nmap {nmap_extra} -sV -p {port} --script="banner,(dns* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_dns_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_dns_nmap.xml" {address}'
 
+    [[dns.scan]]
+    name = 'dnsenum'
+    command = 'dnsenum --nocolor $(cat /etc/resolv.conf | grep domain | cut -d " " -f 2) > {scandir}/{protocol}_{port}_dnsenum.txt'
+
+    [[dns.scan]]
+    name = 'dnsmap'
+    command = 'dnsmap $(cat /etc/resolv.conf | grep domain | cut -d " " -f 2) > {scandir}/{protocol}_{port}_dnsmap.txt'
+
+    [[dns.scan]]
+    name = 'fierce'
+    command = 'fierce -dns $(cat /etc/resolv.conf | grep domain | cut -d " " -f 2) > {scandir}/{protocol}_{port}_fierce.txt'
+
+    [[dns.scan]]
+    name = 'dig axfr'
+    command = 'dig axfr $(cat /etc/resolv.conf | grep domain | cut -d " " -f 2) @{address} > {scandir}/{protocol}_{port}_digaxfr.txt'
+
+    [[dns.manual]]
+    description = 'DNS Zone Transfers'
+    commands = [
+        'dnsenum <domain>',
+        'fierce -dns <domain>',
+	'dig AXFR <domain> @nameserver'
+    ]
+
 [finger]
 
 service-names = [
@@ -256,6 +280,16 @@ service-names = [
     [[mysql.scan]]
     name = 'nmap-mysql'
     command = 'nmap {nmap_extra} -sV -p {port} --script="banner,(mysql* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_mysql_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_mysql_nmap.xml" {address}'
+
+    [[mysql.scan]]
+    name = 'mysql-dump'
+    command = 'mysqldump -u root -h {address} -A > {scandir}/{protocol}_{port}_mysqldump.txt'
+
+    [[mysql.scan]]
+    name = 'mysql-list-databases'
+    command = 'mysql -h {address} -u root -e 'show databases;' > {scandir}/{protocol}_{port}_mysql-list-databases.txt'
+
+
 
 [nfs]
 
@@ -543,6 +577,18 @@ service-names = [
     [[snmp.scan]]
     name = 'snmpwalk-tcp-ports'
     command = 'snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.6.13.1.3 2>&1 | tee "{scandir}/{protocol}_{port}_snmp_snmpwalk_tcp_ports.txt"'
+    run_once = true
+    ports.udp = [161]
+
+    [[snmp.scan]]
+    name = 'snmp-check-v1'
+    command = 'snmp-check -v 1 {address} 2>&1 | tee "{scandir}/{protocol}_{port}_snmp_check_v1_public.txt"'
+    run_once = true
+    ports.udp = [161]
+
+    [[snmp.scan]]
+    name = 'snmp-check-v2c'
+    command = 'snmp-check -v 2c {address} 2>&1 | tee "{scandir}/{protocol}_{port}_snmp_check_v2c_public.txt"'
     run_once = true
     ports.udp = [161]
 
