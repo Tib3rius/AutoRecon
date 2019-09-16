@@ -12,6 +12,7 @@ import asyncio
 from colorama import Fore, Style
 from concurrent.futures import ProcessPoolExecutor, as_completed, FIRST_COMPLETED
 import ipaddress
+import math
 import os
 import re
 import socket
@@ -108,61 +109,46 @@ def fail(*args, sep=' ', end='\n', file=sys.stderr, **kvargs):
     cprint(*args, color=Fore.RED, char='!', sep=sep, end=end, file=file, frame_index=2, **kvargs)
     exit(-1)
 
-def merge_toml(a, b, path=None):
-    if path is None: path = []
-    for key in b:
-        if key in a:
-            if isinstance(a[key], dict) and isinstance(b[key], dict):
-                merge_toml(a[key], b[key], path + [str(key)])
-            elif a[key] == b[key]:
-                pass
-            else:
-                a[key] = b[key]
-        else:
-            a[key] = b[key]
-    return a
+def calculate_elapsed_time(start_time):
+    elapsed_seconds = round(time.time() - start_time)
+
+    m, s = divmod(elapsed_seconds, 60)
+    h, m = divmod(m, 60)
+
+    elapsed_time = []
+    if h == 1:
+        elapsed_time.append(str(h) + ' hour')
+    elif h > 1:
+        elapsed_time.append(str(h) + ' hours')
+
+    if m == 1:
+        elapsed_time.append(str(m) + ' minute')
+    elif m > 1:
+        elapsed_time.append(str(m) + ' minutes')
+
+    if s == 1:
+        elapsed_time.append(str(s) + ' second')
+    elif s > 1:
+        elapsed_time.append(str(s) + ' seconds')
+
+    return ', '.join(elapsed_time)
 
 port_scan_profiles_config_file = 'port-scan-profiles.toml'
-try:
-    with open(os.path.join(rootdir, 'config', port_scan_profiles_config_file), 'r') as p:
-        try:
-            port_scan_profiles_config = toml.load(p)
+with open(os.path.join(rootdir, 'config', port_scan_profiles_config_file), 'r') as p:
+    try:
+        port_scan_profiles_config = toml.load(p)
 
-            custom_port_scan_profiles_config_file = os.path.join(rootdir, 'config', 'custom-port-scan-profiles.toml')
-            if os.path.isfile(custom_port_scan_profiles_config_file):
-                try:
-                    with open(custom_port_scan_profiles_config_file, 'r') as c:
-                        custom_port_scan_profiles_config = toml.load(c)
-                        merge_toml(port_scan_profiles_config, custom_port_scan_profiles_config)
-                except IOError:
-                    fail('Error: Couldn\'t load custom-port-scan-profiles.toml config file. Check the file exists and has the correct permissions.')
+        if len(port_scan_profiles_config) == 0:
+            fail('There do not appear to be any port scan profiles configured in the {port_scan_profiles_config_file} config file.')
 
-            if len(port_scan_profiles_config) == 0:
-                fail('There do not appear to be any port scan profiles configured in the {port_scan_profiles_config_file} config file.')
+    except toml.decoder.TomlDecodeError as e:
+        fail('Error: Couldn\'t parse {port_scan_profiles_config_file} config file. Check syntax and duplicate tags.')
 
-        except toml.decoder.TomlDecodeError as e:
-            fail('Error: Couldn\'t parse {port_scan_profiles_config_file} or custom-port-scan-profiles.toml config file. Check syntax and duplicate tags.')
-except IOError:
-    fail('Error: Couldn\'t load {port_scan_profiles_config_file} config file. Check the file exists and has the correct permissions.')
-
-try:
-    with open(os.path.join(rootdir, 'config', 'service-scans.toml'), 'r') as s:
-        try:
-            service_scans_config = toml.load(s)
-
-            custom_service_scans_config_file = os.path.join(rootdir, 'config', 'custom-service-scans.toml')
-            if os.path.isfile(custom_service_scans_config_file):
-                try:
-                    with open(custom_service_scans_config_file, 'r') as c:
-                        custom_service_scans_config = toml.load(c)
-                        merge_toml(service_scans_config, custom_service_scans_config)
-                except IOError:
-                    fail('Error: Couldn\'t load custom-service-scans.toml config file. Check the file exists and has the correct permissions.')
-
-        except toml.decoder.TomlDecodeError as e:
-            fail('Error: Couldn\'t parse service-scans.toml or custom-service-scans.toml config file. Check syntax and duplicate tags.')
-except IOError:
-    fail('Error: Couldn\'t load service-scans.toml config file. Check the file exists and has the correct permissions.')
+with open(os.path.join(rootdir, 'config', 'service-scans.toml'), 'r') as c:
+    try:
+        service_scans_config = toml.load(c)
+    except toml.decoder.TomlDecodeError as e:
+        fail('Error: Couldn\'t parse service-scans.toml config file. Check syntax and duplicate tags.')
 
 with open(os.path.join(rootdir, 'config', 'global-patterns.toml'), 'r') as p:
     try:
@@ -602,16 +588,10 @@ def scan_host(target, concurrent_scans):
 
     try:
         loop.run_until_complete(scan_services(loop, semaphore, target))
-        elapsed_seconds = time.time() - start_time
 
-        m, s = divmod(elapsed_seconds, 60)
-        h, m = divmod(m, 60)
+        elapsed_time = calculate_elapsed_time(start_time)
 
-        elapsed_time = ''
-        if h > 0:
-            elapsed_time += h + ' hour'
-
-        info('Finished scanning target {byellow}{target.address}{rst}')
+        info('Finished scanning target {byellow}{target.address}{rst} in {elapsed_time}')
     except KeyboardInterrupt:
         sys.exit(1)
 
@@ -757,6 +737,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     with ProcessPoolExecutor(max_workers=args.concurrent_targets) as executor:
+        start_time = time.time()
         futures = []
 
         for address in targets:
@@ -772,4 +753,5 @@ if __name__ == '__main__':
             executor.shutdown(wait=False)
             sys.exit(1)
 
-        info('{bgreen}Finished scanning all targets!{rst}')
+        elapsed_time = calculate_elapsed_time(start_time)
+        info('{bgreen}Finished scanning all targets in {elapsed_time}!{rst}')
