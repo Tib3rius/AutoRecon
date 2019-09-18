@@ -136,29 +136,29 @@ ignore-service-names = [
     [[http.manual]]
     description = '(dirsearch) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:'
     commands = [
-        'dirsearch -u {scheme}://{address}:{port}/ -t 16 -r -e txt,html,php,asp,aspx -f -w /usr/share/seclists/Discovery/Web-Content/big.txt --plain-text-report="{scandir}/{protocol}_{port}_{scheme}_dirsearch_big.txt"',
-        'dirsearch -u {scheme}://{address}:{port}/ -t 16 -r -e txt,html,php,asp,aspx -f -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt --plain-text-report="{scandir}/{protocol}_{port}_{scheme}_dirsearch_dirbuster.txt"'
+        'dirsearch -u {scheme}://{address}:{port}/ -t 16 -r -e txt,html,php,asp,aspx,jsp -f -w /usr/share/seclists/Discovery/Web-Content/big.txt --plain-text-report="{scandir}/{protocol}_{port}_{scheme}_dirsearch_big.txt"',
+        'dirsearch -u {scheme}://{address}:{port}/ -t 16 -r -e txt,html,php,asp,aspx,jsp -f -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt --plain-text-report="{scandir}/{protocol}_{port}_{scheme}_dirsearch_dirbuster.txt"'
     ]
 
     [[http.manual]]
     description = '(dirb) Recursive directory/file enumeration for web servers using various wordlists (same as dirsearch above):'
     commands = [
-        'dirb {scheme}://{address}:{port}/ /usr/share/seclists/Discovery/Web-Content/big.txt -l -r -S -X ",.txt,.html,.php,.asp,.aspx" -o "{scandir}/{protocol}_{port}_{scheme}_dirb_big.txt"',
-        'dirb {scheme}://{address}:{port}/ /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -l -r -S -X ",.txt,.html,.php,.asp,.aspx" -o "{scandir}/{protocol}_{port}_{scheme}_dirb_dirbuster.txt"'
+        'dirb {scheme}://{address}:{port}/ /usr/share/seclists/Discovery/Web-Content/big.txt -l -r -S -X ",.txt,.html,.php,.asp,.aspx,.jsp" -o "{scandir}/{protocol}_{port}_{scheme}_dirb_big.txt"',
+        'dirb {scheme}://{address}:{port}/ /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -l -r -S -X ",.txt,.html,.php,.asp,.aspx,.jsp" -o "{scandir}/{protocol}_{port}_{scheme}_dirb_dirbuster.txt"'
     ]
 
     [[http.manual]]
     description = '(gobuster v3) Directory/file enumeration for web servers using various wordlists (same as dirb above):'
     commands = [
-        'gobuster dir -u {scheme}://{address}:{port}/ -w /usr/share/seclists/Discovery/Web-Content/big.txt -e -k -l -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx" -z -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_big.txt"',
-        'gobuster dir -u {scheme}://{address}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -l -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx" -z -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_dirbuster.txt"'
+        'gobuster dir -u {scheme}://{address}:{port}/ -w /usr/share/seclists/Discovery/Web-Content/big.txt -e -k -l -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx,jsp" -z -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_big.txt"',
+        'gobuster dir -u {scheme}://{address}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -l -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx,jsp" -z -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_dirbuster.txt"'
     ]
 
     [[http.manual]]
     description = '(gobuster v1 & v2) Directory/file enumeration for web servers using various wordlists (same as dirb above):'
     commands = [
-        'gobuster -u {scheme}://{address}:{port}/ -w /usr/share/seclists/Discovery/Web-Content/big.txt -e -k -l -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx" -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_big.txt"',
-        'gobuster -u {scheme}://{address}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -l -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx" -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_dirbuster.txt"'
+        'gobuster -u {scheme}://{address}:{port}/ -w /usr/share/seclists/Discovery/Web-Content/big.txt -e -k -l -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx,jsp" -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_big.txt"',
+        'gobuster -u {scheme}://{address}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -l -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx,jsp" -o "{scandir}/{protocol}_{port}_{scheme}_gobuster_dirbuster.txt"'
     ]
 
     [[http.manual]]
