@@ -11,8 +11,8 @@ import argparse
 import asyncio
 from colorama import Fore, Style
 from concurrent.futures import ProcessPoolExecutor, as_completed, FIRST_COMPLETED
+from datetime import datetime
 import ipaddress
-import math
 import os
 import re
 import socket
@@ -340,6 +340,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
                 with open(os.path.join(scandir, '_commands.log'), 'a') as file:
                     file.writelines(e('{command}\n\n'))
 
+            start_time = time.time()
             process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, executable='/bin/bash')
             async with target.lock:
                 target.running_tasks.append(tag)
@@ -354,6 +355,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
             await process.wait()
             async with target.lock:
                 target.running_tasks.remove(tag)
+            elapsed_time = calculate_elapsed_time(start_time)
 
             if process.returncode != 0:
                 error('Port scan {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}')
@@ -362,7 +364,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
                         file.writelines(e('[*] Port scan {tag} returned non-zero exit code: {process.returncode}. Command: {command}\n'))
                 return {'returncode': process.returncode}
             else:
-                info('Port scan {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully')
+                info('Port scan {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully in {elapsed_time}')
 
             ports = results[0]
             if len(ports) == 0:
@@ -379,6 +381,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
             with open(os.path.join(scandir, '_commands.log'), 'a') as file:
                 file.writelines(e('{command}\n\n'))
 
+        start_time = time.time()
         process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, executable='/bin/bash')
         async with target.lock:
             target.running_tasks.append(tag)
@@ -393,6 +396,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
         await process.wait()
         async with target.lock:
             target.running_tasks.remove(tag)
+        elapsed_time = calculate_elapsed_time(start_time)
 
         if process.returncode != 0:
             error('Service detection {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}')
@@ -400,7 +404,7 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
                 with open(os.path.join(scandir, '_errors.log'), 'a') as file:
                     file.writelines(e('[*] Service detection {tag} returned non-zero exit code: {process.returncode}. Command: {command}\n'))
         else:
-            info('Service detection {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully')
+            info('Service detection {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully in {elapsed_time}')
 
         services = results[0]
 
@@ -417,10 +421,12 @@ async def start_heartbeat(target, period=60):
             if verbose >= 1:
                 tasks_list = ': {bgreen}' + ', '.join(tasks) + '{rst}'
 
+            current_time = datetime.now().strftime('%H:%M:%S')
+
             if count > 1:
-                info('There are {byellow}{count}{rst} tasks still running on {byellow}{target.address}{rst}' + tasks_list)
+                info('{bgreen}[{current_time}]{rst} - There are {byellow}{count}{rst} tasks still running on {byellow}{target.address}{rst}' + tasks_list)
             elif count == 1:
-                info('There is {byellow}1{rst} task still running on {byellow}{target.address}{rst}' + tasks_list)
+                info('{bgreen}[{current_time}]{rst} - There is {byellow}1{rst} task still running on {byellow}{target.address}{rst}' + tasks_list)
 
 async def scan_services(loop, semaphore, target):
     address = target.address
@@ -624,9 +630,7 @@ def scan_host(target, concurrent_scans):
 
     try:
         loop.run_until_complete(scan_services(loop, semaphore, target))
-
         elapsed_time = calculate_elapsed_time(start_time)
-
         info('Finished scanning target {byellow}{target.address}{rst} in {elapsed_time}')
     except KeyboardInterrupt:
         sys.exit(1)
