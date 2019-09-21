@@ -24,6 +24,7 @@ import toml
 verbose = 0
 nmap = '-vv --reason -Pn'
 srvname = ''
+heartbeat_interval = 60
 port_scan_profile = None
 
 port_scan_profiles_config = None
@@ -130,6 +131,8 @@ def calculate_elapsed_time(start_time):
         elapsed_time.append(str(s) + ' second')
     elif s > 1:
         elapsed_time.append(str(s) + ' seconds')
+    else:
+        elapsed_time.append('less than a second')
 
     return ', '.join(elapsed_time)
 
@@ -223,7 +226,10 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
             with open(os.path.join(scandir, '_commands.log'), 'a') as file:
                 file.writelines(e('{cmd}\n\n'))
 
+        start_time = time.time()
         process = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, executable='/bin/bash')
+        async with target.lock:
+            target.running_tasks.append(tag)
 
         await asyncio.wait([
             read_stream(process.stdout, target, tag=tag, patterns=patterns),
@@ -231,6 +237,9 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
         ])
 
         await process.wait()
+        async with target.lock:
+            target.running_tasks.remove(tag)
+        elapsed_time = calculate_elapsed_time(start_time)
 
     if process.returncode != 0:
         error('Task {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}')
@@ -238,7 +247,7 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
             with open(os.path.join(scandir, '_errors.log'), 'a') as file:
                 file.writelines(e('[*] Task {tag} returned non-zero exit code: {process.returncode}. Command: {cmd}\n'))
     else:
-        info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully')
+        info('Task {bgreen}{tag}{rst} on {byellow}{address}{rst} finished successfully in {elapsed_time}')
 
     return {'returncode': process.returncode, 'name': 'run_cmd'}
 
@@ -332,6 +341,8 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
                     file.writelines(e('{command}\n\n'))
 
             process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, executable='/bin/bash')
+            async with target.lock:
+                target.running_tasks.append(tag)
 
             output = [
                 parse_port_scan(process.stdout, tag, target, pattern),
@@ -341,6 +352,8 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
             results = await asyncio.gather(*output)
 
             await process.wait()
+            async with target.lock:
+                target.running_tasks.remove(tag)
 
             if process.returncode != 0:
                 error('Port scan {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}')
@@ -367,6 +380,8 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
                 file.writelines(e('{command}\n\n'))
 
         process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, executable='/bin/bash')
+        async with target.lock:
+            target.running_tasks.append(tag)
 
         output = [
             parse_service_detection(process.stdout, tag, target, pattern),
@@ -376,6 +391,8 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
         results = await asyncio.gather(*output)
 
         await process.wait()
+        async with target.lock:
+            target.running_tasks.remove(tag)
 
         if process.returncode != 0:
             error('Service detection {bred}{tag}{rst} on {byellow}{address}{rst} returned non-zero exit code: {process.returncode}')
@@ -389,10 +406,28 @@ async def run_portscan(semaphore, tag, target, service_detection, port_scan=None
 
         return {'returncode': process.returncode, 'name': 'run_portscan', 'services': services}
 
+async def start_heartbeat(target, period=60):
+    while True:
+        await asyncio.sleep(period)
+        async with target.lock:
+            tasks = target.running_tasks
+            count = len(tasks)
+
+            tasks_list = ''
+            if verbose >= 1:
+                tasks_list = ': {bgreen}' + ', '.join(tasks) + '{rst}'
+
+            if count > 1:
+                info('There are {byellow}{count}{rst} tasks still running on {byellow}{target.address}{rst}' + tasks_list)
+            elif count == 1:
+                info('There is {byellow}1{rst} task still running on {byellow}{target.address}{rst}' + tasks_list)
+
 async def scan_services(loop, semaphore, target):
     address = target.address
     scandir = target.scandir
     pending = []
+
+    heartbeat = loop.create_task(start_heartbeat(target, period=heartbeat_interval))
 
     for profile in port_scan_profiles_config:
         if profile == port_scan_profile:
@@ -409,6 +444,7 @@ async def scan_services(loop, semaphore, target):
 
     while True:
         if not pending:
+            heartbeat.cancel()
             break
 
         done, pending = await asyncio.wait(pending, return_when=FIRST_COMPLETED)
@@ -603,6 +639,7 @@ class Target:
         self.scandir = ''
         self.scans = []
         self.lock = None
+        self.running_tasks = []
 
 if __name__ == '__main__':
 
@@ -612,13 +649,14 @@ if __name__ == '__main__':
     parser.add_argument('-cs', '--concurrent-scans', action='store', metavar='<number>', type=int, default=10, help='The maximum number of scans to perform per target host. Default: %(default)s')
     parser.add_argument('--profile', action='store', default='default', help='The port scanning profile to use (defined in port-scan-profiles.toml). Default: %(default)s')
     parser.add_argument('-o', '--output', action='store', default='results', help='The output directory for results. Default: %(default)s')
-    nmap_group = parser.add_mutually_exclusive_group()
     parser.add_argument('--single-target', action='store_true', default=False, help='Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will be created within the output directory. Default: false')
-    parser.add_argument('--only-scans-dir', action='store_true', default=False, help='Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created.')
+    parser.add_argument('--only-scans-dir', action='store_true', default=False, help='Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created. Default: false')
+    parser.add_argument('--heartbeat', action='store', type=int, default=60, help='Specifies the heartbeat interval (in seconds) for task status messages. Default: %(default)s')
+    nmap_group = parser.add_mutually_exclusive_group()
     nmap_group.add_argument('--nmap', action='store', default='-vv --reason -Pn', help='Override the {nmap_extra} variable in scans. Default: %(default)s')
     nmap_group.add_argument('--nmap-append', action='store', default='', help='Append to the default {nmap_extra} variable in scans.')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='Enable verbose output. Repeat for more verbosity.')
-    parser.add_argument('--disable-sanity-checks', action='store_true', default=False, help='Disable sanity checks that would otherwise prevent the scans from running.')
+    parser.add_argument('--disable-sanity-checks', action='store_true', default=False, help='Disable sanity checks that would otherwise prevent the scans from running. Default: false')
     parser.error = lambda s: fail(s[0].upper() + s[1:])
     args = parser.parse_args()
 
@@ -681,6 +719,8 @@ if __name__ == '__main__':
     if not found_scan_profile:
         error('Argument --profile: must reference a port scan profile defined in {port_scan_profiles_config_file}. No such profile found: {port_scan_profile}')
         errors = True
+
+    heartbeat_interval = args.heartbeat
 
     nmap = args.nmap
     if args.nmap_append:
