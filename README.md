@@ -77,7 +77,9 @@ AutoRecon uses Python 3 specific functionality and does not support Python 2.
 
 ```
 usage: autorecon.py [-h] [-ct <number>] [-cs <number>] [--profile PROFILE]
-                    [-o OUTPUT] [--nmap NMAP | --nmap-append NMAP_APPEND] [-v]
+                    [-o OUTPUT] [--single-target] [--only-scans-dir]
+                    [--heartbeat HEARTBEAT]
+                    [--nmap NMAP | --nmap-append NMAP_APPEND] [-v]
                     [--disable-sanity-checks]
                     targets [targets ...]
 
@@ -101,6 +103,16 @@ optional arguments:
                         scan-profiles.toml). Default: default
   -o OUTPUT, --output OUTPUT
                         The output directory for results. Default: results
+  --single-target       Only scan a single target. A directory named after the
+                        target will not be created. Instead, the directory
+                        structure will be created within the output directory.
+                        Default: false
+  --only-scans-dir      Only create the "scans" directory for results. Other
+                        directories (e.g. exploit, loot, report) will not be
+                        created. Default: false
+  --heartbeat HEARTBEAT
+                        Specifies the heartbeat interval (in seconds) for task
+                        status messages. Default: 60
   --nmap NMAP           Override the {nmap_extra} variable in scans. Default:
                         -vv --reason -Pn
   --nmap-append NMAP_APPEND
@@ -108,7 +120,7 @@ optional arguments:
   -v, --verbose         Enable verbose output. Repeat for more verbosity.
   --disable-sanity-checks
                         Disable sanity checks that would otherwise prevent the
-                        scans from running.
+                        scans from running. Default: false
 ```
 
 ### Examples
