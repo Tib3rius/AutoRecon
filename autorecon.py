@@ -34,7 +34,7 @@ global_patterns = []
 username_wordlist = '/usr/share/seclists/Usernames/top-usernames-shortlist.txt'
 password_wordlist = '/usr/share/seclists/Passwords/darkweb2017-top100.txt'
 
-rootdir = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+rootdir = os.path.dirname(os.path.realpath(__file__))
 
 single_target = False
 only_scans_dir = False
