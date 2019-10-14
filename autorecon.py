@@ -20,12 +20,16 @@ import socket
 import string
 import sys
 import toml
+import termios
 
 
 def _quit():
-    colorama.deinit()
+    termios.tcsetattr(sys.stdin.fileno(), TERM_FLAGS)
+
 
 atexit.register(_quit)
+
+TERM_FLAGS = termios.tcgetattr(sys.stdin.fileno())
 
 verbose = 0
 nmap = '-vv --reason -Pn'
