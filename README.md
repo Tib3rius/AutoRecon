@@ -76,12 +76,12 @@ wkhtmltoimage
 AutoRecon uses Python 3 specific functionality and does not support Python 2.
 
 ```
-usage: autorecon.py [-h] [-ct <number>] [-cs <number>] [--profile PROFILE]
-                    [-o OUTPUT] [--single-target] [--only-scans-dir]
-                    [--heartbeat HEARTBEAT]
+usage: autorecon.py [-h] [-t TARGET_FILE] [-ct <number>] [-cs <number>]
+                    [--profile PROFILE_NAME] [-o OUTPUT_DIR] [--single-target]
+                    [--only-scans-dir] [--heartbeat HEARTBEAT]
                     [--nmap NMAP | --nmap-append NMAP_APPEND] [-v]
                     [--disable-sanity-checks]
-                    targets [targets ...]
+                    [targets [targets ...]]
 
 Network reconnaissance tool to port scan and automatically enumerate services
 found on multiple targets.
@@ -93,15 +93,18 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -t TARGET_FILE, --targets TARGET_FILE
+                        Read targets from file.
   -ct <number>, --concurrent-targets <number>
                         The maximum number of target hosts to scan
                         concurrently. Default: 5
   -cs <number>, --concurrent-scans <number>
                         The maximum number of scans to perform per target
                         host. Default: 10
-  --profile PROFILE     The port scanning profile to use (defined in port-
+  --profile PROFILE_NAME
+                        The port scanning profile to use (defined in port-
                         scan-profiles.toml). Default: default
-  -o OUTPUT, --output OUTPUT
+  -o OUTPUT_DIR, --output OUTPUT_DIR
                         The output directory for results. Default: results
   --single-target       Only scan a single target. A directory named after the
                         target will not be created. Instead, the directory

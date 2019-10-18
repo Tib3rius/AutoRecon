@@ -648,11 +648,12 @@ class Target:
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
-    parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="+")
+    parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="*")
+    parser.add_argument('-t', '--targets', action='store', type=str, default='', dest='target_file', help='Read targets from file.')
     parser.add_argument('-ct', '--concurrent-targets', action='store', metavar='<number>', type=int, default=5, help='The maximum number of target hosts to scan concurrently. Default: %(default)s')
     parser.add_argument('-cs', '--concurrent-scans', action='store', metavar='<number>', type=int, default=10, help='The maximum number of scans to perform per target host. Default: %(default)s')
-    parser.add_argument('--profile', action='store', default='default', help='The port scanning profile to use (defined in port-scan-profiles.toml). Default: %(default)s')
-    parser.add_argument('-o', '--output', action='store', default='results', help='The output directory for results. Default: %(default)s')
+    parser.add_argument('--profile', action='store', default='default', dest='profile_name', help='The port scanning profile to use (defined in port-scan-profiles.toml). Default: %(default)s')
+    parser.add_argument('-o', '--output', action='store', default='results', dest='output_dir', help='The output directory for results. Default: %(default)s')
     parser.add_argument('--single-target', action='store_true', default=False, help='Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will be created within the output directory. Default: false')
     parser.add_argument('--only-scans-dir', action='store_true', default=False, help='Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created. Default: false')
     parser.add_argument('--heartbeat', action='store', type=int, default=60, help='Specifies the heartbeat interval (in seconds) for task status messages. Default: %(default)s')
@@ -679,7 +680,7 @@ if __name__ == '__main__':
         error('Argument -ct/--concurrent-scans: must be at least 1.')
         errors = True
 
-    port_scan_profile = args.profile
+    port_scan_profile = args.profile_name
 
     found_scan_profile = False
     for profile in port_scan_profiles_config:
@@ -730,21 +731,29 @@ if __name__ == '__main__':
     if args.nmap_append:
         nmap += " " + args.nmap_append
 
-    outdir = args.output
+    outdir = args.output_dir
     srvname = ''
     verbose = args.verbose
 
-    if len(args.targets) == 0:
-        error('You must specify at least one target to scan!')
-        errors = True
-
-    if single_target and len(args.targets) != 1:
-        error('You cannot provide more than one target when scanning in single-target mode.')
-        sys.exit(1)
-
+    raw_targets = args.targets
     targets = []
 
-    for target in args.targets:
+    if len(args.target_file) > 0:
+        if not os.path.isfile(args.target_file):
+            error('The target file {args.target_file} was not found.')
+            sys.exit(1)
+        try:
+            with open(args.target_file, 'r') as f:
+                lines = f.read()
+                for line in lines.splitlines():
+                    if line.startswith('#') or len(line) == 0: continue
+                    if line not in raw_targets:
+                        raw_targets.append(line)
+        except OSError:
+            error('The target file {args.target_file} could not be read.')
+            sys.exit(1)
+
+    for target in raw_targets:
         try:
             ip = str(ipaddress.ip_address(target))
 
@@ -772,6 +781,14 @@ if __name__ == '__main__':
                 except socket.gaierror:
                     error(target + ' does not appear to be a valid IP address, IP range, or resolvable hostname.')
                     errors = True
+
+    if len(targets) == 0:
+        error('You must specify at least one target to scan!')
+        errors = True
+
+    if single_target and len(targets) != 1:
+        error('You cannot provide more than one target when scanning in single-target mode.')
+        sys.exit(1)
 
     if not args.disable_sanity_checks and len(targets) > 256:
         error('A total of ' + str(len(targets)) + ' targets would be scanned. If this is correct, re-run with the --disable-sanity-checks option to suppress this check.')
