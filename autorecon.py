@@ -24,7 +24,7 @@ import termios
 
 
 def _quit():
-    termios.tcsetattr(sys.stdin.fileno(), TERM_FLAGS)
+    termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, TERM_FLAGS)
 
 
 atexit.register(_quit)
