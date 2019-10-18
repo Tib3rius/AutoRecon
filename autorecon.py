@@ -24,10 +24,8 @@ import time
 import toml
 import termios
 
-
 def _quit():
     termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, TERM_FLAGS)
-
 
 atexit.register(_quit)
 
