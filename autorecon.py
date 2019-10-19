@@ -7,8 +7,10 @@
 #    option) any later version.
 #
 
+import atexit
 import argparse
 import asyncio
+import colorama
 from colorama import Fore, Style
 from concurrent.futures import ProcessPoolExecutor, as_completed, FIRST_COMPLETED
 from datetime import datetime
@@ -20,6 +22,14 @@ import string
 import sys
 import time
 import toml
+import termios
+
+def _quit():
+    termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, TERM_FLAGS)
+
+atexit.register(_quit)
+
+TERM_FLAGS = termios.tcgetattr(sys.stdin.fileno())
 
 verbose = 0
 nmap = '-vv --reason -Pn'
