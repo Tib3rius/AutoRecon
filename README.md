@@ -497,3 +497,7 @@ In fact, enum4linux will always try these ports when it is run. So if the SMB se
 > AutoRecon helped me save valuable time in my OSCP exam, allowing me to spend less time scanning systems and more time breaking into them. This software is worth its weight in gold!
 >
 >\- TorHackr
+
+> The magical tool that made enumeration a piece of cake, just fire it up and watch the beauty of multi-threading spitting a ton of information that would have taken loads of commands to execute. I certainly believe that by just using AutoRecon in the OSCP exam, half of the effort would already be done. Strongly recommended!
+>
+>\- Arman (solved 4.5/5 exam hosts)
