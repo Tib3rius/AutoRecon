@@ -146,23 +146,6 @@ def calculate_elapsed_time(start_time):
 
     return ', '.join(elapsed_time)
 
-port_scan_profiles_config_file = 'port-scan-profiles.toml'
-with open(os.path.join(rootdir, 'config', port_scan_profiles_config_file), 'r') as p:
-    try:
-        port_scan_profiles_config = toml.load(p)
-
-        if len(port_scan_profiles_config) == 0:
-            fail('There do not appear to be any port scan profiles configured in the {port_scan_profiles_config_file} config file.')
-
-    except toml.decoder.TomlDecodeError as e:
-        fail('Error: Couldn\'t parse {port_scan_profiles_config_file} config file. Check syntax and duplicate tags.')
-
-with open(os.path.join(rootdir, 'config', 'service-scans.toml'), 'r') as c:
-    try:
-        service_scans_config = toml.load(c)
-    except toml.decoder.TomlDecodeError as e:
-        fail('Error: Couldn\'t parse service-scans.toml config file. Check syntax and duplicate tags.')
-
 with open(os.path.join(rootdir, 'config', 'global-patterns.toml'), 'r') as p:
     try:
         global_patterns = toml.load(p)
@@ -172,14 +155,6 @@ with open(os.path.join(rootdir, 'config', 'global-patterns.toml'), 'r') as p:
             global_patterns = []
     except toml.decoder.TomlDecodeError as e:
         fail('Error: Couldn\'t parse global-patterns.toml config file. Check syntax and duplicate tags.')
-
-if 'username_wordlist' in service_scans_config:
-    if isinstance(service_scans_config['username_wordlist'], str):
-        username_wordlist = service_scans_config['username_wordlist']
-
-if 'password_wordlist' in service_scans_config:
-    if isinstance(service_scans_config['password_wordlist'], str):
-        password_wordlist = service_scans_config['password_wordlist']
 
 async def read_stream(stream, target, tag='?', patterns=[], color=Fore.BLUE):
     address = target.address
@@ -627,7 +602,8 @@ def scan_host(target, concurrent_scans):
     target.scandir = scandir
     os.makedirs(scandir, exist_ok=True)
 
-    os.makedirs(os.path.abspath(os.path.join(scandir, 'xml')), exist_ok=True)
+    if not xmldir:
+        os.makedirs(os.path.abspath(os.path.join(scandir, 'xml')), exist_ok=True)
 
     # Use a lock when writing to specific files that may be written to by other asynchronous functions.
     target.lock = asyncio.Lock()
@@ -667,6 +643,7 @@ if __name__ == '__main__':
     parser.add_argument('--single-target', action='store_true', default=False, help='Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will be created within the output directory. Default: false')
     parser.add_argument('--only-scans-dir', action='store_true', default=False, help='Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created. Default: false')
     parser.add_argument('--heartbeat', action='store', type=int, default=60, help='Specifies the heartbeat interval (in seconds) for task status messages. Default: %(default)s')
+    parser.add_argument('--no-xml-dir', action='store_true', default=False, help='Do no include nmap XML scan output. Default: false')
     nmap_group = parser.add_mutually_exclusive_group()
     nmap_group.add_argument('--nmap', action='store', default='-vv --reason -Pn', help='Override the {nmap_extra} variable in scans. Default: %(default)s')
     nmap_group.add_argument('--nmap-append', action='store', default='', help='Append to the default {nmap_extra} variable in scans.')
@@ -677,6 +654,38 @@ if __name__ == '__main__':
 
     single_target = args.single_target
     only_scans_dir = args.only_scans_dir
+    xmldir = args.no_xml_dir
+
+    if xmldir:
+        service_scans_config_file = 'service-scans-no-xml.toml'
+        port_scan_profiles_config_file = 'port-scan-profiles-no-xml.toml'
+    else:
+        service_scans_config_file = 'service-scans.toml'
+        port_scan_profiles_config_file = 'port-scan-profiles.toml'
+
+    with open(os.path.join(rootdir, 'config', service_scans_config_file), 'r') as c:
+        try:
+            service_scans_config = toml.load(c)
+        except toml.decoder.TomlDecodeError as e:
+            fail('Error: Couldn\'t parse {service_scans_config_file} config file. Check syntax and duplicate tags.')
+
+    if 'username_wordlist' in service_scans_config:
+        if isinstance(service_scans_config['username_wordlist'], str):
+            username_wordlist = service_scans_config['username_wordlist']
+
+    if 'password_wordlist' in service_scans_config:
+        if isinstance(service_scans_config['password_wordlist'], str):
+            password_wordlist = service_scans_config['password_wordlist']
+
+    with open(os.path.join(rootdir, 'config', port_scan_profiles_config_file), 'r') as p:
+        try:
+            port_scan_profiles_config = toml.load(p)
+
+            if len(port_scan_profiles_config) == 0:
+                fail('There do not appear to be any port scan profiles configured in the {port_scan_profiles_config_file} config file.')
+
+        except toml.decoder.TomlDecodeError as e:
+            fail('Error: Couldn\'t parse {port_scan_profiles_config_file} config file. Check syntax and duplicate tags.')
 
     errors = False
 
@@ -794,6 +803,7 @@ if __name__ == '__main__':
 
     if len(targets) == 0:
         error('You must specify at least one target to scan!')
+        parser.print_help()
         errors = True
 
     if single_target and len(targets) != 1:
