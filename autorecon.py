@@ -756,6 +756,7 @@ if __name__ == '__main__':
             with open(args.target_file, 'r') as f:
                 lines = f.read()
                 for line in lines.splitlines():
+                    line = line.strip()
                     if line.startswith('#') or len(line) == 0: continue
                     if line not in raw_targets:
                         raw_targets.append(line)
