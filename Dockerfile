@@ -74,7 +74,7 @@ RUN env DEBIAN_FRONTEND=noninteractive \
         sslscan \
         tnscmd10g && \
         wget https://github.com/wkhtmltopdf/wkhtmltopdf/releases/download/0.12.5/wkhtmltox_0.12.5-1.buster_amd64.deb && \
-        rm -rf /etc/apt/sources.list.d/kali.list && \ # Removing kali repo from apt sources
+        rm -rf /etc/apt/sources.list.d/kali.list && \
         apt-get update && \
         apt-get install -y wkhtmltox_0.12.5-1.buster_amd64.deb && \
         rm -rf wkhtmltox_0.12.5-1.buster_amd64.deb 
