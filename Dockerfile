@@ -7,17 +7,17 @@
 # Build:
 # - git clone https://github.com/Tib3rius/AutoRecon.git
 # - cd ./AutoRecon
-# - docker build -t AutoRecon .
+# - docker build -t tib3rus/autorecon .
 # 
 # Basic Use:
-# - sudo docker run -it --rm --name autorecon-container AutoRecon 127.0.0.1
+# - sudo docker run -it --rm --name autorecon-container tib3rius/autorecon 127.0.0.1
 #
 # Use with Mounted Volumes to Save Output and Include Wordlists:
 # - git clone https://github.com/danielmiessler/SecLists.git ~/Seclists
 # - mkdir -p $HOME/recon-out
 # - sudo docker run -it --rm -v $HOME/Seclists:/usr/share/seclists \
 #       -v $HOME/recon-out:/autorecon/recon-out \
-#       --name autorecon-container AutoRecon -ct 2 -cs 2 -vv -o /autorecon/recon-out 192.168.1.100 192.168.1.1/30 localhost
+#       --name autorecon-container tib3rius/autorecon -ct 2 -cs 2 -vv -o /autorecon/recon-out 192.168.1.100 192.168.1.1/30 localhost
 
 LABEL description="Autorecon Container Image"
 LABEL author="Tib3rius"
