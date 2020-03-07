@@ -19,19 +19,18 @@
 #       -v $HOME/recon-out:/autorecon/recon-out \
 #       --name autorecon-container tib3rius/autorecon -ct 2 -cs 2 -vv -o /autorecon/recon-out 192.168.1.100 192.168.1.1/30 localhost
 
-LABEL description="Autorecon Container Image"
-LABEL author="Tib3rius"
-LABEL author="VltraHeaven"
-
 # Building GoBuster
 FROM golang:1.14.0-alpine3.11 as build
+LABEL description="gobuster build container"
 RUN apk --no-cache add git
 RUN go get github.com/OJ/gobuster; exit 0
 WORKDIR /go/src/github.com/OJ/gobuster
 RUN go get && go build && go install 
 
 FROM debian:sid-slim
-
+LABEL description="Autorecon Container Image"
+LABEL author="Tib3rius"
+LABEL author="VltraHeaven"
 COPY --from=build /go/bin/gobuster /bin/gobuster
 
 # Creating autorecon user/group
