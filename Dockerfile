@@ -27,7 +27,7 @@ RUN go get github.com/OJ/gobuster; exit 0
 WORKDIR /go/src/github.com/OJ/gobuster
 RUN go get && go build && go install 
 
-FROM debian:sid-slim
+FROM debian:buster
 LABEL description="Autorecon Container Image"
 LABEL author="Tib3rius"
 LABEL author="VltraHeaven"
@@ -37,35 +37,43 @@ COPY --from=build /go/bin/gobuster /bin/gobuster
 RUN echo "Creating the autorecon user & group..." && \
         groupadd autorecon && \
         useradd autorecon -s /bin/sh -g autorecon && \
-        mkdir -p /autorecon && \
-        chown -R autorecon:autorecon /autorecon
+        mkdir -p /home/autorecon && \
+        chown -R autorecon:autorecon /home/autorecon
 
 # Installing AutoRecon dependencies from default debian repo
-RUN apt-get update \
+RUN apt-get update && \
         apt-get -y full-upgrade && \
-        env DEBIAN_FRONTEND=noninteractive apt-get install -y no-install-recommends \
+        env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         gpg \
-        apt-transport-https \
+        gpg-agent \
+        apt-utils \
         python3 \
+        python3-pip \
         python3-toml \
         python3-colorama \
         curl \
-        nmap \
-        nbtscan \
         onesixtyone \
-        smbclient \
-        smbmap \
         perl \
         libwhisker2-perl \
         libnet-ssleay-perl \
         wget \
-        git
+        git \
+        dirmngr
 
 # Adding kali repos and installing additional dependencies
-RUN env DEBIAN_FRONTEND=noninteractive \
-        apt-key adv --keyserver pool.sks-keyservers.net --recv-keys ED444FF07D8D0BF6 && \
-        echo "deb http://http.kali.org/kali kali-rolling main contrib non-free" > /etc/apt/sources.list.d/kali.list && \
-        apt-get install -y --no-install-recommends oscanner \
+RUN apt-key adv --keyserver pool.sks-keyservers.net --recv-keys ED444FF07D8D0BF6 && \
+        echo "deb http://http.kali.org/kali kali-rolling main contrib non-free" > /etc/apt/sources.list.d/kali.list
+
+RUN env DEBIAN_FRONTEND=noninteractive apt-get update && \
+        apt-get install -y --no-install-recommends \
+        oscanner \
+        python3-samba \
+        samba-common-bin \
+        smbclient \
+        smbmap \
+        samba \
+        nbtscan \
+        nmap \
         nikto \
         enum4linux \
         whatweb \
@@ -73,27 +81,31 @@ RUN env DEBIAN_FRONTEND=noninteractive \
         snmpcheck \
         sslscan \
         tnscmd10g && \
-        wget https://github.com/wkhtmltopdf/wkhtmltopdf/releases/download/0.12.5/wkhtmltox_0.12.5-1.buster_amd64.deb && \
+        wget https://github.com/wkhtmltopdf/wkhtmltopdf/releases/download/0.12.5/wkhtmltox_0.12.5-1.buster_amd64.deb -O /opt/wkhtmltox_0.12.5-1.buster_amd64.deb && \
         rm -rf /etc/apt/sources.list.d/kali.list && \
         apt-get update && \
-        apt-get install -y wkhtmltox_0.12.5-1.buster_amd64.deb && \
-        rm -rf wkhtmltox_0.12.5-1.buster_amd64.deb 
+        apt-get install -y --no-install-recommends /opt/wkhtmltox_0.12.5-1.buster_amd64.deb && \
+        rm -rf /opt/wkhtmltox_0.12.5-1.buster_amd64.deb
+       
+RUN  apt-get -y autoremove && \
+        apt-get -y autoclean
+
 
 # Set autorecon as the default container user
 USER autorecon
 
-# Set /autorecon as working directory
-WORKDIR /autorecon
+# Set /home/autorecon as working directory
+WORKDIR /home/autorecon
 
 # Pulling AutoRecon from git repo and installing requiirements using pip
-RUN env DEBIAN_FRONTEND=noninteractive git clone https://github.com/Tib3rius/AutoRecon.git . && \
-        python3 -m pip install -r requirements.txt
+RUN env DEBIAN_FRONTEND=noninteractive git clone https://github.com/Tib3rius/AutoRecon.git /home/autorecon && \
+        python3 -m pip install -r /home/autorecon/requirements.txt
 
 # Set HOME environment variable
-ENV HOME /autorecon
+ENV HOME /home/autorecon
 
 #Set container entrypoint
-ENTRYPOINT ["/autorecon/autorecon.py"]
+ENTRYPOINT ["/home/autorecon/autorecon.py"]
 
 
 
