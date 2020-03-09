@@ -20,12 +20,11 @@
 #       --name autorecon-container tib3rius/autorecon -ct 2 -cs 2 -vv -o /autorecon/recon-out 192.168.1.100 192.168.1.1/30 localhost
 
 # Building GoBuster
-FROM golang:1.14.0-alpine3.11 as build
+FROM golang:1.14.0-buster AS build
 LABEL description="gobuster build container"
-RUN apk --no-cache add git
-RUN go get github.com/OJ/gobuster; exit 0
-WORKDIR /go/src/github.com/OJ/gobuster
-RUN go get && go build && go install 
+RUN go get github.com/OJ/gobuster; exit 0 && \
+	cd /go/src/github.com/OJ/gobuster && \
+	go get && go build && go install
 
 FROM debian:buster
 LABEL description="Autorecon Container Image"
@@ -85,14 +84,13 @@ RUN env DEBIAN_FRONTEND=noninteractive apt-get update && \
         rm -rf /etc/apt/sources.list.d/kali.list && \
         apt-get update && \
         apt-get install -y --no-install-recommends /opt/wkhtmltox_0.12.5-1.buster_amd64.deb && \
-        rm -rf /opt/wkhtmltox_0.12.5-1.buster_amd64.deb
-       
-RUN  apt-get -y autoremove && \
+        rm -rf /opt/wkhtmltox_0.12.5-1.buster_amd64.deb && \
+	apt-get -y autoremove && \
         apt-get -y autoclean
 
-
-# Set autorecon as the default container user
-USER autorecon
+# Sets autorecon as the default container user
+# Comment out USER command to run container in root context for full nmap functionality
+## USER autorecon
 
 # Set /home/autorecon as working directory
 WORKDIR /home/autorecon
@@ -106,16 +104,3 @@ ENV HOME /home/autorecon
 
 #Set container entrypoint
 ENTRYPOINT ["/home/autorecon/autorecon.py"]
-
-
-
-# Testing for installing nikto and enum4linux from github repos
-#
-#RUN env DEBIAN_FRONTEND=noninteractive git clone https://github.com/sullo/nikto.git /opt/nikto && \
-    #        chmod +x /opt/nikto/program/nikto.pl && \
-    #    ln -sf /opt/nikto/program/nikto.pl /usr/local/bin/nikto && \
-    #    git clone https://github.com/portcullislabs/enum4linux.git /opt/enum4linux && \
-    #    chmod +x /opt/enum4linux/enum4linux.pl && \
-    #    ln -sf /opt/enum4linux/enum4linux.pl /usr/local/bin/enum4linux
-
-
