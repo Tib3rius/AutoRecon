@@ -33,14 +33,14 @@ nmap = "-vv --reason -Pn"
 srvname = ""
 heartbeat_interval = 60
 port_scan_profile = None
-port_scan_profiles_config_file = None
-service_scans_config_file = None
-global_patterns_config_file = None
+#port_scan_profiles_config_file = None
+#service_scans_config_file = None
+#global_patterns_config_file = None
 port_scan_profiles_config = None
 service_scans_config = None
 global_patterns = []
-username_wordlist = None
-password_wordlist = None
+username_wordlist = "/usr/share/seclists/Usernames/top-usernames-shortlist.txt"
+password_wordlist = "/usr/share/seclists/Passwords/darkweb2017-top100.txt"
 single_target = False
 only_scans_dir = False
 
@@ -50,10 +50,12 @@ def _quit():
 
 
 def _init():
+    global port_scan_profiles_config
+    global service_scans_config
+    global global_patterns
+
     atexit.register(_quit)
-
     appname = "AutoRecon"
-
     rootdir = os.path.dirname(os.path.realpath(__file__))
     default_config_dir = os.path.join(rootdir, "config")
     config_dir = appdirs.user_config_dir(appname)
@@ -77,8 +79,6 @@ def _init():
             global_patterns_config_file,
         )
 
-    username_wordlist = "/usr/share/seclists/Usernames/top-usernames-shortlist.txt"
-    password_wordlist = "/usr/share/seclists/Passwords/darkweb2017-top100.txt"
 
     with open(port_scan_profiles_config_file, "r") as p:
         try:
@@ -698,6 +698,13 @@ class Target:
 
 
 def main():
+    global single_target
+    global only_scans_dir
+    global port_scan_profile
+    global heartbeat_interval
+    global nmap
+    global srvname
+    global verbose
     _init()
     parser = argparse.ArgumentParser(description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
     parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="*")
