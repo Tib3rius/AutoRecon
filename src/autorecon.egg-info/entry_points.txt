@@ -1,0 +1,3 @@
+[console_scripts]
+autorecon = autorecon.autorecon:main
+

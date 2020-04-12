@@ -146,7 +146,7 @@ def calculate_elapsed_time(start_time):
 
     return ', '.join(elapsed_time)
 
-port_scan_profiles_config_file = 'port-scan-profiles.toml'
+port_scan_profiles_config_file = 'port-scan-profiles-default.toml'
 with open(os.path.join(rootdir, 'config', port_scan_profiles_config_file), 'r') as p:
     try:
         port_scan_profiles_config = toml.load(p)
@@ -157,13 +157,13 @@ with open(os.path.join(rootdir, 'config', port_scan_profiles_config_file), 'r') 
     except toml.decoder.TomlDecodeError as e:
         fail('Error: Couldn\'t parse {port_scan_profiles_config_file} config file. Check syntax and duplicate tags.')
 
-with open(os.path.join(rootdir, 'config', 'service-scans.toml'), 'r') as c:
+with open(os.path.join(rootdir, 'config', 'service-scans-default.toml'), 'r') as c:
     try:
         service_scans_config = toml.load(c)
     except toml.decoder.TomlDecodeError as e:
         fail('Error: Couldn\'t parse service-scans.toml config file. Check syntax and duplicate tags.')
 
-with open(os.path.join(rootdir, 'config', 'global-patterns.toml'), 'r') as p:
+with open(os.path.join(rootdir, 'config', 'global-patterns-default.toml'), 'r') as p:
     try:
         global_patterns = toml.load(p)
         if 'pattern' in global_patterns:
@@ -595,7 +595,7 @@ async def scan_services(loop, semaphore, target):
 
                                             pending.add(asyncio.ensure_future(run_cmd(semaphore, e(command), target, tag=tag, patterns=patterns)))
 
-def scan_host(target, concurrent_scans):
+def scan_host(target, concurrent_scans, outdir):
     start_time = time.time()
     info('Scanning target {byellow}{target.address}{rst}')
 
@@ -655,8 +655,9 @@ class Target:
         self.lock = None
         self.running_tasks = []
 
-if __name__ == '__main__':
 
+
+def main():
     parser = argparse.ArgumentParser(description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
     parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="*")
     parser.add_argument('-t', '--targets', action='store', type=str, default='', dest='target_file', help='Read targets from file.')
@@ -814,7 +815,7 @@ if __name__ == '__main__':
 
         for address in targets:
             target = Target(address)
-            futures.append(executor.submit(scan_host, target, concurrent_scans))
+            futures.append(executor.submit(scan_host, target, concurrent_scans, outdir))
 
         try:
             for future in as_completed(futures):
@@ -827,3 +828,8 @@ if __name__ == '__main__':
 
         elapsed_time = calculate_elapsed_time(start_time)
         info('{bgreen}Finished scanning all targets in {elapsed_time}!{rst}')
+
+
+if __name__ == '__main__':
+    main()
+
