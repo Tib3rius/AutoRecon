@@ -23,6 +23,8 @@ import sys
 import time
 import toml
 import termios
+import appdirs
+import shutil
 
 def _quit():
     termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, TERM_FLAGS)
@@ -30,12 +32,29 @@ def _quit():
 atexit.register(_quit)
 
 TERM_FLAGS = termios.tcgetattr(sys.stdin.fileno())
-
+appname = 'AutoRecon'
 verbose = 0
 nmap = '-vv --reason -Pn'
 srvname = ''
 heartbeat_interval = 60
 port_scan_profile = None
+
+rootdir = os.path.dirname(os.path.realpath(__file__))
+default_config_dir = os.path.join(rootdir, 'config')
+config_dir = appdirs.user_config_dir(appname)
+port_scan_profiles_config_file = os.path.join(config_dir, 'port-scan-profiles.toml')
+service_scans_config_file = os.path.join(config_dir, 'service-scans.toml')
+global_patterns_config_file = os.path.join(config_dir, 'global-patterns.toml')
+
+# Confirm this directory exists; if not, populate it with the default configurations
+
+if not os.path.exists(config_dir):
+    os.makedirs(config_dir)
+    shutil.copy(os.path.join(default_config_dir,'port-scan-profiles-default.toml'), port_scan_profiles_config_file)
+    shutil.copy(os.path.join(default_config_dir,'service-scans-default.toml'), service_scans_config_file)
+    shutil.copy(os.path.join(default_config_dir,'global-patterns-default.toml'), global_patterns_config_file)
+
+
 
 port_scan_profiles_config = None
 service_scans_config = None
@@ -44,7 +63,6 @@ global_patterns = []
 username_wordlist = '/usr/share/seclists/Usernames/top-usernames-shortlist.txt'
 password_wordlist = '/usr/share/seclists/Passwords/darkweb2017-top100.txt'
 
-rootdir = os.path.dirname(os.path.realpath(__file__))
 
 single_target = False
 only_scans_dir = False
@@ -146,8 +164,7 @@ def calculate_elapsed_time(start_time):
 
     return ', '.join(elapsed_time)
 
-port_scan_profiles_config_file = 'port-scan-profiles-default.toml'
-with open(os.path.join(rootdir, 'config', port_scan_profiles_config_file), 'r') as p:
+with open(port_scan_profiles_config_file, 'r') as p:
     try:
         port_scan_profiles_config = toml.load(p)
 
@@ -157,13 +174,13 @@ with open(os.path.join(rootdir, 'config', port_scan_profiles_config_file), 'r') 
     except toml.decoder.TomlDecodeError as e:
         fail('Error: Couldn\'t parse {port_scan_profiles_config_file} config file. Check syntax and duplicate tags.')
 
-with open(os.path.join(rootdir, 'config', 'service-scans-default.toml'), 'r') as c:
+with open(service_scans_config_file, 'r') as c:
     try:
         service_scans_config = toml.load(c)
     except toml.decoder.TomlDecodeError as e:
         fail('Error: Couldn\'t parse service-scans.toml config file. Check syntax and duplicate tags.')
 
-with open(os.path.join(rootdir, 'config', 'global-patterns-default.toml'), 'r') as p:
+with open(global_patterns_config_file, 'r') as p:
     try:
         global_patterns = toml.load(p)
         if 'pattern' in global_patterns:
