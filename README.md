@@ -74,6 +74,12 @@ tnscmd10g
 whatweb
 wkhtmltoimage
 ```
+Some of them are part of packages with different names, and thus must be installed with those names (svwar is from the package "sipvicious" for example). A list of the packages can be found in "packages.txt". If you want to automate the installation of all these packages (not all are installed in Kali by default), use the provided install script like so:
+
+```
+$ chmod +x install-tools.sh
+$ ./install-tools.sh
+```
 
 ## Usage
 

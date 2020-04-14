@@ -1,0 +1,17 @@
+curl
+enum4linux
+gobuster
+nbtscan
+nikto
+nmap
+onesixtyone
+oscanner
+smbclient
+smbmap
+smtp-user-enum
+snmp
+sslscan
+sipvicious
+tnscmd10g
+whatweb
+wkhtmltopdf
