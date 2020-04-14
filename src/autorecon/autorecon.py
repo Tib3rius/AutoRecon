@@ -27,15 +27,11 @@ import appdirs
 import shutil
 
 # Globals
-TERM_FLAGS = termios.tcgetattr(sys.stdin.fileno())
 verbose = 0
 nmap = "-vv --reason -Pn"
 srvname = ""
 heartbeat_interval = 60
 port_scan_profile = None
-#port_scan_profiles_config_file = None
-#service_scans_config_file = None
-#global_patterns_config_file = None
 port_scan_profiles_config = None
 service_scans_config = None
 global_patterns = []
@@ -46,6 +42,7 @@ only_scans_dir = False
 
 
 def _quit():
+    TERM_FLAGS = termios.tcgetattr(sys.stdin.fileno())
     termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, TERM_FLAGS)
 
 
@@ -705,6 +702,7 @@ def main():
     global nmap
     global srvname
     global verbose
+
     _init()
     parser = argparse.ArgumentParser(description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
     parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="*")
