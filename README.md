@@ -26,17 +26,26 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 
 ## Requirements
 
-* Python 3
-* colorama
-* toml
+- Python 3
+- `python3-pip`
+- `pipx` (optional, but recommended)
 
-Once Python 3 is installed, pip3 can be used to install the other requirements:
+If you don't have these installed, and are running Kali Linux, you can execute the following:
 
 ```bash
-$ pip3 install -r requirements.txt
+$ sudo apt install python3
+$ sudo apt install python3-pip
 ```
 
-Several people have indicated that installing pip3 via apt on the OSCP Kali version makes the host unstable. In these cases, pip3 can be installed by running the following commands:
+Further, it's recommended you use `pipx` to manage your python packages; this installs each python package in it's own virtualenv, and makes it available in the global context, which avoids conflicting package dependencies and the resulting instability. To summarise the instructions:
+
+```bash
+$ python3 -m pip install --user pipx
+$ python3 -m pipx ensurepath
+```
+Further detail is available in their installation instructions available [here](https://pipxproject.github.io/pipx/installation/).
+
+If you experience any issues with the stability of the `python3-pip` installation, you can install it manually as follows:
 
 ```bash
 $ curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
@@ -75,12 +84,28 @@ whatweb
 wkhtmltoimage
 ```
 
+## Installation
+
+Ensure you have all of the requirements installed as per the previous section.
+
+### Using `pipx` (recommended)
+
+```bash
+$ pipx install git+https://github.com/Tib3rius/AutoRecon.git
+```
+
+### Using `pip`
+
+```bash
+$ python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
+```
+
 ## Usage
 
 AutoRecon uses Python 3 specific functionality and does not support Python 2.
 
 ```
-usage: autorecon.py [-h] [-t TARGET_FILE] [-ct <number>] [-cs <number>]
+usage: autorecon    [-h] [-t TARGET_FILE] [-ct <number>] [-cs <number>]
                     [--profile PROFILE_NAME] [-o OUTPUT_DIR] [--single-target]
                     [--only-scans-dir] [--heartbeat HEARTBEAT]
                     [--nmap NMAP | --nmap-append NMAP_APPEND] [-v]
@@ -135,7 +160,7 @@ optional arguments:
 **Scanning a single target:**
 
 ```
-python3 autorecon.py 127.0.0.1
+$ autorecon 127.0.0.1
 [*] Scanning target 127.0.0.1
 [*] Running service detection nmap-full-tcp on 127.0.0.1
 [*] Running service detection nmap-top-20-udp on 127.0.0.1
@@ -183,7 +208,7 @@ Note that the actual command line output will be colorized if your terminal supp
 **Scanning multiple targets**
 
 ```
-python3 autorecon.py 192.168.1.100 192.168.1.1/30 localhost
+$ autorecon 192.168.1.100 192.168.1.1/30 localhost
 [*] Scanning target 192.168.1.100
 [*] Scanning target 192.168.1.1
 [*] Scanning target 192.168.1.2
@@ -208,7 +233,7 @@ AutoRecon supports multiple targets per scan, and will expand IP ranges provided
 **Scanning multiple targets with advanced options**
 
 ```
-python3 autorecon.py -ct 2 -cs 2 -vv -o outputdir 192.168.1.100 192.168.1.1/30 localhost
+$ autorecon -ct 2 -cs 2 -vv -o outputdir 192.168.1.100 192.168.1.1/30 localhost
 [*] Scanning target 192.168.1.100
 [*] Scanning target 192.168.1.1
 [*] Running service detection nmap-quick on 192.168.1.100 with nmap -vv --reason -Pn -sV -sC --version-all -oN "/root/outputdir/192.168.1.100/scans/_quick_tcp_nmap.txt" -oX "/root/outputdir/192.168.1.100/scans/_quick_tcp_nmap.xml" 192.168.1.100
