@@ -37,15 +37,13 @@ $ sudo apt install python3
 $ sudo apt install python3-pip
 ```
 
-Further, it's recommended you use `pipx` to manage your python packages; this installs each python package in it's own virtualenv, and makes it available in the global context, which avoids conflicting package dependencies and the resulting instability. To summarise the instructions:
+Further, it's recommended you use `pipx` to manage your python packages; this installs each python package in it's own virtualenv, and makes it available in the global context, which avoids conflicting package dependencies and the resulting instability. To summarise the installation instructions:
 
 ```bash
 $ python3 -m pip install --user pipx
 $ python3 -m pipx ensurepath
 ```
-Further detail is available in their installation instructions available [here](https://pipxproject.github.io/pipx/installation/).
-
-If you experience any issues with the stability of the `python3-pip` installation, you can install it manually as follows:
+Further detail is available in their installation instructions available [here](https://pipxproject.github.io/pipx/installation/). Please refer to this for any installation issues you experience. Additionally, if you experience any issues with the stability of the `python3-pip` installation, you can install it manually as follows:
 
 ```bash
 $ curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
