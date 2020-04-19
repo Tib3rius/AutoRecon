@@ -15,7 +15,7 @@
     [default.nmap-top-20-udp]
 
         [default.nmap-top-20-udp.service-detection]
-        command = 'nmap {nmap_extra} -sU -A --top-ports=20 --version-all -oN "{scandir}/_top_20_udp_nmap.txt" -oX "{scandir}/xml/_top_20_udp_nmap.xml" {address}'
+        command = 'sudo nmap {nmap_extra} -sU -A --top-ports=20 --version-all -oN "{scandir}/_top_20_udp_nmap.txt" -oX "{scandir}/xml/_top_20_udp_nmap.xml" {address}'
         pattern = '^(?P<port>\d+)\/(?P<protocol>(tcp|udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
 
 [quick]
@@ -29,7 +29,7 @@
     [quick.nmap-top-20-udp]
 
         [quick.nmap-top-20-udp.service-detection]
-        command = 'nmap {nmap_extra} -sU -A --top-ports=20 --version-all -oN "{scandir}/_top_20_udp_nmap.txt" -oX "{scandir}/xml/_top_20_udp_nmap.xml" {address}'
+        command = 'sudo nmap {nmap_extra} -sU -A --top-ports=20 --version-all -oN "{scandir}/_top_20_udp_nmap.txt" -oX "{scandir}/xml/_top_20_udp_nmap.xml" {address}'
         pattern = '^(?P<port>\d+)\/(?P<protocol>(tcp|udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
 
 [udp]
@@ -41,5 +41,5 @@
         pattern = '^UDP open\s*[\w-]+\[\s*(?P<port>\d+)\].*$'
 
         [udp.udp-top-20.service-detection]
-        command = 'nmap {nmap_extra} -sU -A -p {ports} --version-all -oN "{scandir}/_top_20_udp_nmap.txt" -oX "{scandir}/xml/_top_20_udp_nmap.xml" {address}'
+        command = 'sudo nmap {nmap_extra} -sU -A -p {ports} --version-all -oN "{scandir}/_top_20_udp_nmap.txt" -oX "{scandir}/xml/_top_20_udp_nmap.xml" {address}'
         pattern = '^(?P<port>\d+)\/(?P<protocol>(udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
