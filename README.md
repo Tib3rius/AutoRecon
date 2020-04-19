@@ -82,6 +82,12 @@ whatweb
 wkhtmltoimage
 ```
 
+On Kali Linux, you can ensure these are all installed using the following command:
+
+```bash
+$ sudo apt install curl enum4linux gobuster nbtscan nikto nmap onesixtyone oscanner smbclient smbmap smtp-user-enum snmp sslscan sipvicious tnscmd10g whatweb wkhtmltopdf
+```
+
 ## Installation
 
 Ensure you have all of the requirements installed as per the previous section.
