@@ -66,7 +66,7 @@ $ sudo env "PATH=$PATH" autorecon [OPTIONS]
 $ sudo $(which autorecon) [OPTIONS]
 ```
 
-To make this easier, you could add the following alias to your `.bashrc` (or equivalent):
+To make this easier, you could add the following alias to your `~/.profile` (or equivalent):
 
 ```
 alias sudo="sudo env \"PATH=$PATH\""
