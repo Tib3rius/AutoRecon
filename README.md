@@ -30,6 +30,8 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 - `python3-pip`
 - `pipx` (optional, but recommended)
 
+### Python 3
+
 If you don't have these installed, and are running Kali Linux, you can execute the following:
 
 ```bash
@@ -37,20 +39,53 @@ $ sudo apt install python3
 $ sudo apt install python3-pip
 ```
 
-Further, it's recommended you use `pipx` to manage your python packages; this installs each python package in it's own virtualenv, and makes it available in the global context, which avoids conflicting package dependencies and the resulting instability. To summarise the installation instructions:
-
-```bash
-$ python3 -m pip install --user pipx
-$ python3 -m pipx ensurepath
-```
-Further detail is available in their installation instructions available [here](https://pipxproject.github.io/pipx/installation/). Please refer to this for any installation issues you experience. Additionally, if you experience any issues with the stability of the `python3-pip` installation, you can install it manually as follows:
+Additionally, if you experience any issues with the stability of the `python3-pip` installation (as reported by a number of people installing `pip3` via `apt` on the OSCP distribution of Kali), you can install it manually as follows:
 
 ```bash
 $ curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 $ python3 get-pip.py
 ```
 
-The "pip3" command should now be usable.
+The `pip3` command should now be usable.
+
+### `pipx`
+
+Further, it's recommended you use `pipx` to manage your python packages; this installs each python package in it's own virtualenv, and makes it available in the global context, which avoids conflicting package dependencies and the resulting instability. To summarise the installation instructions:
+
+```bash
+$ python3 -m pip install --user pipx
+$ python3 -m pipx ensurepath
+```
+
+Note that if you want to elevate privileges to run a `pipx` installation with `sudo`, you have two options:
+
+1. Append the appropriate path to your execution command, using _one_ of the following examples (recommended):
+
+```bash
+$ sudo env "PATH=$PATH" autorecon [OPTIONS]
+$ sudo $(which autorecon) [OPTIONS]
+```
+
+To make this easier, you could add the following alias to your `.bashrc` (or equivalent):
+
+```
+alias sudo="sudo env \"PATH=$PATH\""
+```
+
+2. Add the `pipx` binary path to the `secure_path` set in `/etc/sudoers`
+
+```bash
+sudo visudo /etc/sudoers
+```
+
+Update the `secure_path` directive as follows:
+```
+Defaults	secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/kali/.local/bin"
+```
+
+Further detail is available in their installation instructions available [here](https://pipxproject.github.io/pipx/installation/). Please refer to this for any installation issues you experience.
+
+### Supporting packages
 
 Several commands used in AutoRecon reference the SecLists project, in the directory /usr/share/seclists/. You can either manually download the SecLists project to this directory (https://github.com/danielmiessler/SecLists), or if you are using Kali Linux (**highly recommended**) you can run the following:
 
@@ -103,6 +138,22 @@ $ pipx install git+https://github.com/Tib3rius/AutoRecon.git
 ```bash
 $ python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
 ```
+
+### Manual
+
+If you'd prefer not to use `pip` or `pipx`, you can always still install and execute `autorecon.py` manually as a script. First install the dependencies:
+
+```bash
+$ pip install -r requirements.txt
+```
+
+You will then be able to run the `autorecon.py` script:
+
+```bash
+$ python3 src/autorecon/autorecon.py [OPTIONS] 127.0.0.1
+```
+
+See detailed usage options below.
 
 ## Usage
 
