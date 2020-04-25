@@ -57,7 +57,7 @@ $ python3 -m pip install --user pipx
 $ python3 -m pipx ensurepath
 ```
 
-Note that if you want to elevate privileges to run a `pipx` installation with `sudo`, you have two options:
+Note that if you want to elevate privileges to run a program installed with `pipx`, with `sudo`, you have two options:
 
 1. Append the appropriate path to your execution command, using _one_ of the following examples (recommended):
 
@@ -83,7 +83,7 @@ Update the `secure_path` directive as follows:
 Defaults	secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/kali/.local/bin"
 ```
 
-Further detail is available in their installation instructions available [here](https://pipxproject.github.io/pipx/installation/). Please refer to this for any installation issues you experience.
+If you're not using Kali Linux, make sure to adjust the path to the relevant user. Further detail on the installation of `pipx` is available in their installation instructions available [here](https://pipxproject.github.io/pipx/installation/). Please refer to this for any issues you experience.
 
 ### Supporting packages
 
@@ -147,10 +147,10 @@ If you'd prefer not to use `pip` or `pipx`, you can always still install and exe
 $ pip install -r requirements.txt
 ```
 
-You will then be able to run the `autorecon.py` script:
+You will then be able to run the `autorecon.py` script (from `<AUTORECON_ROOT_DIR>/src/autorecon`):
 
 ```bash
-$ python3 src/autorecon/autorecon.py [OPTIONS] 127.0.0.1
+$ python3 autorecon.py [OPTIONS] 127.0.0.1
 ```
 
 See detailed usage options below.
