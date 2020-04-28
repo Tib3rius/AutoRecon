@@ -144,7 +144,7 @@ $ python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
 If you'd prefer not to use `pip` or `pipx`, you can always still install and execute `autorecon.py` manually as a script. First install the dependencies:
 
 ```bash
-$ pip install -r requirements.txt
+$ python3 -m pip install -r requirements.txt
 ```
 
 You will then be able to run the `autorecon.py` script (from `<AUTORECON_ROOT_DIR>/src/autorecon`):
