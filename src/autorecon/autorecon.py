@@ -23,31 +23,102 @@ import sys
 import time
 import toml
 import termios
+import appdirs
+import shutil
 
-def _quit():
-    termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, TERM_FLAGS)
-
-atexit.register(_quit)
-
-TERM_FLAGS = termios.tcgetattr(sys.stdin.fileno())
-
+# Globals
 verbose = 0
-nmap = '-vv --reason -Pn'
-srvname = ''
+nmap = "-vv --reason -Pn"
+srvname = ""
 heartbeat_interval = 60
 port_scan_profile = None
-
 port_scan_profiles_config = None
 service_scans_config = None
 global_patterns = []
-
-username_wordlist = '/usr/share/seclists/Usernames/top-usernames-shortlist.txt'
-password_wordlist = '/usr/share/seclists/Passwords/darkweb2017-top100.txt'
-
-rootdir = os.path.dirname(os.path.realpath(__file__))
-
+username_wordlist = "/usr/share/seclists/Usernames/top-usernames-shortlist.txt"
+password_wordlist = "/usr/share/seclists/Passwords/darkweb2017-top100.txt"
 single_target = False
 only_scans_dir = False
+
+
+def _quit():
+    TERM_FLAGS = termios.tcgetattr(sys.stdin.fileno())
+    termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, TERM_FLAGS)
+
+
+def _init():
+    global port_scan_profiles_config
+    global service_scans_config
+    global global_patterns
+
+    atexit.register(_quit)
+    appname = "AutoRecon"
+    rootdir = os.path.dirname(os.path.realpath(__file__))
+    default_config_dir = os.path.join(rootdir, "config")
+    config_dir = appdirs.user_config_dir(appname)
+    port_scan_profiles_config_file = os.path.join(config_dir, "port-scan-profiles.toml")
+    service_scans_config_file = os.path.join(config_dir, "service-scans.toml")
+    global_patterns_config_file = os.path.join(config_dir, "global-patterns.toml")
+
+    # Confirm this directory exists; if not, populate it with the default configurations
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir, exist_ok=True)
+        shutil.copy(
+            os.path.join(default_config_dir, "port-scan-profiles-default.toml"),
+            port_scan_profiles_config_file,
+        )
+        shutil.copy(
+            os.path.join(default_config_dir, "service-scans-default.toml"),
+            service_scans_config_file,
+        )
+        shutil.copy(
+            os.path.join(default_config_dir, "global-patterns-default.toml"),
+            global_patterns_config_file,
+        )
+
+
+    with open(port_scan_profiles_config_file, "r") as p:
+        try:
+            port_scan_profiles_config = toml.load(p)
+
+            if len(port_scan_profiles_config) == 0:
+                fail(
+                    "There do not appear to be any port scan profiles configured in the {port_scan_profiles_config_file} config file."
+                )
+
+        except toml.decoder.TomlDecodeError as e:
+            fail(
+                "Error: Couldn't parse {port_scan_profiles_config_file} config file. Check syntax and duplicate tags."
+            )
+
+    with open(service_scans_config_file, "r") as c:
+        try:
+            service_scans_config = toml.load(c)
+        except toml.decoder.TomlDecodeError as e:
+            fail(
+                "Error: Couldn't parse service-scans.toml config file. Check syntax and duplicate tags."
+            )
+
+    with open(global_patterns_config_file, "r") as p:
+        try:
+            global_patterns = toml.load(p)
+            if "pattern" in global_patterns:
+                global_patterns = global_patterns["pattern"]
+            else:
+                global_patterns = []
+        except toml.decoder.TomlDecodeError as e:
+            fail(
+                "Error: Couldn't parse global-patterns.toml config file. Check syntax and duplicate tags."
+            )
+
+    if "username_wordlist" in service_scans_config:
+        if isinstance(service_scans_config["username_wordlist"], str):
+            username_wordlist = service_scans_config["username_wordlist"]
+
+    if "password_wordlist" in service_scans_config:
+        if isinstance(service_scans_config["password_wordlist"], str):
+            password_wordlist = service_scans_config["password_wordlist"]
+
 
 def e(*args, frame_index=1, **kvargs):
     frame = sys._getframe(frame_index)
@@ -146,40 +217,6 @@ def calculate_elapsed_time(start_time):
 
     return ', '.join(elapsed_time)
 
-port_scan_profiles_config_file = 'port-scan-profiles.toml'
-with open(os.path.join(rootdir, 'config', port_scan_profiles_config_file), 'r') as p:
-    try:
-        port_scan_profiles_config = toml.load(p)
-
-        if len(port_scan_profiles_config) == 0:
-            fail('There do not appear to be any port scan profiles configured in the {port_scan_profiles_config_file} config file.')
-
-    except toml.decoder.TomlDecodeError as e:
-        fail('Error: Couldn\'t parse {port_scan_profiles_config_file} config file. Check syntax and duplicate tags.')
-
-with open(os.path.join(rootdir, 'config', 'service-scans.toml'), 'r') as c:
-    try:
-        service_scans_config = toml.load(c)
-    except toml.decoder.TomlDecodeError as e:
-        fail('Error: Couldn\'t parse service-scans.toml config file. Check syntax and duplicate tags.')
-
-with open(os.path.join(rootdir, 'config', 'global-patterns.toml'), 'r') as p:
-    try:
-        global_patterns = toml.load(p)
-        if 'pattern' in global_patterns:
-            global_patterns = global_patterns['pattern']
-        else:
-            global_patterns = []
-    except toml.decoder.TomlDecodeError as e:
-        fail('Error: Couldn\'t parse global-patterns.toml config file. Check syntax and duplicate tags.')
-
-if 'username_wordlist' in service_scans_config:
-    if isinstance(service_scans_config['username_wordlist'], str):
-        username_wordlist = service_scans_config['username_wordlist']
-
-if 'password_wordlist' in service_scans_config:
-    if isinstance(service_scans_config['password_wordlist'], str):
-        password_wordlist = service_scans_config['password_wordlist']
 
 async def read_stream(stream, target, tag='?', patterns=[], color=Fore.BLUE):
     address = target.address
@@ -595,7 +632,7 @@ async def scan_services(loop, semaphore, target):
 
                                             pending.add(asyncio.ensure_future(run_cmd(semaphore, e(command), target, tag=tag, patterns=patterns)))
 
-def scan_host(target, concurrent_scans):
+def scan_host(target, concurrent_scans, outdir):
     start_time = time.time()
     info('Scanning target {byellow}{target.address}{rst}')
 
@@ -655,8 +692,18 @@ class Target:
         self.lock = None
         self.running_tasks = []
 
-if __name__ == '__main__':
 
+
+def main():
+    global single_target
+    global only_scans_dir
+    global port_scan_profile
+    global heartbeat_interval
+    global nmap
+    global srvname
+    global verbose
+
+    _init()
     parser = argparse.ArgumentParser(description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
     parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="*")
     parser.add_argument('-t', '--targets', action='store', type=str, default='', dest='target_file', help='Read targets from file.')
@@ -814,7 +861,7 @@ if __name__ == '__main__':
 
         for address in targets:
             target = Target(address)
-            futures.append(executor.submit(scan_host, target, concurrent_scans))
+            futures.append(executor.submit(scan_host, target, concurrent_scans, outdir))
 
         try:
             for future in as_completed(futures):
@@ -827,3 +874,8 @@ if __name__ == '__main__':
 
         elapsed_time = calculate_elapsed_time(start_time)
         info('{bgreen}Finished scanning all targets in {elapsed_time}!{rst}')
+
+
+if __name__ == '__main__':
+    main()
+

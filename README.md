@@ -26,24 +26,66 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 
 ## Requirements
 
-* Python 3
-* colorama
-* toml
+- Python 3
+- `python3-pip`
+- `pipx` (optional, but recommended)
 
-Once Python 3 is installed, pip3 can be used to install the other requirements:
+### Python 3
+
+If you don't have these installed, and are running Kali Linux, you can execute the following:
 
 ```bash
-$ pip3 install -r requirements.txt
+$ sudo apt install python3
+$ sudo apt install python3-pip
 ```
 
-Several people have indicated that installing pip3 via apt on the OSCP Kali version makes the host unstable. In these cases, pip3 can be installed by running the following commands:
+Additionally, if you experience any issues with the stability of the `python3-pip` installation (as reported by a number of people installing `pip3` via `apt` on the OSCP distribution of Kali), you can install it manually as follows:
 
 ```bash
 $ curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 $ python3 get-pip.py
 ```
 
-The "pip3" command should now be usable.
+The `pip3` command should now be usable.
+
+### `pipx`
+
+Further, it's recommended you use `pipx` to manage your python packages; this installs each python package in it's own virtualenv, and makes it available in the global context, which avoids conflicting package dependencies and the resulting instability. To summarise the installation instructions:
+
+```bash
+$ python3 -m pip install --user pipx
+$ python3 -m pipx ensurepath
+```
+
+Note that if you want to elevate privileges to run a program installed with `pipx`, with `sudo`, you have two options:
+
+1. Append the appropriate path to your execution command, using _one_ of the following examples (recommended):
+
+```bash
+$ sudo env "PATH=$PATH" autorecon [OPTIONS]
+$ sudo $(which autorecon) [OPTIONS]
+```
+
+To make this easier, you could add the following alias to your `~/.profile` (or equivalent):
+
+```
+alias sudo="sudo env \"PATH=$PATH\""
+```
+
+2. Add the `pipx` binary path to the `secure_path` set in `/etc/sudoers`
+
+```bash
+sudo visudo /etc/sudoers
+```
+
+Update the `secure_path` directive as follows:
+```
+Defaults	secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/kali/.local/bin"
+```
+
+If you're not using Kali Linux, make sure to adjust the path to the relevant user. Further detail on the installation of `pipx` is available in their installation instructions available [here](https://pipxproject.github.io/pipx/installation/). Please refer to this for any issues you experience.
+
+### Supporting packages
 
 Several commands used in AutoRecon reference the SecLists project, in the directory /usr/share/seclists/. You can either manually download the SecLists project to this directory (https://github.com/danielmiessler/SecLists), or if you are using Kali Linux (**highly recommended**) you can run the following:
 
@@ -75,12 +117,50 @@ whatweb
 wkhtmltoimage
 ```
 
+On Kali Linux, you can ensure these are all installed using the following command:
+
+```bash
+$ sudo apt install curl enum4linux gobuster nbtscan nikto nmap onesixtyone oscanner smbclient smbmap smtp-user-enum snmp sslscan sipvicious tnscmd10g whatweb wkhtmltopdf
+```
+
+## Installation
+
+Ensure you have all of the requirements installed as per the previous section.
+
+### Using `pipx` (recommended)
+
+```bash
+$ pipx install git+https://github.com/Tib3rius/AutoRecon.git
+```
+
+### Using `pip`
+
+```bash
+$ python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
+```
+
+### Manual
+
+If you'd prefer not to use `pip` or `pipx`, you can always still install and execute `autorecon.py` manually as a script. First install the dependencies:
+
+```bash
+$ python3 -m pip install -r requirements.txt
+```
+
+You will then be able to run the `autorecon.py` script (from `<AUTORECON_ROOT_DIR>/src/autorecon`):
+
+```bash
+$ python3 autorecon.py [OPTIONS] 127.0.0.1
+```
+
+See detailed usage options below.
+
 ## Usage
 
 AutoRecon uses Python 3 specific functionality and does not support Python 2.
 
 ```
-usage: autorecon.py [-h] [-t TARGET_FILE] [-ct <number>] [-cs <number>]
+usage: autorecon    [-h] [-t TARGET_FILE] [-ct <number>] [-cs <number>]
                     [--profile PROFILE_NAME] [-o OUTPUT_DIR] [--single-target]
                     [--only-scans-dir] [--heartbeat HEARTBEAT]
                     [--nmap NMAP | --nmap-append NMAP_APPEND] [-v]
@@ -135,7 +215,7 @@ optional arguments:
 **Scanning a single target:**
 
 ```
-python3 autorecon.py 127.0.0.1
+$ autorecon 127.0.0.1
 [*] Scanning target 127.0.0.1
 [*] Running service detection nmap-full-tcp on 127.0.0.1
 [*] Running service detection nmap-top-20-udp on 127.0.0.1
@@ -183,7 +263,7 @@ Note that the actual command line output will be colorized if your terminal supp
 **Scanning multiple targets**
 
 ```
-python3 autorecon.py 192.168.1.100 192.168.1.1/30 localhost
+$ autorecon 192.168.1.100 192.168.1.1/30 localhost
 [*] Scanning target 192.168.1.100
 [*] Scanning target 192.168.1.1
 [*] Scanning target 192.168.1.2
@@ -208,7 +288,7 @@ AutoRecon supports multiple targets per scan, and will expand IP ranges provided
 **Scanning multiple targets with advanced options**
 
 ```
-python3 autorecon.py -ct 2 -cs 2 -vv -o outputdir 192.168.1.100 192.168.1.1/30 localhost
+$ autorecon -ct 2 -cs 2 -vv -o outputdir 192.168.1.100 192.168.1.1/30 localhost
 [*] Scanning target 192.168.1.100
 [*] Scanning target 192.168.1.1
 [*] Running service detection nmap-quick on 192.168.1.100 with nmap -vv --reason -Pn -sV -sC --version-all -oN "/root/outputdir/192.168.1.100/scans/_quick_tcp_nmap.txt" -oX "/root/outputdir/192.168.1.100/scans/_quick_tcp_nmap.xml" 192.168.1.100
