@@ -1,4 +1,4 @@
-#sudo docker build -t tib3rus/autorecon .
+#sudo docker build -t tib3rius/autorecon .
 #mkdir /root/results
 #Usage: sudo docker run -it -v /root/results:/results --rm --name autorecon-container tib3rius/autorecon 127.0.0.1
 
