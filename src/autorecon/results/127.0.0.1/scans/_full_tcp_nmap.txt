@@ -1,1 +1,0 @@
-# Nmap 7.80 scan initiated Thu Oct  1 17:26:14 2020 as: nmap -vv --reason -Pn -A --osscan-guess --version-all -p- -oN /home/gorgamite/Documents/AutoRecon/src/autorecon/results/127.0.0.1/scans/_full_tcp_nmap.txt -oX /home/gorgamite/Documents/AutoRecon/src/autorecon/results/127.0.0.1/scans/xml/_full_tcp_nmap.xml 127.0.0.1
