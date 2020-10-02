@@ -1,0 +1,1 @@
+# Nmap 7.80 scan initiated Thu Oct  1 17:26:14 2020 as: nmap -vv --reason -Pn -sV -sC --version-all -oN /home/gorgamite/Documents/AutoRecon/src/autorecon/results/127.0.0.1/scans/_quick_tcp_nmap.txt -oX /home/gorgamite/Documents/AutoRecon/src/autorecon/results/127.0.0.1/scans/xml/_quick_tcp_nmap.xml 127.0.0.1

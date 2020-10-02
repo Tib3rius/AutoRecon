@@ -25,7 +25,8 @@ import toml
 import termios
 import appdirs
 import shutil
-import playsound
+from playsound import playsound
+import threading
 
 # Globals
 verbose = 0
@@ -730,7 +731,7 @@ def main():
     errors = False
 
     if args.song == True:
-        playsound("NORADNuclearMissleTones.mp3")
+        threading.Thread(target=playsound, args=('NORADNuclearMissleTones.mp3',), daemon=True).start() #https://github.com/TaylorSMarks/playsound/issues/38 I need to thread the song in the background due to this error.
 
     if args.concurrent_targets <= 0:
         error('Argument -ch/--concurrent-targets: must be at least 1.')
