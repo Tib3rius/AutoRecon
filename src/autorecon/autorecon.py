@@ -25,6 +25,7 @@ import toml
 import termios
 import appdirs
 import shutil
+import playsound
 
 # Globals
 verbose = 0
@@ -719,6 +720,7 @@ def main():
     nmap_group.add_argument('--nmap-append', action='store', default='', help='Append to the default {nmap_extra} variable in scans.')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='Enable verbose output. Repeat for more verbosity.')
     parser.add_argument('--disable-sanity-checks', action='store_true', default=False, help='Disable sanity checks that would otherwise prevent the scans from running. Default: false')
+    parser.add_argument('--song', action='store_true', default=False, help='Be a 1337 h4x0r with this one simple trick!')
     parser.error = lambda s: fail(s[0].upper() + s[1:])
     args = parser.parse_args()
 
@@ -726,6 +728,9 @@ def main():
     only_scans_dir = args.only_scans_dir
 
     errors = False
+
+    if args.song == True:
+        playsound("NORADNuclearMissleTones.mp3")
 
     if args.concurrent_targets <= 0:
         error('Argument -ch/--concurrent-targets: must be at least 1.')

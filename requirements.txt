@@ -1,3 +1,4 @@
 colorama
 toml
 appdirs
+playsound
