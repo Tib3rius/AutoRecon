@@ -170,7 +170,8 @@ AutoRecon uses Python 3 specific functionality and does not support Python 2.
 ```
 usage: autorecon    [-h] [-t TARGET_FILE] [-ct <number>] [-cs <number>]
                     [--profile PROFILE_NAME] [-o OUTPUT_DIR] [--single-target]
-                    [--only-scans-dir] [--heartbeat HEARTBEAT]
+                    [--only-scans-dir] [--custom-dir CUSTOM_DIR]
+                    [--heartbeat HEARTBEAT]
                     [--nmap NMAP | --nmap-append NMAP_APPEND] [-v]
                     [--disable-sanity-checks]
                     [targets [targets ...]]
@@ -205,6 +206,9 @@ optional arguments:
   --only-scans-dir      Only create the "scans" directory for results. Other
                         directories (e.g. exploit, loot, report) will not be
                         created. Default: false
+  --custom-dir CUSTOM_DIR         
+                        Create a "custom" directory (in addition to scans, exploit, 
+                        loot & report)
   --heartbeat HEARTBEAT
                         Specifies the heartbeat interval (in seconds) for task
                         status messages. Default: 60

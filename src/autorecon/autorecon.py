@@ -39,6 +39,7 @@ username_wordlist = "/usr/share/seclists/Usernames/top-usernames-shortlist.txt"
 password_wordlist = "/usr/share/seclists/Passwords/darkweb2017-top100.txt"
 single_target = False
 only_scans_dir = False
+custom_dir = False
 
 
 def _quit():
@@ -632,7 +633,7 @@ async def scan_services(loop, semaphore, target):
 
                                             pending.add(asyncio.ensure_future(run_cmd(semaphore, e(command), target, tag=tag, patterns=patterns)))
 
-def scan_host(target, concurrent_scans, outdir):
+def scan_host(target, concurrent_scans, outdir, customdir):
     start_time = time.time()
     info('Scanning target {byellow}{target.address}{rst}')
 
@@ -659,6 +660,10 @@ def scan_host(target, concurrent_scans, outdir):
 
         screenshotdir = os.path.abspath(os.path.join(reportdir, 'screenshots'))
         os.makedirs(screenshotdir, exist_ok=True)
+
+    if custom_dir:
+        cdir = os.path.abspath(os.path.join(basedir, customdir))
+        os.makedirs(cdir, exist_ok=True)
 
     scandir = os.path.abspath(os.path.join(basedir, 'scans'))
     target.scandir = scandir
@@ -687,6 +692,7 @@ class Target:
         self.address = address
         self.basedir = ''
         self.reportdir = ''
+        # self.customdir = ''
         self.scandir = ''
         self.scans = []
         self.lock = None
@@ -697,6 +703,7 @@ class Target:
 def main():
     global single_target
     global only_scans_dir
+    global custom_dir
     global port_scan_profile
     global heartbeat_interval
     global nmap
@@ -713,6 +720,7 @@ def main():
     parser.add_argument('-o', '--output', action='store', default='results', dest='output_dir', help='The output directory for results. Default: %(default)s')
     parser.add_argument('--single-target', action='store_true', default=False, help='Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will be created within the output directory. Default: false')
     parser.add_argument('--only-scans-dir', action='store_true', default=False, help='Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created. Default: false')
+    parser.add_argument('--custom-dir', action='store', dest='custom_dir', help='Create a "custom" directory (in addition to scans, exploit, loot & report)')
     parser.add_argument('--heartbeat', action='store', type=int, default=60, help='Specifies the heartbeat interval (in seconds) for task status messages. Default: %(default)s')
     nmap_group = parser.add_mutually_exclusive_group()
     nmap_group.add_argument('--nmap', action='store', default='-vv --reason -Pn', help='Override the {nmap_extra} variable in scans. Default: %(default)s')
@@ -789,6 +797,10 @@ def main():
         nmap += " " + args.nmap_append
 
     outdir = args.output_dir
+    customdir = args.custom_dir
+    if customdir != None:
+        custom_dir = True
+
     srvname = ''
     verbose = args.verbose
 
@@ -861,7 +873,7 @@ def main():
 
         for address in targets:
             target = Target(address)
-            futures.append(executor.submit(scan_host, target, concurrent_scans, outdir))
+            futures.append(executor.submit(scan_host, target, concurrent_scans, outdir, customdir))
 
         try:
             for future in as_completed(futures):
