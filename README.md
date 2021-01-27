@@ -32,6 +32,12 @@ If you don't have a Kali instance, you can quickly install AutoRecon using the D
 sudo docker build -t tib3rius/autorecon .
 ```
 
+Now you can run it capturing the results by mounting a local directory (here `/home/user/results`) on the `/results` directory inside the container.
+
+```bash
+sudo docker run -v /home/user/results:/results -it tib3rius/autorecon [OPTIONS] 127.0.0.1
+```
+
 ## Requirements
 
 - Python 3
