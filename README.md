@@ -65,6 +65,8 @@ $ python3 -m pip install --user pipx
 $ python3 -m pipx ensurepath
 ```
 
+You will have to re-source your ~/.bashrc or ~/.zshrc file (or open a new tab) after running these commands in order to use pipx.
+
 Note that if you want to elevate privileges to run a program installed with `pipx`, with `sudo`, you have two options:
 
 1. Append the appropriate path to your execution command, using _one_ of the following examples (recommended):
