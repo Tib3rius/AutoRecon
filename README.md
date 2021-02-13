@@ -146,8 +146,10 @@ $ pipx install git+https://github.com/Tib3rius/AutoRecon.git
 
 ### Using `pip`
 
+If installing using pip, you'll need to run the installation command as root or with sudo in order to be able to run autorecon using sudo:
+
 ```bash
-$ python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
+$ sudo python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
 ```
 
 ### Manual
