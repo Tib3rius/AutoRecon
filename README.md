@@ -61,6 +61,7 @@ The `pip3` command should now be usable.
 Further, it's recommended you use `pipx` to manage your python packages; this installs each python package in it's own virtualenv, and makes it available in the global context, which avoids conflicting package dependencies and the resulting instability. To summarise the installation instructions:
 
 ```bash
+$ sudo apt install python3-venv
 $ python3 -m pip install --user pipx
 $ python3 -m pipx ensurepath
 ```
