@@ -126,12 +126,21 @@ ignore-service-names = [
     command = 'whatweb --color=never --no-errors -a 3 -v {scheme}://{address}:{port} 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_whatweb.txt"'
 
     [[http.scan]]
-    name = 'nikto'
-    command = 'nikto -ask=no -h {scheme}://{address}:{port} 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_nikto.txt"'
+    name = 'ffuf'
+    command = 'ffuf -u {scheme}://{address}:{port}/FUZZ -t 10 -w /usr/share/seclists/Discovery/Web-Content/common.txt -e ".txt,.html,.php,.asp,.aspx,.jsp" -v -of csv -o {scandir}/{protocol}_{port}_{scheme}_ffuf.txt'
 
-    [[http.scan]]
-    name = 'gobuster'
-    command = 'if [[ `gobuster -h 2>&1 | grep -F "mode (dir)"` ]]; then gobuster -u {scheme}://{address}:{port}/ -w /usr/share/seclists/Discovery/Web-Content/common.txt -e -k -l -s "200,204,301,302,307,401,403" -x "txt,html,php,asp,aspx,jsp" -o "{scandir}/{protocol}_{port}_{scheme}_gobuster.txt"; else gobuster dir -u {scheme}://{address}:{port}/ -w /usr/share/seclists/Discovery/Web-Content/common.txt -z -k -l -x "txt,html,php,asp,aspx,jsp" -o "{scandir}/{protocol}_{port}_{scheme}_gobuster.txt"; fi'
+    [[http.manual]]
+    description = '(nikto) old but generally reliable web server enumeration tool'
+    commands = [
+        'nikto -ask=no -h {scheme}://{address}:{port} 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_nikto.txt"'
+    ]
+
+    [[http.manual]]
+    description = '(ffuf) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:'
+    commands = [
+        'ffuf -u {scheme}://{address}:{port}/FUZZ -w /usr/share/seclists/Discovery/Web-Content/big.txt -e ".txt,.html,.php,.asp,.aspx,.jsp" -v -of csv -o {scandir}/{protocol}_{port}_{scheme}_ffuf_big.txt',
+        'ffuf -u {scheme}://{address}:{port}/FUZZ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e ".txt,.html,.php,.asp,.aspx,.jsp" -v -of csv -o {scandir}/{protocol}_{port}_{scheme}_ffuf_dirbuster.txt'
+    ]
 
     [[http.manual]]
     description = '(dirsearch) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:'
