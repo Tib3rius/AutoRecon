@@ -127,7 +127,7 @@ ignore-service-names = [
 
     [[http.scan]]
     name = 'ffuf'
-    command = 'ffuf -u {scheme}://{address}:{port}/FUZZ -t 10 -w /usr/share/seclists/Discovery/Web-Content/common.txt -e ".txt,.html,.php,.asp,.aspx,.jsp" -v -of csv -o {scandir}/{protocol}_{port}_{scheme}_ffuf.txt'
+    command = 'ffuf -u {scheme}://{address}:{port}/FUZZ -t 10 -w /usr/share/seclists/Discovery/Web-Content/common.txt -e ".txt,.html,.php,.asp,.aspx,.jsp" -v | tee {scandir}/{protocol}_{port}_{scheme}_ffuf.txt'
 
     [[http.manual]]
     description = '(nikto) old but generally reliable web server enumeration tool'
@@ -138,8 +138,8 @@ ignore-service-names = [
     [[http.manual]]
     description = '(ffuf) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:'
     commands = [
-        'ffuf -u {scheme}://{address}:{port}/FUZZ -w /usr/share/seclists/Discovery/Web-Content/big.txt -e ".txt,.html,.php,.asp,.aspx,.jsp" -v -of csv -o {scandir}/{protocol}_{port}_{scheme}_ffuf_big.txt',
-        'ffuf -u {scheme}://{address}:{port}/FUZZ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e ".txt,.html,.php,.asp,.aspx,.jsp" -v -of csv -o {scandir}/{protocol}_{port}_{scheme}_ffuf_dirbuster.txt'
+        'ffuf -u {scheme}://{address}:{port}/FUZZ -w /usr/share/seclists/Discovery/Web-Content/big.txt -e ".txt,.html,.php,.asp,.aspx,.jsp" -v | tee {scandir}/{protocol}_{port}_{scheme}_ffuf_big.txt',
+        'ffuf -u {scheme}://{address}:{port}/FUZZ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e ".txt,.html,.php,.asp,.aspx,.jsp" -v | tee {scandir}/{protocol}_{port}_{scheme}_ffuf_dirbuster.txt'
     ]
 
     [[http.manual]]
