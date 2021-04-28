@@ -221,7 +221,12 @@ def calculate_elapsed_time(start_time):
 async def read_stream(stream, target, tag='?', patterns=[], color=Fore.BLUE):
     address = target.address
     while True:
-        line = await stream.readline()
+        line = ""
+        try:
+            line = await stream.readline()
+        except ValueError:
+            continue
+        
         if line:
             line = str(line.rstrip(), 'utf8', 'ignore')
             debug(color + '[' + Style.BRIGHT + address + ' ' + tag + Style.NORMAL + '] ' + Fore.RESET + '{line}', color=color)
@@ -878,4 +883,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
