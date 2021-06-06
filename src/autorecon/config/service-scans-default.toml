@@ -59,7 +59,7 @@ service-names = [
 ]
 
     [[finger.scan]]
-    nmap = 'nmap-finger'
+    name = 'nmap-finger'
     command = 'nmap {nmap_extra} -sV -p {port} --script="banner,finger" -oN "{scandir}/{protocol}_{port}_finger_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_finger_nmap.xml" {address}'
 
 [ftp]
