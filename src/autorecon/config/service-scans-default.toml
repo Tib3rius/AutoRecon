@@ -126,8 +126,8 @@ ignore-service-names = [
     command = 'whatweb --color=never --no-errors -a 3 -v {scheme}://{address}:{port} 2>&1 | tee "{scandir}/{protocol}_{port}_{scheme}_whatweb.txt"'
 
     [[http.scan]]
-    name = 'ffuf'
-    command = 'ffuf -u {scheme}://{address}:{port}/FUZZ -t 10 -w /usr/share/seclists/Discovery/Web-Content/common.txt -e ".txt,.html,.php,.asp,.aspx,.jsp" -v | tee {scandir}/{protocol}_{port}_{scheme}_ffuf.txt'
+    name = 'feroxbuster'
+    command = 'feroxbuster -u {scheme}://{address}:{port} -t 10 -w /usr/share/seclists/Discovery/Web-Content/common.txt -x "txt,html,php,asp,aspx,jsp" -v -k -n -o {scandir}/{protocol}_{port}_{scheme}_feroxbuster.txt'
 
     [[http.manual]]
     description = '(nikto) old but generally reliable web server enumeration tool'
@@ -136,10 +136,10 @@ ignore-service-names = [
     ]
 
     [[http.manual]]
-    description = '(ffuf) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:'
+    description = '(feroxbuster) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:'
     commands = [
-        'ffuf -u {scheme}://{address}:{port}/FUZZ -w /usr/share/seclists/Discovery/Web-Content/big.txt -e ".txt,.html,.php,.asp,.aspx,.jsp" -v | tee {scandir}/{protocol}_{port}_{scheme}_ffuf_big.txt',
-        'ffuf -u {scheme}://{address}:{port}/FUZZ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e ".txt,.html,.php,.asp,.aspx,.jsp" -v | tee {scandir}/{protocol}_{port}_{scheme}_ffuf_dirbuster.txt'
+        'feroxbuster -u {scheme}://{address}:{port} -t 10 -w /usr/share/seclists/Discovery/Web-Content/big.txt -x "txt,html,php,asp,aspx,jsp" -v -k -n -o {scandir}/{protocol}_{port}_{scheme}_feroxbuster_big.txt',
+        'feroxbuster -u {scheme}://{address}:{port} -t 10 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x "txt,html,php,asp,aspx,jsp" -v -k -n -o {scandir}/{protocol}_{port}_{scheme}_feroxbuster_dirbuster.txt'
     ]
 
     [[http.manual]]
