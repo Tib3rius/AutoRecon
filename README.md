@@ -168,6 +168,10 @@ $ python3 autorecon.py [OPTIONS] 127.0.0.1
 
 See detailed usage options below.
 
+### Upgrading
+
+If you installed using pipx or pip it is recommended that prior to upgrading, you remove all config files stored in ~/.config/AutoRecon. Note that if you run AutoRecon using sudo, you'll also have to delete the config files in /root/.config/AutoRecon.
+
 ## Usage
 
 AutoRecon uses Python 3 specific functionality and does not support Python 2.
