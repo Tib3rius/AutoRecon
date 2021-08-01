@@ -297,8 +297,8 @@ class ServiceScan(Plugin):
         self.ignore_ports = {'tcp':[], 'udp':[]}
         self.services = []
         self.ignore_services = []
-        self.run_once_bool = False
-        self.require_ssl_bool = False
+        self.run_once_boolean = False
+        self.require_ssl_boolean = False
 
     @final
     def add_port_match(self, protocol, port, negative_match=False):
@@ -339,12 +339,12 @@ class ServiceScan(Plugin):
             sys.exit(1)
 
     @final
-    def require_ssl(self, bool):
-        self.require_ssl_bool = bool
+    def require_ssl(self, boolean):
+        self.require_ssl_boolean = boolean
 
     @final
-    def run_once(self, bool):
-        self.run_once_bool = bool
+    def run_once(self, boolean):
+        self.run_once_boolean = boolean
 
 class AutoRecon(object):
 
@@ -944,13 +944,13 @@ async def scan_target(target):
                                 break
 
                         if plugin_is_runnable and matching_tags and not excluded_tags:
-                            # Skip plugin if run_once_bool and plugin already in target scans
-                            if plugin.run_once_bool and (plugin.slug,) in target.scans:
+                            # Skip plugin if run_once_boolean and plugin already in target scans
+                            if plugin.run_once_boolean and (plugin.slug,) in target.scans:
                                 warn('{byellow}[' + plugin_tag + ' against ' + target.address + '{srst}] Plugin should only be run once and it appears to have already been queued. Skipping.{rst}')
                                 continue
 
-                            # Skip plugin if require_ssl_bool and port is not secure
-                            if plugin.require_ssl_bool and not service.secure:
+                            # Skip plugin if require_ssl_boolean and port is not secure
+                            if plugin.require_ssl_boolean and not service.secure:
                                 continue
 
                             # Skip plugin if service port is in ignore_ports:
@@ -971,7 +971,7 @@ async def scan_target(target):
                             # TODO: check if plugin matches tags, BUT run manual commands anyway!
                             matching_plugins.append(plugin)
 
-                        if plugin.manual_commands and (not plugin.run_once_bool or (plugin.run_once_bool and (plugin.slug,) not in target.scans)):
+                        if plugin.manual_commands and (not plugin.run_once_boolean or (plugin.run_once_boolean and (plugin.slug,) not in target.scans)):
                             with open(os.path.join(scandir, '_manual_commands.txt'), 'a') as file:
                                 if not heading:
                                     file.write(e('[*] {service.name} on {service.protocol}/{service.port}\n\n'))
@@ -988,7 +988,7 @@ async def scan_target(target):
                 plugin_tag = service.tag() + '/' + plugin.slug
 
                 scan_tuple = (service.protocol, service.port, service.name, plugin.slug)
-                if plugin.run_once_bool:
+                if plugin.run_once_boolean:
                     scan_tuple = (plugin.slug,)
 
                 if scan_tuple in target.scans:
