@@ -1,5 +1,11 @@
 > It's like bowling with bumpers. - [@ippsec](https://twitter.com/ippsec)
 
+# Please Read Before Using
+
+**This is a public beta of AutoRecon version 2, which is effectively a complete rewrite of version 1. As such, there are no promises about stability, and you should expect bugs. During this beta, testers are encouraged to try out the new features, especially the new plugin functionality, and report bugs when they are found. Feedback on improvements and changes is also encouraged. There is no guarantee that the current plugin system "API" will be the same when version 2 is released.**
+
+**A wiki will be added to this repository to more fully explain the features in AutoRecon version 2.**
+
 # AutoRecon
 
 AutoRecon is a multi-threaded network reconnaissance tool which performs automated enumeration of services. It is intended as a time-saving tool for use in CTFs and other penetration testing environments (e.g. OSCP). It may also be useful in real-world engagements.
