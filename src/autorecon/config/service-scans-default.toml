@@ -488,8 +488,18 @@ service-names = [
     command = 'nmap {nmap_extra} -sV -p {port} --script="banner,(smtp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_smtp_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_smtp_nmap.xml" {address}'
 
     [[smtp.scan]]
-    name = 'smtp-user-enum'
-    command = 'smtp-user-enum -M VRFY -U "{username_wordlist}" -t {address} -p {port} 2>&1 | tee "{scandir}/{protocol}_{port}_smtp_user-enum.txt"'
+    name = 'hydra-smtp-enum-vrfy'
+    command = 'hydra smtp-enum://{address}:{port}/vrfy -L "{username_wordlist}" -o "{scandir}/{protocol}_{port}_smtp_user-enum_hydra_vrfy.txt"'
+
+    [[smtp.scan]]
+    name = 'hydra-smtp-enum-expn'
+    command = 'hydra smtp-enum://{address}:{port}/expn -L "{username_wordlist}" -o "{scandir}/{protocol}_{port}_smtp_user-enum_hydra_expn.txt"'
+
+    [[smtp.manual]]
+    description = 'Try User Enumeration using "RCPT TO". Replace <TARGET-DOMAIN> with the targets domain name.'
+    commands = [
+        'hydra smtp-enum://{address}:{port}/rcpt -L "{username_wordlist}" -o "{scandir}/{protocol}_{port}_smtp_user-enum_hydra_rcpt.txt" -p <TARGET-DOMAIN>'
+    ]
 
 [snmp]
 
