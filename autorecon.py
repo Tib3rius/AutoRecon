@@ -124,7 +124,6 @@ class Service:
 
         if target.autorecon.config['verbose'] >= 1:
             info('Service scan {bblue}' + plugin.name + ' (' + tag + '){rst} is running the following command against {byellow}' + address + '{rst}: ' + cmd)
-            #info('{blue}[{bright}' + address + ' ' + tag + '{srst}]{rst} Running command: ' + cmd)
 
         if outfile is not None:
             outfile = os.path.abspath(os.path.join(target.scandir, e(outfile)))
@@ -384,15 +383,6 @@ class AutoRecon(object):
     def add_argument(self, plugin, name, **kwargs):
         # TODO: make sure name is simple.
         name = '--' + plugin.slug + '.' + slugify(name)
-        '''if 'action' in kwargs.keys() and kwargs['action'] != 'store':
-            if kwargs['action'] in ['store_true']
-        else:
-            if 'metavar' not in kwargs.keys():
-                kwargs['metavar'] = 'VALUE'
-
-        if 'metavar' not in kwargs.keys() and 'choices' not in kwargs.keys() and ('action' in kwargs.keys() and kwargs['action'] not in ['store_true', 'store_false']):
-            kwargs['metavar'] = 'VALUE'
-        '''
 
         if self.argparse_group is None:
             self.argparse_group = self.argparse.add_argument_group('plugin arguments', description='These are optional arguments for certain plugins.')
@@ -639,7 +629,10 @@ def cancel_all_tasks(signal, frame):
     for target in autorecon.scanning_targets:
         for process_list in target.running_tasks.values():
             for process_dict in process_list['processes']:
-                process_dict['process'].kill()
+                try:
+                    process_dict['process'].kill()
+                except ProcessLookupError: # Will get raised if the process finishes before we get to killing it.
+                    pass
 
 async def start_heartbeat(target, period=60):
     while True:
@@ -712,24 +705,12 @@ async def service_scan(plugin, service):
     while True:
         if semaphore.locked():
             if semaphore != service.target.autorecon.port_scan_semaphore: # This will be true unless user sets max_scans == max_port_scans
-                # port_scan_task_count = 0
-                # for t in asyncio.all_tasks():
-                #     frame = inspect.getframeinfo(t.get_stack(limit=1)[0])
-                #     if frame.function == 'port_scan' and 'await plugin.run(target)' in frame.code_context[0]:
-                #         #print(frame)
-                #         port_scan_task_count += 1
-                # print("Old Port Scan Task Count: " + str(port_scan_task_count))
 
                 port_scan_task_count = 0
                 for targ in service.target.autorecon.scanning_targets:
                     for process_list in targ.running_tasks.values():
-                        #print('Length: ' + str(len(process_list)))
-                        #for process_dict in process_list['processes']:
                         if issubclass(process_list['plugin'].__class__, PortScan):
-                            #for process_dict in process_list['processes']:
-                            #    print(str(process_dict['process'].returncode) + ': ' + process_dict['cmd'])
                             port_scan_task_count += 1
-                #print("New Port Scan Task Count: " + str(new_port_scan_task_count))
 
                 if not service.target.autorecon.pending_targets and (service.target.autorecon.config['max_port_scans'] - port_scan_task_count) >= 1: # If no more targets, and we have room, use port scan semaphore.
                     if service.target.autorecon.port_scan_semaphore.locked():
@@ -892,8 +873,6 @@ async def scan_target(target):
             else:
                 continue
 
-            #plugin = task.result()['plugin']
-            #info('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){srst}]{rst} found {bmagenta}' + service.name + '{rst} on {bmagenta}' + service.protocol + '/' + str(service.port) + '{rst} on {byellow}' + target.address + '{rst}')
             info('Found {bmagenta}' + service.name + '{rst} on {bmagenta}' + service.protocol + '/' + str(service.port) + '{rst} on {byellow}' + target.address + '{rst}')
 
             service.target = target
@@ -1116,7 +1095,7 @@ async def main():
             for key, val in global_toml.items():
                 if key == 'global' and isinstance(val, dict): # Process global plugin options.
                     for gkey, gvals in global_toml['global'].items():
-                        if isinstance(gvals, dict):# and 'help' in gvals:
+                        if isinstance(gvals, dict):
                             options = {'metavar':'VALUE'}
 
                             if 'default' in gvals:
@@ -1360,8 +1339,6 @@ async def main():
 
     start_time = time.time()
 
-    #sys.exit(0)
-
     pending = []
     i = 0
     while autorecon.pending_targets:
@@ -1385,19 +1362,11 @@ async def main():
             if autorecon.pending_targets:
                 pending.add(asyncio.create_task(scan_target(Target(autorecon.pending_targets.pop(0), autorecon))))
 
-        #port_scan_task_count = 0
-        #for t in asyncio.all_tasks():
-        #    if inspect.getframeinfo(t.get_stack(limit=1)[0]).function == 'port_scan':
-        #        port_scan_task_count += 1
-        #print("Old Port Scan Task Count: " + str(port_scan_task_count))
-
         port_scan_task_count = 0
         for targ in autorecon.scanning_targets:
             for process_list in targ.running_tasks.values():
                 if issubclass(process_list['plugin'].__class__, PortScan):
-                    #print(process_list)
                     port_scan_task_count += 1
-        #print("New Port Scan Task Count: " + str(port_scan_task_count))
 
         num_new_targets = math.ceil((autorecon.config['max_port_scans'] - port_scan_task_count) / port_scan_plugin_count)
         if num_new_targets > 0:
