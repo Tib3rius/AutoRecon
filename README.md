@@ -76,7 +76,20 @@ $ sudo apt install seclists curl enum4linux feroxbuster nbtscan nikto nmap onesi
 
 Ensure you have all of the requirements installed as per the previous section.
 
-First install the dependencies:
+Clone the repository and switch to the beta branch:
+
+```bash
+$ git clone --branch beta https://github.com/Tib3rius/AutoRecon
+```
+
+If you already had a copy of the repository, you can run the following from the main directory to get the beta code:
+
+```bash
+$ git pull
+$ git checkout beta
+```
+
+From within the AutoRecon directory, install the dependencies:
 
 ```bash
 $ python3 -m pip install -r requirements.txt
