@@ -1,0 +1,7 @@
+[global.username-wordlist]
+default = '/usr/share/seclists/Usernames/top-usernames-shortlist.txt'
+help = 'A wordlist of usernames, useful for bruteforcing. Default: %(default)s'
+
+[global.password-wordlist]
+default = '/usr/share/seclists/Passwords/darkweb2017-top100.txt'
+help = 'A wordlist of passwords, useful for bruteforcing. Default: %(default)s'
