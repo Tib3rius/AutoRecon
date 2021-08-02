@@ -438,7 +438,7 @@ Both the port-scan and the service-detection commands use the {scandir} and {add
 
 Note that if a port-scan command is defined without a corresponding service-detection command, AutoRecon will refuse to scan.
 
-This more complicated example is only really useful if you want to use unicornscan's speed in conjuction with nmap's service detection abilities. If you are content with using Nmap for both port scanning and service detection, you do not need to use this setup.
+This more complicated example is only really useful if you want to use unicornscan's speed in conjunction with nmap's service detection abilities. If you are content with using Nmap for both port scanning and service detection, you do not need to use this setup.
 
 ### Service Scans
 
@@ -585,7 +585,7 @@ In fact, enum4linux will always try these ports when it is run. So if the SMB se
 >
 >\- d0hnuts (rooted 5/5 exam hosts)
 
-> Autorecon is not just any other tool, it is a recon correlation framwork for engagements. This helped me fire a whole bunch of scans while I was working on other targets. This can help a lot in time management. This assisted me to own 4/5 boxes in pwk exam! Result: Passed!
+> Autorecon is not just any other tool, it is a recon correlation framework for engagements. This helped me fire a whole bunch of scans while I was working on other targets. This can help a lot in time management. This assisted me to own 4/5 boxes in pwk exam! Result: Passed!
 >
 >\- Wh0ami (rooted 4/5 exam hosts)
 
