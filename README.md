@@ -129,9 +129,9 @@ By default, results will be stored in the ./results directory. A new sub directo
 │   ├── proof.txt
 │   └── screenshots/
 └── scans/
-    ├── _commands.log
-    ├── _manual_commands.txt
-    └── xml/
+	├── _commands.log
+	├── _manual_commands.txt
+	└── xml/
 ```
 
 The exploit directory is intended to contain any exploit code you download / write for the target.
