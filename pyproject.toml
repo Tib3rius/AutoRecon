@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "autorecon"
 version = "1.0.0"
-description = "A multi-threaded network reconaissance tool which performs automated enumeration of services"
+description = "A multi-threaded network reconnaissance tool which performs automated enumeration of services"
 authors = ["Tib3rius"]
 license = "GPL-3.0-only"
 readme = "README.md"
