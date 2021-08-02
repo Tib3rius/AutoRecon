@@ -245,23 +245,29 @@ class Plugin(object):
 			return None
 
 	@final
-	def get_global_option(self, name):
+	def get_global_option(self, name, default=None):
 		name = 'global.' + slugify(name).replace('-', '_')
 
 		if name in vars(self.autorecon.args):
 			return vars(self.autorecon.args)[name]
 		else:
+			if default:
+				return default
 			return None
 
 	@final
-	def get_global(self, name):
-		return self.get_global_option(name)
+	def get_global(self, name, default=None):
+		return self.get_global_option(name, default)
 
 	@final
 	def add_manual_commands(self, description, commands):
 		if not isinstance(commands, list):
 			commands = [commands]
-		self.manual_commands[description] = commands
+		if description not in self.manual_commands:
+			self.manual_commands[description] = []
+
+		# Merge in new unique commands, while preserving order.
+		[self.manual_commands[description].append(m) for m in commands if m not in self.manual_commands[description]]
 
 	@final
 	def add_manual_command(self, description, command):
