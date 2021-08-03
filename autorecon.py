@@ -161,7 +161,12 @@ class CommandStreamReader(object):
 		while True:
 			if self.stream.at_eof():
 				break
-			line = (await self.stream.readline()).decode('utf8').rstrip()
+			try:
+				line = (await self.stream.readline()).decode('utf8').rstrip()
+			except ValueError:
+				error('{blue}[{bright}' + self.target.address + '/' + self.tag + '{srst}]{crst} A line was longer than 64 KiB and cannot be processed. Ignoring.')
+				continue
+
 			if self.target.autorecon.config['verbose'] >= 2:
 				if line != '':
 					info('{blue}[{bright}' + self.target.address + '/' + self.tag + '{srst}]{crst} ' + line.replace('{', '{{').replace('}', '}}'))
