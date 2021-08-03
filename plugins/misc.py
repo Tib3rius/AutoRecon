@@ -128,7 +128,14 @@ class SMTPUserEnum(ServiceScan):
 		self.match_service_name('^smtp')
 
 	async def run(self, service):
-		await service.execute('smtp-user-enum -M VRFY -U "' + self.get_global('username_wordlist') + '" -t {address} -p {port} 2>&1', outfile='{protocol}_{port}_smtp_user-enum.txt')
+		await service.execute('hydra smtp-enum://{address}:{port}/vrfy -L "' + self.get_global('username_wordlist', default='/usr/share/seclists/Usernames/top-usernames-shortlist.txt') + '" 2>&1', outfile='{protocol}_{port}_smtp_user-enum_hydra_vrfy.txt')
+		await service.execute('hydra smtp-enum://{address}:{port}/expn -L "' + self.get_global('username_wordlist', default='/usr/share/seclists/Usernames/top-usernames-shortlist.txt') + '" 2>&1', outfile='{protocol}_{port}_smtp_user-enum_hydra_expn.txt')
+
+	def manual(self):
+		self.add_manual_command('Try User Enumeration using "RCPT TO". Replace <TARGET-DOMAIN> with the target\'s domain name:', [
+			'hydra smtp-enum://{address}:{port}/rcpt -L "' + self.get_global('username_wordlist', default='/usr/share/seclists/Usernames/top-usernames-shortlist.txt') + '" -o "{scandir}/{protocol}_{port}_smtp_user-enum_hydra_rcpt.txt" -p <TARGET-DOMAIN>'
+		])
+
 
 class NmapTelnet(ServiceScan):
 

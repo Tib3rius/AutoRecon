@@ -57,7 +57,6 @@ onesixtyone
 oscanner
 smbclient
 smbmap
-smtp-user-enum
 snmpwalk
 sslscan
 svwar
@@ -69,7 +68,7 @@ wkhtmltopdf
 On Kali Linux, you can ensure these are all installed using the following command:
 
 ```bash
-$ sudo apt install seclists curl enum4linux feroxbuster nbtscan nikto nmap onesixtyone oscanner smbclient smbmap smtp-user-enum snmp sslscan sipvicious tnscmd10g whatweb wkhtmltopdf
+$ sudo apt install seclists curl enum4linux feroxbuster nbtscan nikto nmap onesixtyone oscanner smbclient smbmap snmp sslscan sipvicious tnscmd10g whatweb wkhtmltopdf
 ```
 
 ## Installation
