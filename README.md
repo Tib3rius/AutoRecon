@@ -187,7 +187,7 @@ The scans/xml directory stores any XML output (e.g. from Nmap scans) separately 
 >
 >\- d0hnuts (rooted 5/5 exam hosts)
 
-> Autorecon is not just any other tool, it is a recon correlation framwork for engagements. This helped me fire a whole bunch of scans while I was working on other targets. This can help a lot in time management. This assisted me to own 4/5 boxes in pwk exam! Result: Passed!
+> Autorecon is not just any other tool, it is a recon correlation framweork for engagements. This helped me fire a whole bunch of scans while I was working on other targets. This can help a lot in time management. This assisted me to own 4/5 boxes in pwk exam! Result: Passed!
 >
 >\- Wh0ami (rooted 4/5 exam hosts)
 
