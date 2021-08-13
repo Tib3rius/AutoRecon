@@ -164,12 +164,12 @@ class CommandStreamReader(object):
 			try:
 				line = (await self.stream.readline()).decode('utf8').rstrip()
 			except ValueError:
-				error('{blue}[{bright}' + self.target.address + '/' + self.tag + '{srst}]{crst} A line was longer than 64 KiB and cannot be processed. Ignoring.')
+				error('{bblue}[' + self.target.address + '/' + self.tag + ']{crst} A line was longer than 64 KiB and cannot be processed. Ignoring.')
 				continue
 
 			if self.target.autorecon.config['verbose'] >= 2:
 				if line != '':
-					info('{blue}[{bright}' + self.target.address + '/' + self.tag + '{srst}]{crst} ' + line.replace('{', '{{').replace('}', '}}'))
+					info('{bblue}[' + self.target.address + '/' + self.tag + ']{crst} ' + line.replace('{', '{{').replace('}', '}}'))
 			for p in self.patterns:
 				matches = p.pattern.findall(line)
 				for match in matches:
@@ -177,11 +177,11 @@ class CommandStreamReader(object):
 						with open(os.path.join(self.target.scandir, '_patterns.log'), 'a') as file:
 							if p.description:
 								if self.target.autorecon.config['verbose'] >= 1:
-									info('{blue}[{bright}' + self.target.address + '/' + self.tag + '{srst}] {crst}{bmagenta}' + p.description.replace('{match}', '{bblue}' + match + '{crst}{bmagenta}') + '{rst}')
+									info('{bblue}[' + self.target.address + '/' + self.tag + ']{crst} {bmagenta}' + p.description.replace('{match}', '{bblue}' + match + '{crst}{bmagenta}') + '{rst}')
 								file.writelines(p.description.replace('{match}', match) + '\n\n')
 							else:
 								if self.target.autorecon.config['verbose'] >= 1:
-									info('{blue}[{bright}' + self.target.address + '/' + self.tag + '{srst}] {crst}{bmagenta}Matched Pattern: {bblue}' + match + '{rst}')
+									info('{bblue}[' + self.target.address + '/' + self.tag + ']{crst} {bmagenta}Matched Pattern: {bblue}' + match + '{rst}')
 								file.writelines('Matched Pattern: ' + match + '\n\n')
 
 			if self.outfile is not None:
@@ -367,6 +367,7 @@ class AutoRecon(object):
 		self.argparse = None
 		self.argparse_group = None
 		self.args = None
+		self.missing_services = []
 		self.tags = []
 		self.excluded_tags = []
 		self.patterns = []
@@ -902,6 +903,7 @@ async def scan_target(target):
 			if protocol == 'udp':
 				nmap_extra += ' -sU'
 
+			service_match = False
 			matching_plugins = []
 			heading = False
 
@@ -910,6 +912,7 @@ async def scan_target(target):
 
 				for s in plugin.service_names:
 					if re.search(s, service.name):
+						service_match = True
 						plugin_tag_set = set(plugin.tags)
 
 						matching_tags = False
@@ -934,7 +937,7 @@ async def scan_target(target):
 						if plugin_is_runnable and matching_tags and not excluded_tags:
 							# Skip plugin if run_once_boolean and plugin already in target scans
 							if plugin.run_once_boolean and (plugin.slug,) in target.scans:
-								warn('{byellow}[' + plugin_tag + ' against ' + target.address + '{srst}] Plugin should only be run once and it appears to have already been queued. Skipping.{rst}')
+								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin should only be run once and it appears to have already been queued. Skipping.{rst}')
 								continue
 
 							# Skip plugin if require_ssl_boolean and port is not secure
@@ -943,17 +946,17 @@ async def scan_target(target):
 
 							# Skip plugin if service port is in ignore_ports:
 							if port in plugin.ignore_ports[protocol]:
-								warn('{byellow}[' + plugin_tag + ' against ' + target.address + '{srst}] Plugin cannot be run against ' + protocol + ' port ' + str(port) + '. Skipping.{rst}')
+								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin cannot be run against ' + protocol + ' port ' + str(port) + '. Skipping.{rst}')
 								continue
 
 							# Skip plugin if plugin has required ports and service port is not in them:
 							if plugin.ports[protocol] and port not in plugin.ports[protocol]:
-								warn('{byellow}[' + plugin_tag + ' against ' + target.address + '{srst}] Plugin can only run on specific ports. Skipping.{rst}')
+								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin can only run on specific ports. Skipping.{rst}')
 								continue
 
 							for i in plugin.ignore_service_names:
 								if re.search(i, service.name):
-									warn('{byellow}[' + plugin_tag + ' against ' + target.address + '{srst}] Plugin cannot be run against this service. Skipping.{rst}')
+									warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin cannot be run against this service. Skipping.{rst}')
 									continue
 
 							# TODO: check if plugin matches tags, BUT run manual commands anyway!
@@ -980,12 +983,18 @@ async def scan_target(target):
 					scan_tuple = (plugin.slug,)
 
 				if scan_tuple in target.scans:
-					warn('{byellow}[' + plugin_tag + ' against ' + target.address + '{srst}] Plugin appears to have already been queued, but it is not marked as run_once. Possible duplicate service tag? Skipping.{rst}')
+					warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin appears to have already been queued, but it is not marked as run_once. Possible duplicate service tag? Skipping.{rst}')
 					continue
 				else:
 					target.scans.append(scan_tuple)
 
 				pending.add(asyncio.create_task(service_scan(plugin, service)))
+
+			if not service_match:
+				warn('{byellow}[' + target.address + ']{srst} Service ' + service.full_tag() + ' did not match any plugins.{rst}')
+				if service.full_tag() not in target.autorecon.missing_services:
+					target.autorecon.missing_services.append(service.full_tag())
+
 	heartbeat.cancel()
 	elapsed_time = calculate_elapsed_time(start_time)
 
@@ -1396,13 +1405,15 @@ async def main():
 
 		elapsed_time = calculate_elapsed_time(start_time)
 		warn('{byellow}AutoRecon took longer than the specified timeout period (' + str(autorecon.config['timeout']) + ' min). Cancelling all scans and exiting.{rst}')
-		sys.exit(0)
 	else:
 		while len(asyncio.all_tasks()) > 1: # this code runs in the main() task so it will be the only task left running
 			await asyncio.sleep(1)
 
 		elapsed_time = calculate_elapsed_time(start_time)
 		info('{bright}Finished scanning all targets in ' + elapsed_time + '!{rst}')
+
+	if autorecon.missing_services:
+		warn('{byellow}AutoRecon identified the following services, but could not match them to any plugins. Please report these to Tib3rius: ' + ', '.join(autorecon.missing_services) + '{rst}')
 
 if __name__ == '__main__':
 	signal.signal(signal.SIGINT, cancel_all_tasks)
