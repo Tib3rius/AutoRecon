@@ -912,7 +912,6 @@ async def scan_target(target):
 
 				for s in plugin.service_names:
 					if re.search(s, service.name):
-						service_match = True
 						plugin_tag_set = set(plugin.tags)
 
 						matching_tags = False
@@ -942,18 +941,15 @@ async def scan_target(target):
 
 							# Skip plugin if require_ssl_boolean and port is not secure
 							if plugin.require_ssl_boolean and not service.secure:
-								service_match = False
 								continue
 
 							# Skip plugin if service port is in ignore_ports:
 							if port in plugin.ignore_ports[protocol]:
-								service_match = False
 								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin cannot be run against ' + protocol + ' port ' + str(port) + '. Skipping.{rst}')
 								continue
 
 							# Skip plugin if plugin has required ports and service port is not in them:
 							if plugin.ports[protocol] and port not in plugin.ports[protocol]:
-								service_match = False
 								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin can only run on specific ports. Skipping.{rst}')
 								continue
 
@@ -993,10 +989,10 @@ async def scan_target(target):
 
 				pending.add(asyncio.create_task(service_scan(plugin, service)))
 
-			if not service_match:
-				warn('{byellow}[' + target.address + ']{srst} Service ' + service.full_tag() + ' did not match any plugins.{rst}')
-				if service.full_tag() not in target.autorecon.missing_services:
-					target.autorecon.missing_services.append(service.full_tag())
+			#if not service_match:
+			#	warn('{byellow}[' + target.address + ']{srst} Service ' + service.full_tag() + ' did not match any plugins.{rst}')
+			#	if service.full_tag() not in target.autorecon.missing_services:
+			#		target.autorecon.missing_services.append(service.full_tag())
 
 	heartbeat.cancel()
 	elapsed_time = calculate_elapsed_time(start_time)
@@ -1415,8 +1411,8 @@ async def main():
 		elapsed_time = calculate_elapsed_time(start_time)
 		info('{bright}Finished scanning all targets in ' + elapsed_time + '!{rst}')
 
-	if autorecon.missing_services:
-		warn('{byellow}AutoRecon identified the following services, but could not match them to any plugins. Please report these to Tib3rius: ' + ', '.join(autorecon.missing_services) + '{rst}')
+	#if autorecon.missing_services:
+	#	warn('{byellow}AutoRecon identified the following services, but could not match them to any plugins. Please report these to Tib3rius: ' + ', '.join(autorecon.missing_services) + '{rst}')
 
 if __name__ == '__main__':
 	signal.signal(signal.SIGINT, cancel_all_tasks)
