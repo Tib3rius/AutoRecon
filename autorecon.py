@@ -1030,12 +1030,17 @@ async def main():
 	parser.add_argument('--disable-sanity-checks', action='store_true', default=False, help='Disable sanity checks that would otherwise prevent the scans from running. Default: false')
 	parser.add_argument('--accessible', action='store_true', help='Attempts to make AutoRecon output more accessible to screenreaders.')
 	parser.add_argument('-v', '--verbose', action='count', help='Enable verbose output. Repeat for more verbosity.')
+	parser.add_argument('--version', action='store_true', help='Prints the AutoRecon version and exits.')
 	parser.error = lambda s: fail(s[0].upper() + s[1:])
 	args, unknown = parser.parse_known_args()
 
 	errors = False
 
 	autorecon.argparse = parser
+
+	if args.version:
+		print('AutoRecon v2.0-beta1')
+		sys.exit(0)
 
 	# Parse config file and args for global.toml first.
 	if not os.path.isfile(args.config_file):
