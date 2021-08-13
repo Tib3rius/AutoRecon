@@ -942,15 +942,18 @@ async def scan_target(target):
 
 							# Skip plugin if require_ssl_boolean and port is not secure
 							if plugin.require_ssl_boolean and not service.secure:
+								service_match = False
 								continue
 
 							# Skip plugin if service port is in ignore_ports:
 							if port in plugin.ignore_ports[protocol]:
+								service_match = False
 								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin cannot be run against ' + protocol + ' port ' + str(port) + '. Skipping.{rst}')
 								continue
 
 							# Skip plugin if plugin has required ports and service port is not in them:
 							if plugin.ports[protocol] and port not in plugin.ports[protocol]:
+								service_match = False
 								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin can only run on specific ports. Skipping.{rst}')
 								continue
 
