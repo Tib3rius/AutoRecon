@@ -8,7 +8,7 @@ class SSLScan(ServiceScan):
 		self.tags = ['default', 'ssl', 'tls']
 
 	def configure(self):
-		self.match_service_name('.+')
+		self.match_all_service_names(True)
 		self.require_ssl(True)
 
 	async def run(self, service):
