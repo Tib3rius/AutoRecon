@@ -23,8 +23,8 @@ class NmapMSSQL(ServiceScan):
 	def configure(self):
 		self.match_service_name(['^mssql', '^ms\-sql'])
 
-	def manual(self):
-		self.add_manual_command('(sqsh) interactive database shell:', 'sqsh -U <username> -P <password> -S {address}:{port}')
+	def manual(self, service, plugin_was_run):
+		service.add_manual_command('(sqsh) interactive database shell:', 'sqsh -U <username> -P <password> -S {address}:{port}')
 
 	async def run(self, service):
 		await service.execute('nmap {nmap_extra} -sV -p {port} --script="banner,(ms-sql* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" --script-args="mssql.instance-port={port},mssql.username=sa,mssql.password=sa" -oN "{scandir}/{protocol}_{port}_mssql_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_mssql_nmap.xml" {address}')
@@ -39,8 +39,8 @@ class NmapMYSQL(ServiceScan):
 	def configure(self):
 		self.match_service_name('^mysql')
 
-	def manual(self):
-		self.add_manual_command('(sqsh) interactive database shell:', 'sqsh -U <username> -P <password> -S {address}:{port}')
+	def manual(self, service, plugin_was_run):
+		service.add_manual_command('(sqsh) interactive database shell:', 'sqsh -U <username> -P <password> -S {address}:{port}')
 
 	async def run(self, service):
 		await service.execute('nmap {nmap_extra} -sV -p {port} --script="banner,(mysql* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_mysql_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_mysql_nmap.xml" {address}')
@@ -55,8 +55,8 @@ class NmapOracle(ServiceScan):
 	def configure(self):
 		self.match_service_name('^oracle')
 
-	def manual(self):
-		self.add_manual_command('Brute-force SIDs using Nmap:', 'nmap {nmap_extra} -sV -p {port} --script="banner,oracle-sid-brute" -oN "{scandir}/{protocol}_{port}_oracle_sid-brute_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_oracle_sid-brute_nmap.xml" {address}')
+	def manual(self, service, plugin_was_run):
+		service.add_manual_command('Brute-force SIDs using Nmap:', 'nmap {nmap_extra} -sV -p {port} --script="banner,oracle-sid-brute" -oN "{scandir}/{protocol}_{port}_oracle_sid-brute_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_oracle_sid-brute_nmap.xml" {address}')
 
 	async def run(self, service):
 		await service.execute('nmap {nmap_extra} -sV -p {port} --script="banner,(oracle* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_oracle_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_oracle_nmap.xml" {address}')
@@ -98,8 +98,8 @@ class OracleODAT(ServiceScan):
 	def configure(self):
 		self.match_service_name('^oracle')
 
-	def manual(self):
-		self.add_manual_commands('Install ODAT (https://github.com/quentinhardy/odat) and run the following commands:', [
+	def manual(self, service, plugin_was_run):
+		service.add_manual_commands('Install ODAT (https://github.com/quentinhardy/odat) and run the following commands:', [
 			'python odat.py tnscmd -s {address} -p {port} --ping',
 			'python odat.py tnscmd -s {address} -p {port} --version',
 			'python odat.py tnscmd -s {address} -p {port} --status',
@@ -118,5 +118,5 @@ class OraclePatator(ServiceScan):
 	def configure(self):
 		self.match_service_name('^oracle')
 
-	def manual(self):
-		self.add_manual_command('Install Oracle Instant Client (https://github.com/rapid7/metasploit-framework/wiki/How-to-get-Oracle-Support-working-with-Kali-Linux) and then bruteforce with patator:', 'patator oracle_login host={address} port={port} user=COMBO00 password=COMBO01 0=/usr/share/seclists/Passwords/Default-Credentials/oracle-betterdefaultpasslist.txt -x ignore:code=ORA-01017 -x ignore:code=ORA-28000')
+	def manual(self, service, plugin_was_run):
+		service.add_manual_command('Install Oracle Instant Client (https://github.com/rapid7/metasploit-framework/wiki/How-to-get-Oracle-Support-working-with-Kali-Linux) and then bruteforce with patator:', 'patator oracle_login host={address} port={port} user=COMBO00 password=COMBO01 0=/usr/share/seclists/Passwords/Default-Credentials/oracle-betterdefaultpasslist.txt -x ignore:code=ORA-01017 -x ignore:code=ORA-28000')

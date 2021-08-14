@@ -23,7 +23,7 @@ class LDAPSearch(ServiceScan):
 	def configure(self):
 		self.match_service_name('^ldap')
 
-	def manual(self):
-		self.add_manual_command('ldapsearch command (modify before running):', [
+	def manual(self, service, plugin_was_run):
+		service.add_manual_command('ldapsearch command (modify before running):', [
 			'ldapsearch -x -D "<username>" -w "<password>"" -p {port} -h {address} -b "dc=example,dc=com" -s sub "(objectclass=*) 2>&1 | tee > "{scandir}/{protocol}_{port}_ldap_all-entries.txt"'
 		])

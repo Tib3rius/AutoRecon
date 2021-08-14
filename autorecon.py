@@ -86,6 +86,7 @@ class Service:
 		self.port = int(port)
 		self.name = name
 		self.secure = secure
+		self.manual_commands = {}
 
 	@final
 	def tag(self):
@@ -94,6 +95,20 @@ class Service:
 	@final
 	def full_tag(self):
 		return self.protocol + '/' + str(self.port) + '/' + self.name + '/' + ('secure' if self.secure else 'insecure')
+
+	@final
+	def add_manual_commands(self, description, commands):
+		if not isinstance(commands, list):
+			commands = [commands]
+		if description not in self.manual_commands:
+			self.manual_commands[description] = []
+
+		# Merge in new unique commands, while preserving order.
+		[self.manual_commands[description].append(m) for m in commands if m not in self.manual_commands[description]]
+
+	@final
+	def add_manual_command(self, description, command):
+		self.add_manual_commands(description, command)
 
 	@final
 	async def execute(self, cmd, blocking=True, outfile=None, errfile=None):
@@ -209,7 +224,6 @@ class Plugin(object):
 		self.tags = ['default']
 		self.priority = 1
 		self.patterns = []
-		self.manual_commands = {}
 		self.autorecon = None
 		self.disabled = False
 
@@ -263,20 +277,6 @@ class Plugin(object):
 	@final
 	def get_global(self, name, default=None):
 		return self.get_global_option(name, default)
-
-	@final
-	def add_manual_commands(self, description, commands):
-		if not isinstance(commands, list):
-			commands = [commands]
-		if description not in self.manual_commands:
-			self.manual_commands[description] = []
-
-		# Merge in new unique commands, while preserving order.
-		[self.manual_commands[description].append(m) for m in commands if m not in self.manual_commands[description]]
-
-	@final
-	def add_manual_command(self, description, command):
-		self.add_manual_commands(description, command)
 
 	@final
 	def add_pattern(self, pattern, description=None):
@@ -470,8 +470,12 @@ class AutoRecon(object):
 				if member_name == 'configure':
 					configure_function_found = True
 				elif member_name == 'run' and inspect.iscoroutinefunction(member_value):
+					if len(inspect.signature(member_value).parameters) != 2:
+						fail('Error: the "run" coroutine in the plugin "' + plugin.name + '" should have two arguments.', file=sys.stderr)
 					run_coroutine_found = True
 				elif member_name == 'manual':
+					if len(inspect.signature(member_value).parameters) != 3:
+						fail('Error: the "manual" function in the plugin "' + plugin.name + '" should have three arguments.', file=sys.stderr)
 					manual_function_found = True
 
 			if not run_coroutine_found and not manual_function_found:
@@ -913,6 +917,7 @@ async def scan_target(target):
 			heading = False
 
 			for plugin in target.autorecon.plugin_types['service']:
+				plugin_was_run = False
 				plugin_service_match = False
 				plugin_tag = service.tag() + '/' + plugin.slug
 
@@ -971,18 +976,26 @@ async def scan_target(target):
 									continue
 
 							# TODO: check if plugin matches tags, BUT run manual commands anyway!
+							plugin_was_run = True
 							matching_plugins.append(plugin)
 
-						if plugin.manual_commands and (not plugin.run_once_boolean or (plugin.run_once_boolean and (plugin.slug,) not in target.scans)):
-							with open(os.path.join(scandir, '_manual_commands.txt'), 'a') as file:
-								if not heading:
-									file.write(e('[*] {service.name} on {service.protocol}/{service.port}\n\n'))
-									heading = True
-								for description, commands in plugin.manual_commands.items():
-									file.write('\t[-] ' + e(description) + '\n\n')
-									for command in commands:
-										file.write('\t\t' + e(command) + '\n\n')
-								file.flush()
+						for member_name, _ in inspect.getmembers(plugin, predicate=inspect.ismethod):
+							if member_name == 'manual':
+								plugin.manual(service, plugin_was_run)
+
+								if service.manual_commands and (not plugin.run_once_boolean or (plugin.run_once_boolean and (plugin.slug,) not in target.scans)):
+									with open(os.path.join(scandir, '_manual_commands.txt'), 'a') as file:
+										if not heading:
+											file.write(e('[*] {service.name} on {service.protocol}/{service.port}\n\n'))
+											heading = True
+										for description, commands in service.manual_commands.items():
+											file.write('\t[-] ' + e(description) + '\n\n')
+											for command in commands:
+												file.write('\t\t' + e(command) + '\n\n')
+										file.flush()
+
+								service.manual_commands = {}
+								break
 
 						break
 
@@ -1280,12 +1293,6 @@ async def main():
 
 		# Remove duplicate lists from list.
 		[autorecon.excluded_tags.append(t) for t in excluded_tags if t not in autorecon.excluded_tags]
-
-	# Generate manual commands.
-	for _, plugin in autorecon.plugins.items():
-		for member_name, _ in inspect.getmembers(plugin, predicate=inspect.ismethod):
-			if member_name == 'manual':
-				plugin.manual()
 
 	raw_targets = args.targets
 

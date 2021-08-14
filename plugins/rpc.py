@@ -23,5 +23,5 @@ class RPCClient(ServiceScan):
 	def configure(self):
 		self.match_service_name(['^msrpc', '^rpcbind', '^erpc'])
 
-	def manual(self):
-		self.add_manual_command('RPC Client:', 'rpcclient -p {port} -U "" {address}')
+	def manual(self, service, plugin_was_run):
+		service.add_manual_command('RPC Client:', 'rpcclient -p {port} -U "" {address}')
