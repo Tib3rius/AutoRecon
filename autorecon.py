@@ -470,11 +470,11 @@ class AutoRecon(object):
 				if member_name == 'configure':
 					configure_function_found = True
 				elif member_name == 'run' and inspect.iscoroutinefunction(member_value):
-					if len(inspect.signature(member_value).parameters) != 2:
+					if len(inspect.getfullargspec(member_value).args) != 2:
 						fail('Error: the "run" coroutine in the plugin "' + plugin.name + '" should have two arguments.', file=sys.stderr)
 					run_coroutine_found = True
 				elif member_name == 'manual':
-					if len(inspect.signature(member_value).parameters) != 3:
+					if len(inspect.getfullargspec(member_value).args) != 3:
 						fail('Error: the "manual" function in the plugin "' + plugin.name + '" should have three arguments.', file=sys.stderr)
 					manual_function_found = True
 
