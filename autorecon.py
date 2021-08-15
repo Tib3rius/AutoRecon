@@ -27,9 +27,9 @@ class Target:
 		self.scans = []
 		self.running_tasks = {}
 
-	async def add_service(self, protocol, port, name, secure=False):
+	async def add_service(self, service):
 		async with self.lock:
-			self.pending_services.append(Service(protocol, port, name, secure))
+			self.pending_services.append(service)
 
 	def extract_service(self, line, regex=None):
 		return self.autorecon.extract_service(line, regex)
