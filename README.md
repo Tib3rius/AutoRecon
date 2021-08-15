@@ -1,3 +1,9 @@
+# AutoRecon v2 Beta!
+
+Please consider trying out the AutoRecon v2 beta, an almost complete rewrite which fixes numerous bugs and makes AutoRecon more powerful, more customizable, and easier to configure: https://github.com/Tib3rius/AutoRecon/tree/beta
+
+---
+
 [![Packaging status](https://repology.org/badge/vertical-allrepos/autorecon.svg)](https://repology.org/project/autorecon/versions)
 
 > It's like bowling with bumpers. - [@ippsec](https://twitter.com/ippsec)
