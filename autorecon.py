@@ -58,10 +58,10 @@ class Target:
 			info('Port scan {bblue}' + plugin.name + ' (' + tag + '){rst} is running the following command against {byellow}' + address + '{rst}: ' + cmd)
 
 		if outfile is not None:
-			outfile = os.path.abspath(os.path.join(target.scandir, e(outfile)))
+			outfile = os.path.join(target.scandir, e(outfile))
 
 		if errfile is not None:
-			 errfile = os.path.abspath(os.path.join(target.scandir, e(errfile)))
+			errfile = os.path.join(target.scandir, e(errfile))
 
 		async with target.lock:
 			with open(os.path.join(target.scandir, '_commands.log'), 'a') as file:
@@ -121,6 +121,11 @@ class Service:
 		port = self.port
 		name = self.name
 
+		if target.autorecon.config['create_port_dirs']:
+			scandir = os.path.join(scandir, protocol + str(port))
+			os.makedirs(scandir, exist_ok=True)
+			os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
+
 		# Special cases for HTTP.
 		http_scheme = 'https' if 'https' in self.name or self.secure is True else 'http'
 
@@ -141,10 +146,10 @@ class Service:
 			info('Service scan {bblue}' + plugin.name + ' (' + tag + '){rst} is running the following command against {byellow}' + address + '{rst}: ' + cmd)
 
 		if outfile is not None:
-			outfile = os.path.abspath(os.path.join(target.scandir, e(outfile)))
+			outfile = os.path.join(scandir, e(outfile))
 
 		if errfile is not None:
-			 errfile = os.path.abspath(os.path.join(target.scandir, e(errfile)))
+			errfile = os.path.join(scandir, e(errfile))
 
 		async with target.lock:
 			with open(os.path.join(target.scandir, '_commands.log'), 'a') as file:
@@ -376,18 +381,44 @@ class AutoRecon(object):
 		self.tags = []
 		self.excluded_tags = []
 		self.patterns = []
-		self.configurable_keys = ['max_scans', 'max_port_scans', 'single_target', 'outdir', 'only_scans_dir', 'heartbeat', 'timeout', 'target_timeout', 'accessible', 'verbose']
+		self.configurable_keys = [
+			'max_scans',
+			'max_port_scans',
+			'tags',
+			'exclude_tags',
+			'plugins_dir',
+			'outdir',
+			'single_target',
+			'only_scans_dir',
+			'create_port_dirs',
+			'heartbeat',
+			'timeout',
+			'target_timeout',
+			'nmap',
+			'nmap_append',
+			'disable_sanity_checks',
+			'accessible',
+			'verbose'
+		]
+		self.configurable_boolean_keys = ['single_target', 'only_scans_dir', 'create_port_dirs', 'disable_sanity_checks', 'accessible']
 		self.config = {
 			'protected_classes': ['autorecon', 'target', 'service', 'commandstreamreader', 'plugin', 'portscan', 'servicescan', 'global', 'pattern'],
 			'global_file': os.path.dirname(os.path.realpath(__file__)) + '/global.toml',
 			'max_scans': 50,
 			'max_port_scans': None,
-			'single_target': False,
+			'tags': 'default',
+			'exclude_tags': None,
+			'plugins_dir': os.path.dirname(os.path.abspath(__file__)) + '/plugins',
 			'outdir': 'results',
+			'single_target': False,
 			'only_scans_dir': False,
+			'create_port_dirs': False,
 			'heartbeat': 60,
 			'timeout': None,
 			'target_timeout': None,
+			'nmap': '-vv --reason -Pn',
+			'nmap_append': '',
+			'disable_sanity_checks': False,
 			'accessible': False,
 			'verbose': 0
 		}
@@ -806,27 +837,27 @@ async def scan_target(target):
 	os.makedirs(basedir, exist_ok=True)
 
 	if not target.autorecon.config['only_scans_dir']:
-		exploitdir = os.path.abspath(os.path.join(basedir, 'exploit'))
+		exploitdir = os.path.join(basedir, 'exploit')
 		os.makedirs(exploitdir, exist_ok=True)
 
-		lootdir = os.path.abspath(os.path.join(basedir, 'loot'))
+		lootdir = os.path.join(basedir, 'loot')
 		os.makedirs(lootdir, exist_ok=True)
 
-		reportdir = os.path.abspath(os.path.join(basedir, 'report'))
+		reportdir = os.path.join(basedir, 'report')
 		target.reportdir = reportdir
 		os.makedirs(reportdir, exist_ok=True)
 
-		open(os.path.abspath(os.path.join(reportdir, 'local.txt')), 'a').close()
-		open(os.path.abspath(os.path.join(reportdir, 'proof.txt')), 'a').close()
+		open(os.path.join(reportdir, 'local.txt'), 'a').close()
+		open(os.path.join(reportdir, 'proof.txt'), 'a').close()
 
-		screenshotdir = os.path.abspath(os.path.join(reportdir, 'screenshots'))
+		screenshotdir = os.path.join(reportdir, 'screenshots')
 		os.makedirs(screenshotdir, exist_ok=True)
 
-	scandir = os.path.abspath(os.path.join(basedir, 'scans'))
+	scandir = os.path.join(basedir, 'scans')
 	target.scandir = scandir
 	os.makedirs(scandir, exist_ok=True)
 
-	os.makedirs(os.path.abspath(os.path.join(scandir, 'xml')), exist_ok=True)
+	os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
 
 	pending = []
 
@@ -1047,24 +1078,25 @@ async def main():
 	parser = argparse.ArgumentParser(add_help=False, description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
 	parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs='*')
 	parser.add_argument('-t', '--targets', action='store', type=str, default='', dest='target_file', help='Read targets from file.')
-	parser.add_argument('-m', '--max-scans', action='store', type=int, help='The maximum number of concurrent scans to run. Default: 50')
+	parser.add_argument('-m', '--max-scans', action='store', type=int, help='The maximum number of concurrent scans to run. Default: %(default)s')
 	parser.add_argument('-mp', '--max-port-scans', action='store', type=int, help='The maximum number of concurrent port scans to run. Default: 10 (approx 20%% of max-scans unless specified)')
 	parser.add_argument('-c', '--config', action='store', type=str, default=os.path.dirname(os.path.realpath(__file__)) + '/config.toml', dest='config_file', help='Location of AutoRecon\'s config file. Default: %(default)s')
 	parser.add_argument('-g', '--global-file', action='store', type=str, dest='global_file', help='Location of AutoRecon\'s global file. Default: ' + os.path.dirname(os.path.realpath(__file__)) + '/global.toml')
-	parser.add_argument('--tags', action='store', type=str, default='default', help='Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be included, it must have all the tags specified in at least one group.')
-	parser.add_argument('--exclude-tags', action='store', type=str, default='', help='Tags to determine which plugins should be excluded. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be excluded, it must have all the tags specified in at least one group.')
-	parser.add_argument('--plugins-dir', action='store', type=str, default=os.path.dirname(os.path.abspath(__file__)) + '/plugins', help='')
-	parser.add_argument('-o', '--output', action='store', dest='outdir', help='The output directory for results. Default: results')
-	parser.add_argument('--single-target', action='store_true', help='Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will be created within the output directory. Default: false')
-	parser.add_argument('--only-scans-dir', action='store_true', help='Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created. Default: false')
-	parser.add_argument('--heartbeat', action='store', type=int, help='Specifies the heartbeat interval (in seconds) for scan status messages. Default: 60')
-	parser.add_argument('--timeout', action='store', type=int, help='Specifies the maximum amount of time in minutes that AutoRecon should run for. Default: no timeout')
-	parser.add_argument('--target-timeout', action='store', type=int, help='Specifies the maximum amount of time in minutes that a target should be scanned for before abandoning it and moving on. Default: no timeout')
+	parser.add_argument('--tags', action='store', type=str, default='default', help='Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be included, it must have all the tags specified in at least one group. Default: %(default)s')
+	parser.add_argument('--exclude-tags', action='store', type=str, default='', help='Tags to determine which plugins should be excluded. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be excluded, it must have all the tags specified in at least one group. Default: %(default)s')
+	parser.add_argument('--plugins-dir', action='store', type=str, help='The location of the plugins directory. Default: %(default)s')
+	parser.add_argument('-o', '--output', action='store', dest='outdir', help='The output directory for results. Default: %(default)s')
+	parser.add_argument('--single-target', action='store_true', help='Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will be created within the output directory. Default: %(default)s')
+	parser.add_argument('--only-scans-dir', action='store_true', help='Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created. Default: %(default)s')
+	parser.add_argument('--create-port-dirs', action='store_true', help='Create directories for ports within the "scans" directory (e.g. scans/tcp80, scans/udp53) and store results in these directories. Default: %(default)s')
+	parser.add_argument('--heartbeat', action='store', type=int, help='Specifies the heartbeat interval (in seconds) for scan status messages. Default: %(default)s')
+	parser.add_argument('--timeout', action='store', type=int, help='Specifies the maximum amount of time in minutes that AutoRecon should run for. Default: %(default)s')
+	parser.add_argument('--target-timeout', action='store', type=int, help='Specifies the maximum amount of time in minutes that a target should be scanned for before abandoning it and moving on. Default: %(default)s')
 	nmap_group = parser.add_mutually_exclusive_group()
-	nmap_group.add_argument('--nmap', action='store', default='-vv --reason -Pn', help='Override the {nmap_extra} variable in scans. Default: %(default)s')
-	nmap_group.add_argument('--nmap-append', action='store', default='', help='Append to the default {nmap_extra} variable in scans.')
-	parser.add_argument('--disable-sanity-checks', action='store_true', default=False, help='Disable sanity checks that would otherwise prevent the scans from running. Default: false')
-	parser.add_argument('--accessible', action='store_true', help='Attempts to make AutoRecon output more accessible to screenreaders.')
+	nmap_group.add_argument('--nmap', action='store', help='Override the {nmap_extra} variable in scans. Default: %(default)s')
+	nmap_group.add_argument('--nmap-append', action='store', help='Append to the default {nmap_extra} variable in scans. Default: %(default)s')
+	parser.add_argument('--disable-sanity-checks', action='store_true', help='Disable sanity checks that would otherwise prevent the scans from running. Default: %(default)s')
+	parser.add_argument('--accessible', action='store_true', help='Attempts to make AutoRecon output more accessible to screenreaders. Default: %(default)s')
 	parser.add_argument('-v', '--verbose', action='count', help='Enable verbose output. Repeat for more verbosity.')
 	parser.add_argument('--version', action='store_true', help='Prints the AutoRecon version and exits.')
 	parser.error = lambda s: fail(s[0].upper() + s[1:])
@@ -1086,9 +1118,10 @@ async def main():
 		try:
 			config_toml = toml.load(c)
 			for key, val in config_toml.items():
-				if key.replace('-', '_') == 'global_file':
+				if key == 'global-file':
 					autorecon.config['global_file'] = val
-					break
+				elif key == 'plugins-dir':
+					autorecon.config['plugins_dir'] = val
 		except toml.decoder.TomlDecodeError:
 			fail('Error: Couldn\'t parse ' + args.config_file + ' config file. Check syntax.')
 
@@ -1096,19 +1129,20 @@ async def main():
 	for key in args_dict:
 		if key == 'global_file' and args_dict['global_file'] is not None:
 			autorecon.config['global_file'] = args_dict['global_file']
-			break
+		elif key == 'plugins_dir' and args_dict['plugins_dir'] is not None:
+			autorecon.config['plugins_dir'] = args_dict['plugins_dir']
 
-	if not os.path.isdir(args.plugins_dir):
-		fail('Error: Specified plugins directory "' + args.plugins_dir + '" does not exist.')
+	if not os.path.isdir(autorecon.config['plugins_dir']):
+		fail('Error: Specified plugins directory "' + autorecon.config['plugins_dir'] + '" does not exist.')
 
-	for plugin_file in os.listdir(args.plugins_dir):
+	for plugin_file in os.listdir(autorecon.config['plugins_dir']):
 		if not plugin_file.startswith('_') and plugin_file.endswith('.py'):
 
 			dirname, filename = os.path.split(plugin_file)
 			dirname = os.path.abspath(dirname)
 
 			try:
-				plugin = importlib.import_module('.' + filename[:-3], os.path.basename(args.plugins_dir))
+				plugin = importlib.import_module('.' + filename[:-3], os.path.basename(autorecon.config['plugins_dir']))
 				clsmembers = inspect.getmembers(plugin, predicate=inspect.isclass)
 				for (_, c) in clsmembers:
 					if c.__module__ == 'autorecon':
@@ -1129,7 +1163,7 @@ async def main():
 				sys.exit(1)
 
 	if len(autorecon.plugin_types['port']) == 0:
-		fail('Error: There are no valid PortScan plugins in the plugins directory "' + args.plugins_dir + '".')
+		fail('Error: There are no valid PortScan plugins in the plugins directory "' + autorecon.config['plugins_dir'] + '".')
 
 	# Sort plugins by priority.
 	autorecon.plugin_types['port'].sort(key=lambda x: x.priority)
@@ -1192,6 +1226,7 @@ async def main():
 		except toml.decoder.TomlDecodeError:
 			fail('Error: Couldn\'t parse ' + g.name + ' file. Check syntax.')
 
+	other_options = []
 	for key, val in config_toml.items():
 		if key == 'global' and isinstance(val, dict): # Process global plugin options.
 			for gkey, gval in config_toml['global'].items():
@@ -1223,9 +1258,15 @@ async def main():
 				if autorecon.argparse.get_default(slugify(key).replace('-', '_') + '.' + slugify(pkey).replace('-', '_')):
 					autorecon.argparse.set_defaults(**{slugify(key).replace('-', '_') + '.' + slugify(pkey).replace('-', '_'): pval})
 		else: # Process potential other options.
-			if key.replace('-', '_') in autorecon.configurable_keys:
-				autorecon.config[key.replace('-', '_')] = val
-				autorecon.argparse.set_defaults(**{key.replace('-', '_'): val})
+			key = key.replace('-', '_')
+			if key in autorecon.configurable_keys:
+				other_options.append(key)
+				autorecon.config[key] = val
+				autorecon.argparse.set_defaults(**{key: val})
+
+	for key, val in autorecon.config.items():
+		if key not in other_options:
+			autorecon.argparse.set_defaults(**{key: val})
 
 	parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='Show this help message and exit.')
 	args = parser.parse_args()
@@ -1234,7 +1275,7 @@ async def main():
 	for key in args_dict:
 		if key in autorecon.configurable_keys and args_dict[key] is not None:
 			# Special case for booleans
-			if key in ['accessible', 'single_target', 'only_scans_dir'] and autorecon.config[key]:
+			if key in autorecon.configurable_boolean_keys and autorecon.config[key]:
 				continue
 			autorecon.config[key] = args_dict[key]
 
@@ -1287,6 +1328,8 @@ async def main():
 	[autorecon.tags.append(t) for t in tags if t not in autorecon.tags]
 
 	excluded_tags = []
+	if args.exclude_tags is None:
+		args.exclude_tags = ''
 	if args.exclude_tags != '':
 		for tag_group in list(set(filter(None, args.exclude_tags.lower().split(',')))):
 			excluded_tags.append(list(set(filter(None, tag_group.split('+')))))
