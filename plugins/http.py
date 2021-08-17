@@ -166,8 +166,9 @@ class WkHTMLToImage(ServiceScan):
 		self.match_service_name('^nacn_http$', negative_match=True)
 
 	async def run(self, service):
-		if which('wkhtmltoimage') is not None and service.protocol == 'tcp':
-			await service.execute('wkhtmltoimage --format png {http_scheme}://{address}:{port}/ {scandir}/{protocol}_{port}_{http_scheme}_screenshot.png')
+		if which('wkhtmltoimage') is not None:
+			if service.protocol == 'tcp':
+				await service.execute('wkhtmltoimage --format png {http_scheme}://{address}:{port}/ {scandir}/{protocol}_{port}_{http_scheme}_screenshot.png')
 		else:
 			error('The wkhtmltoimage program could not be found. Make sure it is installed. (On Kali, run: sudo apt install wkhtmltopdf)')
 

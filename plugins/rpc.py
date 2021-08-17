@@ -1,4 +1,5 @@
-from autorecon import ServiceScan
+from autorecon import ServiceScan, error
+from shutil import which
 
 class NmapMSRPC(ServiceScan):
 
@@ -25,3 +26,20 @@ class RPCClient(ServiceScan):
 
 	def manual(self, service, plugin_was_run):
 		service.add_manual_command('RPC Client:', 'rpcclient -p {port} -U "" {address}')
+
+class RPCDump(ServiceScan):
+
+	def __init__(self):
+		super().__init__()
+		self.name = 'rpcdump'
+		self.tags = ['default', 'rpc']
+
+	def configure(self):
+		self.match_service_name(['^msrpc', '^rpcbind', '^erpc'])
+
+	async def run(self, service):
+		if which('impacket-rpcdump') is not None:
+			if service.protocol == 'tcp':
+				await service.execute('impacket-rpcdump -port {port} {address}', outfile='{protocol}_{port}_rpc_rpcdump.txt')
+		else:
+			error('The impacket-rpcdump program could not be found. Make sure it is installed. (On Kali, run: sudo apt install impacket-scripts)')
