@@ -85,6 +85,20 @@ class DirBuster(ServiceScan):
 		self.match_service_name('^http')
 		self.match_service_name('^nacn_http$', negative_match=True)
 
+	async def run(self, service):
+		for wordlist in self.get_option('wordlist'):
+			name = os.path.splitext(os.path.basename(wordlist))[0]
+			if self.get_option('tool') == 'feroxbuster':
+				await service.execute('feroxbuster -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -x "txt,html,php,asp,aspx,jsp" -v -k -n -q -o "{scandir}/{protocol}_{port}_{http_scheme}_feroxbuster_' + name + '.txt"')
+			elif self.get_option('tool') == 'gobuster':
+				await service.execute('gobuster dir -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e -k -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx,jsp" -z -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_' + name + '.txt"')
+			elif self.get_option('tool') == 'dirsearch':
+				await service.execute('dirsearch -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -r -e txt,html,php,asp,aspx,jsp -f -w ' + wordlist + ' --format=plain --output="{scandir}/{protocol}_{port}_{http_scheme}_dirsearch_' + name + '.txt"')
+			elif self.get_option('tool') == 'ffuf':
+				await service.execute('ffuf -u {http_scheme}://{address}:{port}/FUZZ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e ".txt,.html,.php,.asp,.aspx,.jsp" -v | tee {scandir}/{protocol}_{port}_{http_scheme}_ffuf_' + name + '.txt')
+			elif self.get_option('tool') == 'dirb':
+				await service.execute('dirb {http_scheme}://{address}:{port}/ ' + wordlist + ' -l -r -S -X ",.txt,.html,.php,.asp,.aspx,.jsp" -o "{scandir}/{protocol}_{port}_{http_scheme}_dirb_' + name + '.txt"')
+
 	def manual(self, service, plugin_was_run):
 		service.add_manual_command('(feroxbuster) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:', [
 			'feroxbuster -u {http_scheme}://{address}:{port} -t ' + str(self.get_option('threads')) + ' -w /usr/share/seclists/Discovery/Web-Content/big.txt -x "txt,html,php,asp,aspx,jsp" -v -k -n -o {scandir}/{protocol}_{port}_{http_scheme}_feroxbuster_big.txt',
@@ -110,20 +124,6 @@ class DirBuster(ServiceScan):
 			'gobuster -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/seclists/Discovery/Web-Content/big.txt -e -k -l -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx,jsp" -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_big.txt"',
 			'gobuster -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -l -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx,jsp" -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_dirbuster.txt"'
 		])
-
-	async def run(self, service):
-		for wordlist in self.get_option('wordlist'):
-			name = os.path.splitext(os.path.basename(wordlist))[0]
-			if self.get_option('tool') == 'feroxbuster':
-				await service.execute('feroxbuster -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -x "txt,html,php,asp,aspx,jsp" -v -k -n -q -o "{scandir}/{protocol}_{port}_{http_scheme}_feroxbuster_' + name + '.txt"')
-			elif self.get_option('tool') == 'gobuster':
-				await service.execute('gobuster dir -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e -k -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx,jsp" -z -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_' + name + '.txt"')
-			elif self.get_option('tool') == 'dirsearch':
-				await service.execute('dirsearch -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -r -e txt,html,php,asp,aspx,jsp -f -w ' + wordlist + ' --format=plain --output="{scandir}/{protocol}_{port}_{http_scheme}_dirsearch_' + name + '.txt"')
-			elif self.get_option('tool') == 'ffuf':
-				await service.execute('ffuf -u {http_scheme}://{address}:{port}/FUZZ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e ".txt,.html,.php,.asp,.aspx,.jsp" -v | tee {scandir}/{protocol}_{port}_{http_scheme}_ffuf_' + name + '.txt')
-			elif self.get_option('tool') == 'dirb':
-				await service.execute('dirb {http_scheme}://{address}:{port}/ ' + wordlist + ' -l -r -S -X ",.txt,.html,.php,.asp,.aspx,.jsp" -o "{scandir}/{protocol}_{port}_{http_scheme}_dirb_' + name + '.txt"')
 
 class Nikto(ServiceScan):
 
