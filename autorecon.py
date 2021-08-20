@@ -153,7 +153,7 @@ class Service:
 
 		async with target.lock:
 			with open(os.path.join(target.scandir, '_commands.log'), 'a') as file:
-				file.writelines(e('{cmd}\n\n'))
+				file.writelines(cmd + '\n\n')
 
 		process, stdout, stderr = await target.autorecon.execute(cmd, target, tag, patterns=plugin.patterns, outfile=outfile, errfile=errfile)
 
@@ -982,29 +982,29 @@ async def scan_target(target):
 							# Skip plugin if run_once_boolean and plugin already in target scans
 							if plugin.run_once_boolean and (plugin.slug,) in target.scans:
 								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin should only be run once and it appears to have already been queued. Skipping.{rst}')
-								continue
+								break
 
 							# Skip plugin if require_ssl_boolean and port is not secure
 							if plugin.require_ssl_boolean and not service.secure:
 								plugin_service_match = False
-								continue
+								break
 
 							# Skip plugin if service port is in ignore_ports:
 							if port in plugin.ignore_ports[protocol]:
 								plugin_service_match = False
 								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin cannot be run against ' + protocol + ' port ' + str(port) + '. Skipping.{rst}')
-								continue
+								break
 
 							# Skip plugin if plugin has required ports and service port is not in them:
 							if plugin.ports[protocol] and port not in plugin.ports[protocol]:
 								plugin_service_match = False
 								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin can only run on specific ports. Skipping.{rst}')
-								continue
+								break
 
 							for i in plugin.ignore_service_names:
 								if re.search(i, service.name):
 									warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin cannot be run against this service. Skipping.{rst}')
-									continue
+									break
 
 							# TODO: check if plugin matches tags, BUT run manual commands anyway!
 							plugin_was_run = True
