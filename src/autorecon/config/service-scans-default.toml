@@ -396,6 +396,8 @@ service-names = [
         'rpcclient -p {port} -U "" {address}'
     ]
 
+[rsync]
+
 service-names = [
     '^rsync'
 ]
