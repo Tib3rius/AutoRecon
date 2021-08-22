@@ -468,27 +468,27 @@ class AutoRecon(object):
 				break
 		return services
 
-	def register(self, plugin):
+	def register(self, plugin, filename):
 		if plugin.disabled:
 			return
 
 		for _, loaded_plugin in self.plugins.items():
 			if plugin.name == loaded_plugin.name:
-				fail('Error: Duplicate plugin name "' + plugin.name + '" detected.', file=sys.stderr)
+				fail('Error: Duplicate plugin name "' + plugin.name + '" detected in ' + filename + '.', file=sys.stderr)
 
 		if plugin.slug is None:
 			plugin.slug = slugify(plugin.name)
 		elif not self.__slug_regex.match(plugin.slug):
-			fail('Error: provided slug "' + plugin.slug + '" is not valid (must only contain lowercase letters, numbers, and hyphens).', file=sys.stderr)
+			fail('Error: provided slug "' + plugin.slug + '" in ' + filename + ' is not valid (must only contain lowercase letters, numbers, and hyphens).', file=sys.stderr)
 
 		if plugin.slug in self.config['protected_classes']:
-			fail('Error: plugin slug "' + plugin.slug + '" is a protected string. Please change.')
+			fail('Error: plugin slug "' + plugin.slug + '" in ' + filename + ' is a protected string. Please change.')
 
 		if plugin.slug not in self.plugins:
 
 			for _, loaded_plugin in self.plugins.items():
 				if plugin is loaded_plugin:
-					fail('Error: plugin "' + plugin.name + '" already loaded as "' + loaded_plugin.name + '" (' + str(loaded_plugin) + ')', file=sys.stderr)
+					fail('Error: plugin "' + plugin.name + '" in ' + filename + ' already loaded as "' + loaded_plugin.name + '" (' + str(loaded_plugin) + ')', file=sys.stderr)
 
 			if plugin.description is None:
 				plugin.description = ''
@@ -502,15 +502,15 @@ class AutoRecon(object):
 					configure_function_found = True
 				elif member_name == 'run' and inspect.iscoroutinefunction(member_value):
 					if len(inspect.getfullargspec(member_value).args) != 2:
-						fail('Error: the "run" coroutine in the plugin "' + plugin.name + '" should have two arguments.', file=sys.stderr)
+						fail('Error: the "run" coroutine in the plugin "' + plugin.name + '" in ' + filename + ' should have two arguments.', file=sys.stderr)
 					run_coroutine_found = True
 				elif member_name == 'manual':
 					if len(inspect.getfullargspec(member_value).args) != 3:
-						fail('Error: the "manual" function in the plugin "' + plugin.name + '" should have three arguments.', file=sys.stderr)
+						fail('Error: the "manual" function in the plugin "' + plugin.name + '" in ' + filename + ' should have three arguments.', file=sys.stderr)
 					manual_function_found = True
 
 			if not run_coroutine_found and not manual_function_found:
-				fail('Error: the plugin "' + plugin.name + '" needs either a "manual" function, a "run" coroutine, or both.', file=sys.stderr)
+				fail('Error: the plugin "' + plugin.name + '" in ' + filename + ' needs either a "manual" function, a "run" coroutine, or both.', file=sys.stderr)
 
 			from autorecon import PortScan, ServiceScan
 			if issubclass(plugin.__class__, PortScan):
@@ -518,7 +518,7 @@ class AutoRecon(object):
 			elif issubclass(plugin.__class__, ServiceScan):
 				self.plugin_types["service"].append(plugin)
 			else:
-				fail('Plugin "' + plugin.name + '" is neither a PortScan nor a ServiceScan.', file=sys.stderr)
+				fail('Plugin "' + plugin.name + '" in ' + filename + ' is neither a PortScan nor a ServiceScan.', file=sys.stderr)
 
 			plugin.tags = [tag.lower() for tag in plugin.tags]
 
@@ -527,7 +527,7 @@ class AutoRecon(object):
 				plugin.configure()
 			self.plugins[plugin.slug] = plugin
 		else:
-			fail('Error: plugin slug "' + plugin.slug + '" is already assigned.', file=sys.stderr)
+			fail('Error: plugin slug "' + plugin.slug + '" in ' + filename + ' is already assigned.', file=sys.stderr)
 
 	async def execute(self, cmd, target, tag, patterns=None, outfile=None, errfile=None):
 		if patterns:
@@ -1154,7 +1154,7 @@ async def main():
 
 					# Only add classes that are a sub class of either PortScan or ServiceScan
 					if issubclass(c, PortScan) or issubclass(c, ServiceScan):
-						autorecon.register(c())
+						autorecon.register(c(), filename)
 					else:
 						print('Plugin "' + c.__name__ + '" in ' + filename + ' is not a subclass of either PortScan or ServiceScan.')
 			except (ImportError, SyntaxError) as ex:
@@ -1475,6 +1475,7 @@ async def main():
 
 		elapsed_time = calculate_elapsed_time(start_time)
 		info('{bright}Finished scanning all targets in ' + elapsed_time + '!{rst}')
+		info('{bright}Don\'t forget to check out more commands to run manually in the _manual_commands.txt file in each target\'s scans directory!')
 
 	if autorecon.missing_services:
 		warn('{byellow}AutoRecon identified the following services, but could not match them to any plugins based on the service name. Please report these to Tib3rius: ' + ', '.join(autorecon.missing_services) + '{rst}')
