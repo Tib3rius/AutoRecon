@@ -5,7 +5,7 @@ class NmapNFS(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap NFS"
-		self.tags = ['default', 'nfs']
+		self.tags = ['default', 'safe', 'nfs']
 
 	def configure(self):
 		self.match_service_name(['^nfs', '^rpcbind'])
@@ -18,7 +18,7 @@ class Showmount(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "showmount"
-		self.tags = ['default', 'nfs']
+		self.tags = ['default', 'safe', 'nfs']
 
 	def configure(self):
 		self.match_service_name(['^nfs', '^rpcbind'])

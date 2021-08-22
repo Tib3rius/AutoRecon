@@ -7,7 +7,7 @@ class NmapHTTP(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap HTTP"
-		self.tags = ['default', 'http']
+		self.tags = ['default', 'safe', 'http']
 
 	def configure(self):
 		self.match_service_name('^http')
@@ -42,7 +42,7 @@ class Curl(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Curl"
-		self.tags = ['default', 'http']
+		self.tags = ['default', 'safe', 'http']
 
 	def configure(self):
 		self.add_option("path", default="/", help="The path on the web server to curl. Default: %(default)s")
@@ -59,7 +59,7 @@ class CurlRobots(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Curl Robots"
-		self.tags = ['default', 'http']
+		self.tags = ['default', 'safe', 'http']
 
 	def configure(self):
 		self.match_service_name('^http')
@@ -76,7 +76,7 @@ class DirBuster(ServiceScan):
 		self.name = "DirBuster"
 		self.slug = 'dirbuster'
 		self.priority = 0
-		self.tags = ['default', 'http', 'long']
+		self.tags = ['default', 'safe', 'long', 'http']
 
 	def configure(self):
 		self.add_choice_option('tool', default='feroxbuster', choices=['feroxbuster', 'gobuster', 'dirsearch', 'ffuf', 'dirb'], help='The tool to use for directory busting. Default: %(default)s')
@@ -130,7 +130,7 @@ class Nikto(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = 'nikto'
-		self.tags = ['default', 'http', 'long']
+		self.tags = ['default', 'safe', 'long', 'http']
 
 	def configure(self):
 		self.match_service_name('^http')
@@ -144,7 +144,7 @@ class WhatWeb(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "whatweb"
-		self.tags = ['default', 'http']
+		self.tags = ['default', 'safe', 'http']
 
 	def configure(self):
 		self.match_service_name('^http')
@@ -159,7 +159,7 @@ class WkHTMLToImage(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "wkhtmltoimage"
-		self.tags = ['default', 'http']
+		self.tags = ['default', 'safe', 'http']
 
 	def configure(self):
 		self.match_service_name('^http')
@@ -177,7 +177,7 @@ class WPScan(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = 'WPScan'
-		self.tags = ['default', 'http']
+		self.tags = ['default', 'safe', 'http']
 
 	def configure(self):
 		self.match_service_name('^http')

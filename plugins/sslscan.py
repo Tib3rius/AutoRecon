@@ -5,7 +5,7 @@ class SSLScan(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "SSL Scan"
-		self.tags = ['default', 'ssl', 'tls']
+		self.tags = ['default', 'safe', 'ssl', 'tls']
 
 	def configure(self):
 		self.match_all_service_names(True)

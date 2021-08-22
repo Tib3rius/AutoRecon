@@ -5,7 +5,7 @@ class NmapCassandra(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap Cassandra"
-		self.tags = ['default', 'cassandra']
+		self.tags = ['default', 'safe', 'cassandra']
 
 	def configure(self):
 		self.match_service_name('^apani1')
@@ -18,7 +18,7 @@ class NmapCUPS(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap CUPS"
-		self.tags = ['default', 'cups']
+		self.tags = ['default', 'safe', 'cups']
 
 	def configure(self):
 		self.match_service_name('^ipp')
@@ -31,7 +31,7 @@ class NmapDistccd(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap distccd"
-		self.tags = ['default', 'distccd']
+		self.tags = ['default', 'safe', 'distccd']
 
 	def configure(self):
 		self.match_service_name('^distccd')
@@ -44,7 +44,7 @@ class NmapFinger(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap finger"
-		self.tags = ['default', 'finger']
+		self.tags = ['default', 'safe', 'finger']
 
 	def configure(self):
 		self.match_service_name('^finger')
@@ -57,7 +57,7 @@ class NmapIMAP(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap IMAP"
-		self.tags = ['default', 'imap', 'email']
+		self.tags = ['default', 'safe', 'imap', 'email']
 
 	def configure(self):
 		self.match_service_name('^imap')
@@ -70,7 +70,7 @@ class NmapNNTP(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap NNTP"
-		self.tags = ['default', 'nntp']
+		self.tags = ['default', 'safe', 'nntp']
 
 	def configure(self):
 		self.match_service_name('^nntp')
@@ -83,7 +83,7 @@ class NmapPOP3(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap POP3"
-		self.tags = ['default', 'pop3', 'email']
+		self.tags = ['default', 'safe', 'pop3', 'email']
 
 	def configure(self):
 		self.match_service_name('^pop3')
@@ -96,7 +96,7 @@ class NmapRMI(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap RMI"
-		self.tags = ['default', 'rmi']
+		self.tags = ['default', 'safe', 'rmi']
 
 	def configure(self):
 		self.match_service_name(['^java\-rmi', '^rmiregistry'])
@@ -104,45 +104,12 @@ class NmapRMI(ServiceScan):
 	async def run(self, service):
 		await service.execute('nmap {nmap_extra} -sV -p {port} --script="banner,rmi-vuln-classloader,rmi-dumpregistry" -oN "{scandir}/{protocol}_{port}_rmi_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_rmi_nmap.xml" {address}')
 
-class NmapSMTP(ServiceScan):
-
-	def __init__(self):
-		super().__init__()
-		self.name = "Nmap SMTP"
-		self.tags = ['default', 'smtp', 'email']
-
-	def configure(self):
-		self.match_service_name('^smtp')
-
-	async def run(self, service):
-		await service.execute('nmap {nmap_extra} -sV -p {port} --script="banner,(smtp* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_smtp_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_smtp_nmap.xml" {address}')
-
-class SMTPUserEnum(ServiceScan):
-
-	def __init__(self):
-		super().__init__()
-		self.name = 'SMTP-User-Enum'
-		self.tags = ['default', 'smtp', 'email']
-
-	def configure(self):
-		self.match_service_name('^smtp')
-
-	async def run(self, service):
-		await service.execute('hydra smtp-enum://{address}:{port}/vrfy -L "' + self.get_global('username_wordlist', default='/usr/share/seclists/Usernames/top-usernames-shortlist.txt') + '" 2>&1', outfile='{protocol}_{port}_smtp_user-enum_hydra_vrfy.txt')
-		await service.execute('hydra smtp-enum://{address}:{port}/expn -L "' + self.get_global('username_wordlist', default='/usr/share/seclists/Usernames/top-usernames-shortlist.txt') + '" 2>&1', outfile='{protocol}_{port}_smtp_user-enum_hydra_expn.txt')
-
-	def manual(self, service, plugin_was_run):
-		service.add_manual_command('Try User Enumeration using "RCPT TO". Replace <TARGET-DOMAIN> with the target\'s domain name:', [
-			'hydra smtp-enum://{address}:{port}/rcpt -L "' + self.get_global('username_wordlist', default='/usr/share/seclists/Usernames/top-usernames-shortlist.txt') + '" -o "{scandir}/{protocol}_{port}_smtp_user-enum_hydra_rcpt.txt" -p <TARGET-DOMAIN>'
-		])
-
-
 class NmapTelnet(ServiceScan):
 
 	def __init__(self):
 		super().__init__()
 		self.name = 'Nmap Telnet'
-		self.tags = ['default', 'telnet']
+		self.tags = ['default', 'safe', 'telnet']
 
 	def configure(self):
 		self.match_service_name('^telnet')
@@ -155,7 +122,7 @@ class NmapTFTP(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = 'Nmap TFTP'
-		self.tags = ['default', 'tftp']
+		self.tags = ['default', 'safe', 'tftp']
 
 	def configure(self):
 		self.match_service_name('^tftp')
@@ -168,7 +135,7 @@ class NmapVNC(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = 'Nmap VNC'
-		self.tags = ['default', 'vnc']
+		self.tags = ['default', 'safe', 'vnc']
 
 	def configure(self):
 		self.match_service_name('^vnc')

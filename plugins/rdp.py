@@ -5,7 +5,7 @@ class NmapRDP(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap RDP"
-		self.tags = ['default', 'rdp']
+		self.tags = ['default', 'safe', 'rdp']
 
 	def configure(self):
 		self.match_service_name(['^rdp', '^ms\-wbt\-server', '^ms\-term\-serv'])

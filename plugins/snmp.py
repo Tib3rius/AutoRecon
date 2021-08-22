@@ -5,7 +5,7 @@ class NmapSNMP(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap SNMP"
-		self.tags = ['default', 'snmp']
+		self.tags = ['default', 'safe', 'snmp']
 
 	def configure(self):
 		self.match_service_name('^snmp')
@@ -18,7 +18,7 @@ class OneSixtyOne(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "OneSixtyOne"
-		self.tags = ['default', 'snmp']
+		self.tags = ['default', 'safe', 'snmp']
 
 	def configure(self):
 		self.match_service_name('^snmp')
@@ -34,7 +34,7 @@ class SNMPWalk(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "SNMPWalk"
-		self.tags = ['default', 'snmp']
+		self.tags = ['default', 'safe', 'snmp']
 
 	def configure(self):
 		self.match_service_name('^snmp')

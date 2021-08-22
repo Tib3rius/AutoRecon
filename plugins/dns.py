@@ -5,7 +5,7 @@ class DNS(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "DNS"
-		self.tags = ['default', 'dns']
+		self.tags = ['default', 'safe', 'dns']
 
 	def configure(self):
 		self.match_service_name('^domain')
@@ -18,7 +18,7 @@ class DNSZoneTransfer(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "DNS Zone Transfer"
-		self.tags = ['default', 'dns']
+		self.tags = ['default', 'safe', 'dns']
 
 	def configure(self):
 		self.match_service_name('^domain')
@@ -34,7 +34,7 @@ class DNSReverseLookup(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "DNS Reverse Lookup"
-		self.tags = ['default', 'dns']
+		self.tags = ['default', 'safe', 'dns']
 
 	def configure(self):
 		self.match_service_name('^domain')

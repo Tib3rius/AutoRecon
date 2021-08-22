@@ -5,7 +5,7 @@ class NmapLDAP(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap LDAP"
-		self.tags = ['default', 'ldap', 'active-directory']
+		self.tags = ['default', 'safe', 'ldap', 'active-directory']
 
 	def configure(self):
 		self.match_service_name('^ldap')
@@ -18,7 +18,7 @@ class LDAPSearch(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = 'LDAP Search'
-		self.tags = ['default', 'ldap', 'active-directory']
+		self.tags = ['default', 'safe', 'ldap', 'active-directory']
 
 	def configure(self):
 		self.match_service_name('^ldap')

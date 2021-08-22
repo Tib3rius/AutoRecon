@@ -1,7 +1,7 @@
 from autorecon import ServiceScan, error
 from shutil import which
 
-class NmapMSRPC(ServiceScan):
+class NmapRPC(ServiceScan):
 
 	def __init__(self):
 		super().__init__()
@@ -19,7 +19,7 @@ class RPCClient(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "rpcclient"
-		self.tags = ['default', 'rpc']
+		self.tags = ['default', 'safe', 'rpc']
 
 	def configure(self):
 		self.match_service_name(['^msrpc', '^rpcbind', '^erpc'])
@@ -32,7 +32,7 @@ class RPCDump(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = 'rpcdump'
-		self.tags = ['default', 'rpc']
+		self.tags = ['default', 'safe', 'rpc']
 
 	def configure(self):
 		self.match_service_name(['^msrpc', '^rpcbind', '^erpc'])

@@ -5,7 +5,7 @@ class NmapKerberos(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap Kerberos"
-		self.tags = ['default', 'kerberos', 'active-directory']
+		self.tags = ['default', 'safe', 'kerberos', 'active-directory']
 
 	def configure(self):
 		self.match_service_name(['^kerberos', '^kpasswd'])

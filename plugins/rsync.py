@@ -5,7 +5,7 @@ class NmapRsync(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = 'Nmap Rsync'
-		self.tags = ['default', 'rsync']
+		self.tags = ['default', 'safe', 'rsync']
 
 	def configure(self):
 		self.match_service_name('^rsync')
@@ -18,7 +18,7 @@ class RsyncList(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = 'Rsync List Files'
-		self.tags = ['default', 'rsync']
+		self.tags = ['default', 'safe', 'rsync']
 
 	def configure(self):
 		self.match_service_name('^rsync')

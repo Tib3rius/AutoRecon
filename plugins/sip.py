@@ -5,7 +5,7 @@ class NmapSIP(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap SIP"
-		self.tags = ['default', 'sip']
+		self.tags = ['default', 'safe', 'sip']
 
 	def configure(self):
 		self.match_service_name('^asterisk')
@@ -18,7 +18,7 @@ class SIPVicious(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "SIPVicious"
-		self.tags = ['default', 'sip']
+		self.tags = ['default', 'safe', 'sip']
 
 	def configure(self):
 		self.match_service_name('^asterisk')

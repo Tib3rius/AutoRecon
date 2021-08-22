@@ -5,7 +5,7 @@ class NmapMongoDB(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap MongoDB"
-		self.tags = ['default', 'databases']
+		self.tags = ['default', 'safe', 'databases']
 
 	def configure(self):
 		self.match_service_name('^mongod')
@@ -18,7 +18,7 @@ class NmapMSSQL(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap MSSQL"
-		self.tags = ['default', 'databases']
+		self.tags = ['default', 'safe', 'databases']
 
 	def configure(self):
 		self.match_service_name(['^mssql', '^ms\-sql'])
@@ -34,7 +34,7 @@ class NmapMYSQL(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap MYSQL"
-		self.tags = ['default', 'databases']
+		self.tags = ['default', 'safe', 'databases']
 
 	def configure(self):
 		self.match_service_name('^mysql')
@@ -50,7 +50,7 @@ class NmapOracle(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Nmap Oracle"
-		self.tags = ['default', 'databases']
+		self.tags = ['default', 'safe', 'databases']
 
 	def configure(self):
 		self.match_service_name('^oracle')
@@ -66,7 +66,7 @@ class OracleTNScmd(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Oracle TNScmd"
-		self.tags = ['default', 'databases']
+		self.tags = ['default', 'safe', 'databases']
 
 	def configure(self):
 		self.match_service_name('^oracle')
@@ -80,7 +80,7 @@ class OracleScanner(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Oracle Scanner"
-		self.tags = ['default', 'databases']
+		self.tags = ['default', 'safe', 'databases']
 
 	def configure(self):
 		self.match_service_name('^oracle')
@@ -93,7 +93,7 @@ class OracleODAT(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Oracle ODAT"
-		self.tags = ['default', 'databases']
+		self.tags = ['default', 'safe', 'databases']
 
 	def configure(self):
 		self.match_service_name('^oracle')

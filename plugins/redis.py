@@ -6,7 +6,7 @@ class NmapRedis(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = 'Nmap Redis'
-		self.tags = ['default', 'redis']
+		self.tags = ['default', 'safe', 'redis']
 
 	def configure(self):
 		self.match_service_name('^redis$')
@@ -19,7 +19,7 @@ class RedisCli(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = 'Redis Cli'
-		self.tags = ['default', 'redis']
+		self.tags = ['default', 'safe', 'redis']
 
 	def configure(self):
 		self.match_service_name('^redis$')
