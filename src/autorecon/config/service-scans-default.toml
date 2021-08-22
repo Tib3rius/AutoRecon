@@ -404,7 +404,7 @@ service-names = [
 
     [[rsync.scan]]
     name = 'rsync'
-    command = 'nmap {nmap_extra} -sV --script="rsync-list-modules" -p {port} {address}  -oN "{scandir}/{protocol}_{port}_rsync_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_rsync_nmap.xml"'
+    command = 'nmap -sV --script="rsync-list-modules" -p {port} {address}  -oN "{scandir}/{protocol}_{port}_rsync_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_rsync_nmap.xml"'
 
 [sip]
 
