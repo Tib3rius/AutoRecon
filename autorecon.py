@@ -4,8 +4,15 @@ import colorama
 from typing import final
 from colorama import Fore, Style
 import traceback
+from pynput import keyboard
+import termios, tty
 
 colorama.init()
+
+# Save current terminal settings so we can restore them.
+terminal_settings = termios.tcgetattr(sys.stdin.fileno())
+# This makes it possible to capture keypresses without <enter> and without displaying them.
+tty.setcbreak(sys.stdin.fileno())
 
 class Pattern:
 
@@ -537,6 +544,7 @@ class AutoRecon(object):
 
 		process = await asyncio.create_subprocess_shell(
 			cmd,
+			stdin=None,
 			stdout=asyncio.subprocess.PIPE,
 			stderr=asyncio.subprocess.PIPE,
 			executable='/bin/bash')
@@ -684,6 +692,9 @@ def cancel_all_tasks(signal, frame):
 				except ProcessLookupError: # Will get raised if the process finishes before we get to killing it.
 					pass
 
+	# Restore original terminal settings.
+	termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, terminal_settings)
+
 async def start_heartbeat(target, period=60):
 	while True:
 		await asyncio.sleep(period)
@@ -700,6 +711,20 @@ async def start_heartbeat(target, period=60):
 				info('{bgreen}' + current_time + '{rst} - There are {byellow}' + str(count) + '{rst} scans still running against {byellow}' + target.address + '{rst}' + tasks_list)
 			elif count == 1:
 				info('{bgreen}' + current_time + '{rst} - There is {byellow}1{rst} scan still running against {byellow}' + target.address + '{rst}' + tasks_list)
+
+def change_verbosity(key):
+	if key == keyboard.Key.up:
+		if autorecon.config['verbose'] == 2:
+			info('Verbosity is already at the highest level.')
+		else:
+			autorecon.config['verbose'] += 1
+			info('Verbosity increased to ' + str(autorecon.config['verbose']))
+	elif key == keyboard.Key.down:
+		if autorecon.config['verbose'] == 0:
+			info('Verbosity is already at the lowest level.')
+		else:
+			autorecon.config['verbose'] -= 1
+			info('Verbosity decreased to ' + str(autorecon.config['verbose']))
 
 async def port_scan(plugin, target):
 	async with target.autorecon.port_scan_semaphore:
@@ -1424,6 +1449,9 @@ async def main():
 
 	num_initial_targets = max(1, math.ceil(autorecon.config['max_port_scans'] / port_scan_plugin_count))
 
+	verbosity_monitor = keyboard.Listener(on_press=change_verbosity)
+	verbosity_monitor.start()
+
 	start_time = time.time()
 
 	pending = []
@@ -1463,6 +1491,14 @@ async def main():
 				i+=1
 				if i >= num_new_targets:
 					break
+
+	try:
+		verbosity_monitor.stop()
+	except:
+		pass
+
+	# Restore original terminal settings.
+	termios.tcsetattr(sys.stdin, termios.TCSADRAIN, terminal_settings)
 
 	if timed_out:
 		cancel_all_tasks(None, None)

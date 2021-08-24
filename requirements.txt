@@ -1,3 +1,4 @@
 unidecode
 toml
 colorama
+pynput
