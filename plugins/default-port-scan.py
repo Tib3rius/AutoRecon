@@ -28,12 +28,12 @@ class AllTCPPortScan(PortScan):
 		await process.wait()
 		return services
 
-class Top20UDPPortScan(PortScan):
+class Top100UDPPortScan(PortScan):
 
 	def __init__(self):
 		super().__init__()
 		self.name = "Top 100 UDP Ports"
-		self.tags = ["default", "default-port-scan"]
+		self.tags = ["default", "default-port-scan", "long"]
 
 	async def run(self, target):
 		# Only run UDP scan if user is root.
