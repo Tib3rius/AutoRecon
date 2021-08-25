@@ -227,6 +227,16 @@ class CommandStreamReader(object):
 				else:
 					await asyncio.sleep(0.1)
 
+	async def readlines(self):
+		lines = []
+		while True:
+			line = await self.readline()
+			if line is not None:
+				lines.append(line)
+			else:
+				break
+		return lines
+
 class Plugin(object):
 
 	def __init__(self):
@@ -577,6 +587,9 @@ def e(*args, frame_index=1, **kvargs):
 
 	return string.Formatter().vformat(' '.join(args), args, vals)
 
+def fformat(s):
+	return e(s, frame_index=3)
+
 def cprint(*args, color=Fore.RESET, char='*', sep=' ', end='\n', frame_index=1, file=sys.stdout, printmsg=True, **kvargs):
 	frame = sys._getframe(frame_index)
 
@@ -808,7 +821,25 @@ async def service_scan(plugin, service):
 			break
 
 	async with semaphore:
+		# Create variables for fformat references.
+		address = service.target.address
+		scandir = service.target.scandir
+		protocol = service.protocol
+		port = service.port
+		name = service.name
+
+		# Special cases for HTTP.
+		http_scheme = 'https' if 'https' in service.name or service.secure is True else 'http'
+
+		nmap_extra = service.target.autorecon.args.nmap
+		if service.target.autorecon.args.nmap_append:
+			nmap_extra += ' ' + service.target.autorecon.args.nmap_append
+
+		if protocol == 'udp':
+			nmap_extra += ' -sU'
+
 		tag = service.tag() + '/' + plugin.slug
+
 		info('Service scan {bblue}' + plugin.name + ' (' + tag + '){rst} running against {byellow}' + service.target.address + '{rst}')
 
 		async with service.target.lock:

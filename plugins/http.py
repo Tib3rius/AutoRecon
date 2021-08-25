@@ -1,4 +1,4 @@
-from autorecon import ServiceScan, error
+from autorecon import ServiceScan, error, info, fformat
 from shutil import which
 import os
 
@@ -67,7 +67,15 @@ class CurlRobots(ServiceScan):
 
 	async def run(self, service):
 		if service.protocol == 'tcp':
-			await service.execute('curl -sSik {http_scheme}://{address}:{port}/robots.txt', outfile='{protocol}_{port}_{http_scheme}_curl-robots.txt')
+			_, stdout, _ = await service.execute('curl -sSikf {http_scheme}://{address}:{port}/robots.txt')
+			lines = await stdout.readlines()
+
+			if lines:
+				filename = fformat('{scandir}/{protocol}_{port}_{http_scheme}_curl-robots.txt')
+				with open(filename, mode='wt', encoding='utf8') as robots:
+					robots.write('\n'.join(lines))
+			else:
+				info('{bblue}[' + fformat('{tag}') + ']{rst} There did not appear to be a robots.txt file in the webroot (/).')
 
 class DirBuster(ServiceScan):
 
