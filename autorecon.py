@@ -267,7 +267,7 @@ class Plugin(object):
 
 	@final
 	def add_list_option(self, name, default=None, help=None):
-		self.autorecon.add_argument(self, name, action='append', metavar='VALUE', default=default, help=help)
+		self.autorecon.add_argument(self, name, nargs='+', metavar='VALUE', default=default, help=help)
 
 	@final
 	def add_choice_option(self, name, choices, default=None, help=None):
@@ -1264,7 +1264,7 @@ async def main():
 									options.pop('metavar', None)
 									options.pop('default', None)
 								elif gtype == 'list':
-									options['action'] = 'append'
+									options['nargs'] = '+'
 								elif gtype == 'choice':
 									if 'choices' not in gvals:
 										fail('Global choice option ' + gkey + ' has no choices value set.')
