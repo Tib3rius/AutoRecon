@@ -74,7 +74,7 @@ class Target:
 
 		process, stdout, stderr = await self.autorecon.execute(cmd, target, tag, patterns=plugin.patterns, outfile=outfile, errfile=errfile)
 
-		target.running_tasks[tag]['processes'].append({'process':process, 'stderr': stderr, 'cmd': cmd})
+		target.running_tasks[tag]['processes'].append({'process': process, 'stderr': stderr, 'cmd': cmd})
 
 		if blocking:
 			while (not (stdout.ended and stderr.ended)):
@@ -162,7 +162,7 @@ class Service:
 
 		process, stdout, stderr = await target.autorecon.execute(cmd, target, tag, patterns=plugin.patterns, outfile=outfile, errfile=errfile)
 
-		target.running_tasks[tag]['processes'].append({'process':process, 'stderr': stderr, 'cmd': cmd})
+		target.running_tasks[tag]['processes'].append({'process': process, 'stderr': stderr, 'cmd': cmd})
 
 		if blocking:
 			while (not (stdout.ended and stderr.ended)):
@@ -665,31 +665,43 @@ def fail(*args, sep=' ', end='\n', file=sys.stderr, **kvargs):
 	cprint(*args, color=Fore.RED, char='!', sep=sep, end=end, file=file, frame_index=2, **kvargs)
 	exit(-1)
 
-def calculate_elapsed_time(start_time):
+def calculate_elapsed_time(start_time, short=False):
 	elapsed_seconds = round(time.time() - start_time)
 
 	m, s = divmod(elapsed_seconds, 60)
 	h, m = divmod(m, 60)
 
 	elapsed_time = []
-	if h == 1:
-		elapsed_time.append(str(h) + ' hour')
-	elif h > 1:
-		elapsed_time.append(str(h) + ' hours')
-
-	if m == 1:
-		elapsed_time.append(str(m) + ' minute')
-	elif m > 1:
-		elapsed_time.append(str(m) + ' minutes')
-
-	if s == 1:
-		elapsed_time.append(str(s) + ' second')
-	elif s > 1:
-		elapsed_time.append(str(s) + ' seconds')
+	if short:
+		elapsed_time.append(str(h))
 	else:
-		elapsed_time.append('less than a second')
+		if h == 1:
+			elapsed_time.append(str(h) + ' hour')
+		elif h > 1:
+			elapsed_time.append(str(h) + ' hours')
 
-	return ', '.join(elapsed_time)
+	if short:
+		elapsed_time.append(str(m))
+	else:
+		if m == 1:
+			elapsed_time.append(str(m) + ' minute')
+		elif m > 1:
+			elapsed_time.append(str(m) + ' minutes')
+
+	if short:
+		elapsed_time.append(str(s))
+	else:
+		if s == 1:
+			elapsed_time.append(str(s) + ' second')
+		elif s > 1:
+			elapsed_time.append(str(s) + ' seconds')
+		else:
+			elapsed_time.append('less than a second')
+
+	if short:
+		return ':'.join(elapsed_time)
+	else:
+		return ', '.join(elapsed_time)
 
 def slugify(name):
 	return re.sub(r'[\W_]+', '-', unidecode.unidecode(name).lower()).strip('-')
@@ -726,7 +738,7 @@ async def start_heartbeat(target, period=60):
 			elif count == 1:
 				info('{bgreen}' + current_time + '{rst} - There is {byellow}1{rst} scan still running against {byellow}' + target.address + '{rst}' + tasks_list)
 
-def change_verbosity(key):
+def handle_keyboard(key):
 	if key == keyboard.Key.up:
 		if autorecon.config['verbose'] == 2:
 			info('Verbosity is already at the highest level.')
@@ -739,15 +751,36 @@ def change_verbosity(key):
 		else:
 			autorecon.config['verbose'] -= 1
 			info('Verbosity decreased to ' + str(autorecon.config['verbose']))
+	elif key == keyboard.KeyCode.from_char('s'):
+		for target in autorecon.scanning_targets:
+			count = len(target.running_tasks)
+
+			tasks_list = []
+			if target.autorecon.config['verbose'] >= 1:
+				for key, value in target.running_tasks.items():
+					elapsed_time = calculate_elapsed_time(value['start'], short=True)
+					tasks_list.append('{bblue}' + key + '{rst}' + ' (elapsed: ' + elapsed_time + ')')
+
+				tasks_list = ':\n    ' + '\n    '.join(tasks_list)
+			else:
+				tasks_list = ''
+
+			current_time = datetime.now().strftime('%H:%M:%S')
+
+			if count > 1:
+				info('{bgreen}' + current_time + '{rst} - There are {byellow}' + str(count) + '{rst} scans still running against {byellow}' + target.address + '{rst}' + tasks_list)
+			elif count == 1:
+				info('{bgreen}' + current_time + '{rst} - There is {byellow}1{rst} scan still running against {byellow}' + target.address + '{rst}' + tasks_list)
 
 async def port_scan(plugin, target):
 	async with target.autorecon.port_scan_semaphore:
 		info('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} running against {byellow}' + target.address + '{rst}')
 
-		async with target.lock:
-			target.running_tasks[plugin.slug] = {'plugin': plugin, 'processes':[]}
-
 		start_time = time.time()
+
+		async with target.lock:
+			target.running_tasks[plugin.slug] = {'plugin': plugin, 'processes': [], 'start': start_time}
+
 		try:
 			result = await plugin.run(target)
 		except Exception as ex:
@@ -844,10 +877,11 @@ async def service_scan(plugin, service):
 
 		info('Service scan {bblue}' + plugin.name + ' (' + tag + '){rst} running against {byellow}' + service.target.address + '{rst}')
 
-		async with service.target.lock:
-			service.target.running_tasks[tag] = {'plugin': plugin, 'processes':[]}
-
 		start_time = time.time()
+
+		async with service.target.lock:
+			service.target.running_tasks[tag] = {'plugin': plugin, 'processes': [], 'start': start_time}
+
 		try:
 			result = await plugin.run(service)
 		except Exception as ex:
@@ -1526,7 +1560,7 @@ async def main():
 	# This makes it possible to capture keypresses without <enter> and without displaying them.
 	tty.setcbreak(sys.stdin.fileno())
 
-	verbosity_monitor = keyboard.Listener(on_press=change_verbosity)
+	verbosity_monitor = keyboard.Listener(on_press=handle_keyboard)
 	verbosity_monitor.start()
 
 	timed_out = False
