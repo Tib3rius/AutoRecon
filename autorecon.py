@@ -1507,6 +1507,8 @@ async def main():
 		for task in done:
 			if autorecon.pending_targets:
 				pending.add(asyncio.create_task(scan_target(Target(autorecon.pending_targets.pop(0), autorecon))))
+			if task in pending:
+				pending.remove(task)
 
 		port_scan_task_count = 0
 		for targ in autorecon.scanning_targets:
@@ -1528,9 +1530,6 @@ async def main():
 	except:
 		pass
 
-	# Restore original terminal settings.
-	termios.tcsetattr(sys.stdin, termios.TCSADRAIN, terminal_settings)
-
 	if timed_out:
 		cancel_all_tasks(None, None)
 
@@ -1546,6 +1545,9 @@ async def main():
 
 	if autorecon.missing_services:
 		warn('{byellow}AutoRecon identified the following services, but could not match them to any plugins based on the service name. Please report these to Tib3rius: ' + ', '.join(autorecon.missing_services) + '{rst}')
+
+	# Restore original terminal settings.
+	termios.tcsetattr(sys.stdin, termios.TCSADRAIN, terminal_settings)
 
 if __name__ == '__main__':
 	signal.signal(signal.SIGINT, cancel_all_tasks)
