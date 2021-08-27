@@ -412,6 +412,7 @@ class AutoRecon(object):
 			'nmap',
 			'nmap_append',
 			'disable_sanity_checks',
+			'force_services',
 			'accessible',
 			'verbose'
 		]
@@ -434,6 +435,7 @@ class AutoRecon(object):
 			'nmap': '-vv --reason -Pn',
 			'nmap_append': '',
 			'disable_sanity_checks': False,
+			'force_services': None,
 			'accessible': False,
 			'verbose': 0
 		}
@@ -787,36 +789,37 @@ async def service_scan(plugin, service):
 	from autorecon import PortScan
 	semaphore = service.target.autorecon.service_scan_semaphore
 
-	# If service scan semaphore is locked, see if we can use port scan semaphore.
-	while True:
-		if semaphore.locked():
-			if semaphore != service.target.autorecon.port_scan_semaphore: # This will be true unless user sets max_scans == max_port_scans
+	if not service.target.autorecon.config['force_services']:
+		# If service scan semaphore is locked, see if we can use port scan semaphore.
+		while True:
+			if semaphore.locked():
+				if semaphore != service.target.autorecon.port_scan_semaphore: # This will be true unless user sets max_scans == max_port_scans
 
-				port_scan_task_count = 0
-				for targ in service.target.autorecon.scanning_targets:
-					for process_list in targ.running_tasks.values():
-						if issubclass(process_list['plugin'].__class__, PortScan):
-							port_scan_task_count += 1
+					port_scan_task_count = 0
+					for targ in service.target.autorecon.scanning_targets:
+						for process_list in targ.running_tasks.values():
+							if issubclass(process_list['plugin'].__class__, PortScan):
+								port_scan_task_count += 1
 
-				if not service.target.autorecon.pending_targets and (service.target.autorecon.config['max_port_scans'] - port_scan_task_count) >= 1: # If no more targets, and we have room, use port scan semaphore.
-					if service.target.autorecon.port_scan_semaphore.locked():
-						await asyncio.sleep(1)
-						continue
-					semaphore = service.target.autorecon.port_scan_semaphore
-					break
-				else: # Do some math to see if we can use the port scan semaphore.
-					if (service.target.autorecon.config['max_port_scans'] - (port_scan_task_count + (len(service.target.autorecon.pending_targets) * service.target.autorecon.config['port_scan_plugin_count']))) >= 1:
+					if not service.target.autorecon.pending_targets and (service.target.autorecon.config['max_port_scans'] - port_scan_task_count) >= 1: # If no more targets, and we have room, use port scan semaphore.
 						if service.target.autorecon.port_scan_semaphore.locked():
 							await asyncio.sleep(1)
 							continue
 						semaphore = service.target.autorecon.port_scan_semaphore
 						break
-					else:
-						await asyncio.sleep(1)
+					else: # Do some math to see if we can use the port scan semaphore.
+						if (service.target.autorecon.config['max_port_scans'] - (port_scan_task_count + (len(service.target.autorecon.pending_targets) * service.target.autorecon.config['port_scan_plugin_count']))) >= 1:
+							if service.target.autorecon.port_scan_semaphore.locked():
+								await asyncio.sleep(1)
+								continue
+							semaphore = service.target.autorecon.port_scan_semaphore
+							break
+						else:
+							await asyncio.sleep(1)
+				else:
+					break
 			else:
 				break
-		else:
-			break
 
 	async with semaphore:
 		# Create variables for fformat references.
@@ -917,23 +920,41 @@ async def scan_target(target):
 
 	heartbeat = asyncio.create_task(start_heartbeat(target, period=target.autorecon.config['heartbeat']))
 
-	for plugin in target.autorecon.plugin_types['port']:
-		plugin_tag_set = set(plugin.tags)
+	services = []
+	if autorecon.config['force_services']:
+		forced_services = [x.strip().lower() for x in autorecon.config['force_services']]
 
-		matching_tags = False
-		for tag_group in target.autorecon.tags:
-			if set(tag_group).issubset(plugin_tag_set):
-				matching_tags = True
-				break
+		for forced_service in forced_services:
+			match = re.search('(?P<protocol>(tcp|udp))\/(?P<port>\d+)\/(?P<service>[\w\-\/]+)\/(?P<secure>secure|insecure)', forced_service)
+			if match:
+				protocol = match.group('protocol')
+				port = int(match.group('port'))
+				service = match.group('service')
+				secure = True if match.group('secure') == 'secure' else False
+				service = Service(protocol, port, service, secure)
+				service.target = target
+				services.append(service)
 
-		excluded_tags = False
-		for tag_group in target.autorecon.excluded_tags:
-			if set(tag_group).issubset(plugin_tag_set):
-				excluded_tags = True
-				break
+		if services:
+			pending.append(asyncio.create_task(asyncio.sleep(0)))
+	else:
+		for plugin in target.autorecon.plugin_types['port']:
+			plugin_tag_set = set(plugin.tags)
 
-		if matching_tags and not excluded_tags:
-			pending.append(asyncio.create_task(port_scan(plugin, target)))
+			matching_tags = False
+			for tag_group in target.autorecon.tags:
+				if set(tag_group).issubset(plugin_tag_set):
+					matching_tags = True
+					break
+
+			excluded_tags = False
+			for tag_group in target.autorecon.excluded_tags:
+				if set(tag_group).issubset(plugin_tag_set):
+					excluded_tags = True
+					break
+
+			if matching_tags and not excluded_tags:
+				pending.append(asyncio.create_task(port_scan(plugin, target)))
 
 	async with autorecon.lock:
 		autorecon.scanning_targets.append(target)
@@ -953,23 +974,25 @@ async def scan_target(target):
 				timed_out = True
 				break
 
-		# Extract Services
-		services = []
-		async with target.lock:
-			while target.pending_services:
-				services.append(target.pending_services.pop(0))
+		if not autorecon.config['force_services']:
+			# Extract Services
+			services = []
 
-		for task in done:
-			try:
-				if task.exception():
-					print(task.exception())
-					continue
-			except asyncio.InvalidStateError:
-				pass
+			async with target.lock:
+				while target.pending_services:
+					services.append(target.pending_services.pop(0))
 
-			if task.result()['type'] == 'port':
-				for service in (task.result()['result'] or []):
-					services.append(service)
+			for task in done:
+				try:
+					if task.exception():
+						print(task.exception())
+						continue
+				except asyncio.InvalidStateError:
+					pass
+
+				if task.result()['type'] == 'port':
+					for service in (task.result()['result'] or []):
+						services.append(service)
 
 		for service in services:
 			if service.full_tag() not in target.services:
@@ -1150,6 +1173,7 @@ async def main():
 	nmap_group.add_argument('--nmap', action='store', help='Override the {nmap_extra} variable in scans. Default: %(default)s')
 	nmap_group.add_argument('--nmap-append', action='store', help='Append to the default {nmap_extra} variable in scans. Default: %(default)s')
 	parser.add_argument('--disable-sanity-checks', action='store_true', help='Disable sanity checks that would otherwise prevent the scans from running. Default: %(default)s')
+	parser.add_argument('--force-services', action='store', nargs='+', help='A space separated list of services in the following style: tcp/80/http/insecure tcp/443/https/secure')
 	parser.add_argument('--accessible', action='store_true', help='Attempts to make AutoRecon output more accessible to screenreaders. Default: %(default)s')
 	parser.add_argument('-v', '--verbose', action='count', help='Enable verbose output. Repeat for more verbosity.')
 	parser.add_argument('--version', action='store_true', help='Prints the AutoRecon version and exits.')
@@ -1161,7 +1185,7 @@ async def main():
 	autorecon.argparse = parser
 
 	if args.version:
-		print('AutoRecon v2.0-beta1')
+		print('AutoRecon v2.0-beta2')
 		sys.exit(0)
 
 	# Parse config file and args for global.toml first.
@@ -1332,7 +1356,6 @@ async def main():
 			if key in autorecon.configurable_boolean_keys and autorecon.config[key]:
 				continue
 			autorecon.config[key] = args_dict[key]
-
 	autorecon.args = args
 
 	if autorecon.config['max_scans'] <= 0:
@@ -1367,12 +1390,15 @@ async def main():
 		errors = True
 
 	if not errors:
-		autorecon.port_scan_semaphore = asyncio.Semaphore(autorecon.config['max_port_scans'])
-		# If max scans and max port scans is the same, the service scan semaphore and port scan semaphore should be the same object
-		if autorecon.config['max_scans'] == autorecon.config['max_port_scans']:
-			autorecon.service_scan_semaphore = autorecon.port_scan_semaphore
+		if autorecon.config['force_services']:
+			autorecon.service_scan_semaphore = asyncio.Semaphore(autorecon.config['max_scans'])
 		else:
-			autorecon.service_scan_semaphore = asyncio.Semaphore(autorecon.config['max_scans'] - autorecon.config['max_port_scans'])
+			autorecon.port_scan_semaphore = asyncio.Semaphore(autorecon.config['max_port_scans'])
+			# If max scans and max port scans is the same, the service scan semaphore and port scan semaphore should be the same object
+			if autorecon.config['max_scans'] == autorecon.config['max_port_scans']:
+				autorecon.service_scan_semaphore = autorecon.port_scan_semaphore
+			else:
+				autorecon.service_scan_semaphore = asyncio.Semaphore(autorecon.config['max_scans'] - autorecon.config['max_port_scans'])
 
 	tags = []
 	for tag_group in list(set(filter(None, args.tags.lower().split(',')))):
@@ -1450,26 +1476,29 @@ async def main():
 		error('A total of ' + str(len(autorecon.pending_targets)) + ' targets would be scanned. If this is correct, re-run with the --disable-sanity-checks option to suppress this check.')
 		errors = True
 
-	port_scan_plugin_count = 0
-	for plugin in autorecon.plugin_types['port']:
-		matching_tags = False
-		for tag_group in autorecon.tags:
-			if set(tag_group).issubset(set(plugin.tags)):
-				matching_tags = True
-				break
+	if not autorecon.config['force_services']:
+		port_scan_plugin_count = 0
+		for plugin in autorecon.plugin_types['port']:
+			matching_tags = False
+			for tag_group in autorecon.tags:
+				if set(tag_group).issubset(set(plugin.tags)):
+					matching_tags = True
+					break
 
-		excluded_tags = False
-		for tag_group in autorecon.excluded_tags:
-			if set(tag_group).issubset(set(plugin.tags)):
-				excluded_tags = True
-				break
+			excluded_tags = False
+			for tag_group in autorecon.excluded_tags:
+				if set(tag_group).issubset(set(plugin.tags)):
+					excluded_tags = True
+					break
 
-		if matching_tags and not excluded_tags:
-			port_scan_plugin_count += 1
+			if matching_tags and not excluded_tags:
+				port_scan_plugin_count += 1
 
-	if port_scan_plugin_count == 0:
-		error('There are no port scan plugins that match the tags specified.')
-		errors = True
+		if port_scan_plugin_count == 0:
+			error('There are no port scan plugins that match the tags specified.')
+			errors = True
+	else:
+		port_scan_plugin_count = autorecon.config['max_port_scans'] / 5
 
 	if errors:
 		sys.exit(1)
@@ -1487,13 +1516,13 @@ async def main():
 		i+=1
 		if i >= num_initial_targets:
 			break
-	
+
 	# This makes it possible to capture keypresses without <enter> and without displaying them.
 	tty.setcbreak(sys.stdin.fileno())
-	
+
 	verbosity_monitor = keyboard.Listener(on_press=change_verbosity)
 	verbosity_monitor.start()
-	
+
 	timed_out = False
 	while pending:
 		done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED, timeout=1)
@@ -1514,8 +1543,12 @@ async def main():
 		port_scan_task_count = 0
 		for targ in autorecon.scanning_targets:
 			for process_list in targ.running_tasks.values():
-				if issubclass(process_list['plugin'].__class__, PortScan):
-					port_scan_task_count += 1
+				if autorecon.config['force_services']:
+					if issubclass(process_list['plugin'].__class__, ServiceScan):
+						port_scan_task_count += 1
+				else:
+					if issubclass(process_list['plugin'].__class__, PortScan):
+						port_scan_task_count += 1
 
 		num_new_targets = math.ceil((autorecon.config['max_port_scans'] - port_scan_task_count) / port_scan_plugin_count)
 		if num_new_targets > 0:
