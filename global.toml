@@ -7,5 +7,4 @@ default = '/usr/share/seclists/Passwords/darkweb2017-top100.txt'
 help = 'A wordlist of passwords, useful for bruteforcing. Default: %(default)s'
 
 [global.domain]
-default = false
-help = 'The domain to use (if known). Used for DNS and/or Active Directory.'
+help = 'The domain to use (if known). Used for DNS and/or Active Directory. Default: %(default)s'

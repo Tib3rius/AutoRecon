@@ -288,7 +288,13 @@ class Plugin(object):
 		name = 'global.' + slugify(name).replace('-', '_')
 
 		if name in vars(self.autorecon.args):
-			return vars(self.autorecon.args)[name]
+			if vars(self.autorecon.args)[name] is None:
+				if default:
+					return default
+				else:
+					return None
+			else:
+				return vars(self.autorecon.args)[name]
 		else:
 			if default:
 				return default
@@ -323,11 +329,41 @@ class ServiceScan(Plugin):
 		super().__init__()
 		self.ports = {'tcp':[], 'udp':[]}
 		self.ignore_ports = {'tcp':[], 'udp':[]}
+		self.services = []
 		self.service_names = []
 		self.ignore_service_names = []
 		self.match_all_service_names_boolean = False
 		self.run_once_boolean = False
 		self.require_ssl_boolean = False
+
+	@final
+	def match_service(self, protocol, port, name, negative_match=False):
+		protocol = protocol.lower()
+		if protocol not in ['tcp', 'udp']:
+			print('Invalid protocol.')
+			sys.exit(1)
+
+		if not isinstance(port, list):
+			port = [port]
+
+		port = list(map(int, port))
+
+		if not isinstance(name, list):
+			name = [name]
+
+		valid_regex = True
+		for r in name:
+			try:
+				re.compile(r)
+			except re.error:
+				print('Invalid regex: ' + r)
+				valid_regex = False
+
+		if not valid_regex:
+			sys.exit(1)
+
+		service = {'protocol': protocol, 'port': port, 'name': name, 'negative_match': negative_match}
+		self.services.append(service)
 
 	@final
 	def match_port(self, protocol, port, negative_match=False):
@@ -673,7 +709,7 @@ def calculate_elapsed_time(start_time, short=False):
 
 	elapsed_time = []
 	if short:
-		elapsed_time.append(str(h))
+		elapsed_time.append(str(h).zfill(2))
 	else:
 		if h == 1:
 			elapsed_time.append(str(h) + ' hour')
@@ -681,7 +717,7 @@ def calculate_elapsed_time(start_time, short=False):
 			elapsed_time.append(str(h) + ' hours')
 
 	if short:
-		elapsed_time.append(str(m))
+		elapsed_time.append(str(m).zfill(2))
 	else:
 		if m == 1:
 			elapsed_time.append(str(m) + ' minute')
@@ -689,7 +725,7 @@ def calculate_elapsed_time(start_time, short=False):
 			elapsed_time.append(str(m) + ' minutes')
 
 	if short:
-		elapsed_time.append(str(s))
+		elapsed_time.append(str(s).zfill(2))
 	else:
 		if s == 1:
 			elapsed_time.append(str(s) + ' second')
@@ -1068,6 +1104,18 @@ async def scan_target(target):
 				plugin_was_run = False
 				plugin_service_match = False
 				plugin_tag = service.tag() + '/' + plugin.slug
+
+				for service_dict in plugin.services:
+					if service_dict['protocol'] == protocol and port in service_dict['port']:
+						for name in service_dict['name']:
+							if service_dict['negative_match']:
+								if name not in plugin.ignore_service_names:
+									plugin.ignore_service_names.append(name)
+							else:
+								if name not in plugin.service_names:
+									plugin.service_names.append(name)
+					else:
+						continue
 
 				for s in plugin.service_names:
 					if re.search(s, service.name):
