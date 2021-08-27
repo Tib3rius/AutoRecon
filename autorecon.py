@@ -439,6 +439,7 @@ class AutoRecon(object):
 			'accessible': False,
 			'verbose': 0
 		}
+		self.errors = False
 		self.lock = asyncio.Lock()
 		self.load_slug = None
 		self.load_module = None
@@ -937,6 +938,11 @@ async def scan_target(target):
 
 		if services:
 			pending.append(asyncio.create_task(asyncio.sleep(0)))
+		else:
+			error('No services were defined. Please check your service syntax: [tcp|udp]/<port>/<service-name>/[secure|insecure]')
+			heartbeat.cancel()
+			autorecon.errors = True
+			return
 	else:
 		for plugin in target.autorecon.plugin_types['port']:
 			plugin_tag_set = set(plugin.tags)
@@ -1526,6 +1532,12 @@ async def main():
 	timed_out = False
 	while pending:
 		done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED, timeout=1)
+
+		# If something failed in scan_target, autorecon.errors will be true.
+		if autorecon.errors:
+			cancel_all_tasks(None, None)
+			sys.exit(1)
+
 		# Check if global timeout has occurred.
 		if autorecon.config['timeout'] is not None:
 			elapsed_seconds = round(time.time() - start_time)
