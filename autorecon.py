@@ -11,8 +11,6 @@ colorama.init()
 
 # Save current terminal settings so we can restore them.
 terminal_settings = termios.tcgetattr(sys.stdin.fileno())
-# This makes it possible to capture keypresses without <enter> and without displaying them.
-tty.setcbreak(sys.stdin.fileno())
 
 class Pattern:
 
@@ -1480,9 +1478,6 @@ async def main():
 
 	num_initial_targets = max(1, math.ceil(autorecon.config['max_port_scans'] / port_scan_plugin_count))
 
-	verbosity_monitor = keyboard.Listener(on_press=change_verbosity)
-	verbosity_monitor.start()
-
 	start_time = time.time()
 
 	pending = []
@@ -1492,7 +1487,13 @@ async def main():
 		i+=1
 		if i >= num_initial_targets:
 			break
-
+	
+	# This makes it possible to capture keypresses without <enter> and without displaying them.
+	tty.setcbreak(sys.stdin.fileno())
+	
+	verbosity_monitor = keyboard.Listener(on_press=change_verbosity)
+	verbosity_monitor.start()
+	
 	timed_out = False
 	while pending:
 		done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED, timeout=1)
