@@ -1085,6 +1085,10 @@ async def scan_target(target):
 
 			info('Found {bmagenta}' + service.name + '{rst} on {bmagenta}' + service.protocol + '/' + str(service.port) + '{rst} on {byellow}' + target.address + '{rst}')
 
+			if not autorecon.config['only_scans_dir']:
+				with open(os.path.join(target.reportdir, 'notes.txt'), 'a') as file:
+					file.writelines('[*] ' + service.name + ' found on ' + service.protocol + '/' + str(service.port) + '.\n\n\n\n')
+
 			service.target = target
 
 			# Create variables for command references.
