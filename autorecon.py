@@ -1318,11 +1318,16 @@ async def main():
 	for plugin_file in os.listdir(autorecon.config['plugins_dir']):
 		if not plugin_file.startswith('_') and plugin_file.endswith('.py'):
 
-			dirname, filename = os.path.split(plugin_file)
+			dirname, filename = os.path.split(os.path.join(autorecon.config['plugins_dir'], plugin_file))
 			dirname = os.path.abspath(dirname)
 
+			# Temporarily insert the plugin directory into the sys.path so importing plugins works.
+			sys.path.insert(1, dirname)
+
 			try:
-				plugin = importlib.import_module('.' + filename[:-3], os.path.basename(autorecon.config['plugins_dir']))
+				plugin = importlib.import_module(filename[:-3])
+				# Remove the plugin directory from the path after import.
+				sys.path.pop(1)
 				clsmembers = inspect.getmembers(plugin, predicate=inspect.isclass)
 				for (_, c) in clsmembers:
 					if c.__module__ == 'autorecon':
