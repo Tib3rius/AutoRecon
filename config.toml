@@ -1,7 +1,7 @@
 # Configure regular AutoRecon options at the top of this file.
 
 # verbose = 1
-# max-scans = 1
+# max-scans = 30
 
 # Configure global pattern matching here.
 [[pattern]]
@@ -11,10 +11,19 @@ pattern = 'State: (?:(?:LIKELY\_?)?VULNERABLE)'
 [[pattern]]
 pattern = '(?i)unauthorized'
 
+[[pattern]]
+description = 'CVE Identified: {match}'
+pattern = '(CVE-\d{4}-\d{4,7})'
+
 # Configure global options here.
 # [global]
 # username-wordlist = '/usr/share/seclists/Usernames/cirt-default-usernames.txt'
 
 # Configure plugin options here.
 # [dirbuster]
-# wordlist = ['/usr/share/seclists/Discovery/Web-Content/common.txt', '/usr/share/seclists/Discovery/Web-Content/big.txt', '/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt']
+# threads = 50
+# wordlist = [
+# 	'/usr/share/seclists/Discovery/Web-Content/common.txt',
+# 	'/usr/share/seclists/Discovery/Web-Content/big.txt',
+# 	'/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt'
+# ]

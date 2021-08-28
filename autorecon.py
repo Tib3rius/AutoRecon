@@ -764,6 +764,9 @@ def cancel_all_tasks(signal, frame):
 	# Restore original terminal settings.
 	termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, terminal_settings)
 
+def timeout(signal, frame):
+	raise Exception("Function timed out.")
+
 async def start_heartbeat(target, period=60):
 	while True:
 		await asyncio.sleep(period)
@@ -1665,10 +1668,19 @@ async def main():
 				if i >= num_new_targets:
 					break
 
+	# The verbosity_monitor.stop() function sometimes seems to block forever.
+	# Since it will get killed at the end of the program anyway, if it takes
+	# more than 1 second to work, we'll time it out.
+	signal.signal(signal.SIGALRM, timeout)
+	signal.alarm(1)
+
 	try:
 		verbosity_monitor.stop()
 	except:
 		pass
+
+	# Cancel the alarm.
+	signal.alarm(0)
 
 	if timed_out:
 		cancel_all_tasks(None, None)
