@@ -76,6 +76,7 @@ class Target:
 
 		target.running_tasks[tag]['processes'].append({'process': process, 'stderr': stderr, 'cmd': cmd})
 
+		# If process should block, sleep until stdout and stderr have finished.
 		if blocking:
 			while (not (stdout.ended and stderr.ended)):
 				await asyncio.sleep(0.1)
@@ -164,6 +165,7 @@ class Service:
 
 		target.running_tasks[tag]['processes'].append({'process': process, 'stderr': stderr, 'cmd': cmd})
 
+		# If process should block, sleep until stdout and stderr have finished.
 		if blocking:
 			while (not (stdout.ended and stderr.ended)):
 				await asyncio.sleep(0.1)
@@ -182,6 +184,7 @@ class CommandStreamReader(object):
 		self.outfile = outfile
 		self.ended = False
 
+	# Read lines from the stream until it ends.
 	async def _read(self):
 		while True:
 			if self.stream.at_eof():
@@ -195,6 +198,8 @@ class CommandStreamReader(object):
 			if self.target.autorecon.config['verbose'] >= 2:
 				if line != '':
 					info('{bblue}[' + self.target.address + '/' + self.tag + ']{crst} ' + line.replace('{', '{{').replace('}', '}}'))
+
+			# Check lines for pattern matches.
 			for p in self.patterns:
 				matches = p.pattern.findall(line)
 				for match in matches:
@@ -215,6 +220,7 @@ class CommandStreamReader(object):
 			self.lines.append(line)
 		self.ended = True
 
+	# Read a line from the stream cache.
 	async def readline(self):
 		while True:
 			try:
@@ -225,6 +231,7 @@ class CommandStreamReader(object):
 				else:
 					await asyncio.sleep(0.1)
 
+	# Read all lines from the stream cache.
 	async def readlines(self):
 		lines = []
 		while True:
@@ -1637,8 +1644,9 @@ async def main():
 		port_scan_task_count = 0
 		for targ in autorecon.scanning_targets:
 			for process_list in targ.running_tasks.values():
+				# If we're not scanning ports, count ServiceScans instead.
 				if autorecon.config['force_services']:
-					if issubclass(process_list['plugin'].__class__, ServiceScan):
+					if issubclass(process_list['plugin'].__class__, ServiceScan): # TODO should we really count ServiceScans? Test...
 						port_scan_task_count += 1
 				else:
 					if issubclass(process_list['plugin'].__class__, PortScan):
@@ -1678,6 +1686,7 @@ async def main():
 	termios.tcsetattr(sys.stdin, termios.TCSADRAIN, terminal_settings)
 
 if __name__ == '__main__':
+	# Capture Ctrl+C and cancel everything.
 	signal.signal(signal.SIGINT, cancel_all_tasks)
 	try:
 		asyncio.run(main())
