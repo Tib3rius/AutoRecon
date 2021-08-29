@@ -36,6 +36,7 @@ class Target:
 		self.reportdir = ''
 		self.scandir = ''
 		self.lock = asyncio.Lock()
+		self.ports = None
 		self.pending_services = []
 		self.services = []
 		self.scans = []
@@ -335,6 +336,7 @@ class PortScan(Plugin):
 
 	def __init__(self):
 		super().__init__()
+		self.type = None
 
 	async def run(self, target):
 		raise NotImplementedError
@@ -449,6 +451,7 @@ class AutoRecon(object):
 		self.excluded_tags = []
 		self.patterns = []
 		self.configurable_keys = [
+			'ports',
 			'max_scans',
 			'max_port_scans',
 			'tags',
@@ -473,6 +476,7 @@ class AutoRecon(object):
 		self.config = {
 			'protected_classes': ['autorecon', 'target', 'service', 'commandstreamreader', 'plugin', 'portscan', 'servicescan', 'global', 'pattern'],
 			'global_file': os.path.dirname(os.path.realpath(__file__)) + '/global.toml',
+			'ports': None,
 			'max_scans': 50,
 			'max_port_scans': None,
 			'tags': 'default',
@@ -838,6 +842,23 @@ def handle_keyboard(key):
 				info('{bgreen}' + current_time + '{rst} - There is {byellow}1{rst} scan still running against {byellow}' + target.address + '{rst}' + tasks_list)
 
 async def port_scan(plugin, target):
+	if autorecon.config['ports']['tcp'] or autorecon.config['ports']['udp']:
+		target.ports = {'tcp':None, 'udp':None}
+		if autorecon.config['ports']['tcp']:
+			target.ports['tcp'] = ','.join(autorecon.config['ports']['tcp'])
+		if autorecon.config['ports']['udp']:
+			target.ports['udp'] = ','.join(autorecon.config['ports']['udp'])
+		if plugin.type is None:
+			warn('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} does not have a type set, and --ports was used. Skipping.')
+			return {'type':'port', 'plugin':plugin, 'result':[]}
+		else:
+			if plugin.type == 'tcp' and not autorecon.config['ports']['tcp']:
+				warn('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} is a TCP port scan but no TCP ports were set using --ports. Skipping')
+				return {'type':'port', 'plugin':plugin, 'result':[]}
+			elif plugin.type == 'udp' and not autorecon.config['ports']['udp']:
+				warn('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} is a UDP port scan but no UDP ports were set using --ports. Skipping')
+				return {'type':'port', 'plugin':plugin, 'result':[]}
+
 	async with target.autorecon.port_scan_semaphore:
 		info('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} running against {byellow}' + target.address + '{rst}')
 
@@ -1276,6 +1297,7 @@ async def main():
 	parser = argparse.ArgumentParser(add_help=False, description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
 	parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs='*')
 	parser.add_argument('-t', '--targets', action='store', type=str, default='', dest='target_file', help='Read targets from file.')
+	parser.add_argument('-p', '--ports', action='store', type=str, help='Comma separated list of ports / port ranges to scan. Specify TCP/UDP ports by prepending list with T:/U: To scan both TCP/UDP, put port(s) at start or specify B: e.g. 53,T:21-25,80,U:123,B:123. Default: %(default)s')
 	parser.add_argument('-m', '--max-scans', action='store', type=int, help='The maximum number of concurrent scans to run. Default: %(default)s')
 	parser.add_argument('-mp', '--max-port-scans', action='store', type=int, help='The maximum number of concurrent port scans to run. Default: 10 (approx 20%% of max-scans unless specified)')
 	parser.add_argument('-c', '--config', action='store', type=str, default=os.path.dirname(os.path.realpath(__file__)) + '/config.toml', dest='config_file', help='Location of AutoRecon\'s config file. Default: %(default)s')
@@ -1484,6 +1506,81 @@ async def main():
 				continue
 			autorecon.config[key] = args_dict[key]
 	autorecon.args = args
+
+	if autorecon.config['ports']:
+		ports_to_scan = {'tcp':[], 'udp':[]}
+		unique = {'tcp':[], 'udp':[]}
+
+		ports = autorecon.config['ports'].split(',')
+		mode = 'both'
+		for port in ports:
+			port = port.strip()
+			if port == '':
+				continue
+
+			if port.startswith('B:'):
+				mode = 'both'
+				port = port.split('B:')[1]
+			elif port.startswith('T:'):
+				mode = 'tcp'
+				port = port.split('T:')[1]
+			elif port.startswith('U:'):
+				mode = 'udp'
+				port = port.split('U:')[1]
+
+			match = re.search('^([0-9]+)\-([0-9]+)$', port)
+			if match:
+				num1 = int(match.group(1))
+				num2 = int(match.group(2))
+
+				if num1 > 65535:
+					fail('Error: A provided port number was too high: ' + str(num1))
+
+				if num2 > 65535:
+					fail('Error: A provided port number was too high: ' + str(num2))
+
+				if num1 == num2:
+					port_range = [num1]
+
+				if num2 > num1:
+					port_range = list(range(num1, num2 + 1, 1))
+				else:
+					port_range = list(range(num2, num1 + 1, 1))
+					num1 = num1 + num2
+					num2 = num1 - num2
+					num1 = num1 - num2
+
+				if mode == 'tcp' or mode == 'both':
+					for num in port_range:
+						if num in ports_to_scan['tcp']:
+							ports_to_scan['tcp'].remove(num)
+					ports_to_scan['tcp'].append(str(num1) + '-' + str(num2))
+					unique['tcp'] = list(set(unique['tcp'] + port_range))
+
+				if mode == 'udp' or mode == 'both':
+					for num in port_range:
+						if num in ports_to_scan['udp']:
+							ports_to_scan['udp'].remove(num)
+					ports_to_scan['udp'].append(str(num1) + '-' + str(num2))
+					unique['udp'] = list(set(unique['tcp'] + port_range))
+			else:
+				match = re.search('^[0-9]+$', port)
+				if match:
+					num = int(port)
+
+					if num > 65535:
+						fail('Error: A provided port number was too high: ' + str(num))
+
+					if mode == 'tcp' or mode == 'both':
+						ports_to_scan['tcp'].append(str(num)) if num not in unique['tcp'] else ports_to_scan['tcp']
+						unique['tcp'].append(num)
+
+					if mode == 'udp' or mode == 'both':
+						ports_to_scan['udp'].append(str(num)) if num not in unique['udp'] else ports_to_scan['udp']
+						unique['udp'].append(num)
+				else:
+					fail('Error: Invalid port number: ' + str(port))
+		autorecon.config['ports'] = ports_to_scan
 
 	if autorecon.config['max_scans'] <= 0:
 		error('Argument -m/--max-scans must be at least 1.')
