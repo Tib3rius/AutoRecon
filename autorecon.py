@@ -1449,6 +1449,19 @@ async def main():
 								global_plugin_args = parser.add_argument_group("global plugin arguments", description="These are optional arguments that can be used by all plugins.")
 
 							global_plugin_args.add_argument('--global.' + slugify(gkey), **options)
+				elif key == 'pattern' and isinstance(val, list): # Process global patterns.
+					for pattern in val:
+						if 'pattern' in pattern:
+							try:
+								compiled = re.compile(pattern['pattern'])
+								if 'description' in pattern:
+									autorecon.patterns.append(Pattern(compiled, description=pattern['description']))
+								else:
+									autorecon.patterns.append(Pattern(compiled))
+							except re.error:
+								fail('Error: The pattern "' + pattern['pattern'] + '" in the config file is invalid regex.')
+						else:
+							fail('Error: A [[pattern]] in the global file doesn\'t have a required pattern variable.')
 
 		except toml.decoder.TomlDecodeError:
 			fail('Error: Couldn\'t parse ' + g.name + ' file. Check syntax.')
@@ -1466,20 +1479,6 @@ async def main():
 				else:
 					if autorecon.argparse.get_default('global.' + slugify(gkey).replace('-', '_')):
 						autorecon.argparse.set_defaults(**{'global.' + slugify(gkey).replace('-', '_'): gval})
-
-		elif key == 'pattern' and isinstance(val, list): # Process global patterns.
-			for pattern in val:
-				if 'pattern' in pattern:
-					try:
-						compiled = re.compile(pattern['pattern'])
-						if 'description' in pattern:
-							autorecon.patterns.append(Pattern(compiled, description=pattern['description']))
-						else:
-							autorecon.patterns.append(Pattern(compiled))
-					except re.error:
-						fail('Error: The pattern "' + pattern['pattern'] + '" in the config file is invalid regex.')
-				else:
-					fail('Error: A [[pattern]] in the config file doesn\'t have a required pattern variable.')
 		elif isinstance(val, dict): # Process potential plugin arguments.
 			for pkey, pval in config_toml[key].items():
 				if autorecon.argparse.get_default(slugify(key).replace('-', '_') + '.' + slugify(pkey).replace('-', '_')):
