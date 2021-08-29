@@ -29,8 +29,9 @@ class Pattern:
 
 class Target:
 
-	def __init__(self, address, autorecon):
+	def __init__(self, address, type, autorecon):
 		self.address = address
+		self.type = type
 		self.autorecon = autorecon
 		self.basedir = ''
 		self.reportdir = ''
@@ -62,6 +63,9 @@ class Target:
 		nmap_extra = self.autorecon.args.nmap
 		if self.autorecon.args.nmap_append:
 			nmap_extra += ' ' + self.autorecon.args.nmap_append
+
+		if target.type == 'IPv6':
+			nmap_extra += ' -6'
 
 		plugin = inspect.currentframe().f_back.f_locals['self']
 
@@ -151,6 +155,9 @@ class Service:
 
 		if protocol == 'udp':
 			nmap_extra += ' -sU'
+
+		if self.target.type == 'IPv6':
+			nmap_extra += ' -6'
 
 		plugin = inspect.currentframe().f_back.f_locals['self']
 
@@ -959,6 +966,9 @@ async def service_scan(plugin, service):
 		if protocol == 'udp':
 			nmap_extra += ' -sU'
 
+		if service.target.type == 'IPv6':
+			nmap_extra += ' -6'
+
 		tag = service.tag() + '/' + plugin.slug
 
 		info('Service scan {bblue}' + plugin.name + ' (' + tag + '){rst} running against {byellow}' + service.target.address + '{rst}')
@@ -1149,6 +1159,9 @@ async def scan_target(target):
 
 			if protocol == 'udp':
 				nmap_extra += ' -sU'
+
+			if target.type == 'IPv6':
+				nmap_extra += ' -6'
 
 			service_match = False
 			matching_plugins = []
@@ -1459,7 +1472,7 @@ async def main():
 								else:
 									autorecon.patterns.append(Pattern(compiled))
 							except re.error:
-								fail('Error: The pattern "' + pattern['pattern'] + '" in the config file is invalid regex.')
+								fail('Error: The pattern "' + pattern['pattern'] + '" in the global file is invalid regex.')
 						else:
 							fail('Error: A [[pattern]] in the global file doesn\'t have a required pattern variable.')
 
@@ -1664,10 +1677,24 @@ async def main():
 
 	for target in raw_targets:
 		try:
-			ip = str(ipaddress.ip_address(target))
+			ip = ipaddress.ip_address(target)
+			ip_str = str(ip)
 
-			if ip not in autorecon.pending_targets:
-				autorecon.pending_targets.append(ip)
+			found = False
+			for t in autorecon.pending_targets:
+				if t.address == ip_str:
+					found = True
+					break
+
+			if found:
+				continue
+
+			if isinstance(ip, ipaddress.IPv4Address):
+				autorecon.pending_targets.append(Target(ip_str, 'IPv4', autorecon))
+			elif isinstance(ip, ipaddress.IPv6Address):
+				autorecon.pending_targets.append(Target(ip_str, 'IPv6', autorecon))
+			else:
+				fail('This should never happen unless IPv8 is invented.')
 		except ValueError:
 
 			try:
@@ -1677,19 +1704,56 @@ async def main():
 					errors = True
 				else:
 					for ip in target_range.hosts():
-						ip = str(ip)
-						if ip not in autorecon.pending_targets:
-							autorecon.pending_targets.append(ip)
+						ip_str = str(ip)
+
+						found = False
+						for t in autorecon.pending_targets:
+							if t.address == ip_str:
+								found = True
+								break
+
+						if found:
+							continue
+
+						if isinstance(ip, ipaddress.IPv4Address):
+							autorecon.pending_targets.append(Target(ip_str, 'IPv4', autorecon))
+						elif isinstance(ip, ipaddress.IPv6Address):
+							autorecon.pending_targets.append(Target(ip_str, 'IPv6', autorecon))
+						else:
+							fail('This should never happen unless IPv8 is invented.')
+
 			except ValueError:
 
 				try:
-					ip = socket.gethostbyname(target)
+					addresses = socket.getaddrinfo(target, None, socket.AF_INET)
 
-					if target not in autorecon.pending_targets:
-						autorecon.pending_targets.append(target)
+					found = False
+					for t in autorecon.pending_targets:
+						if t.address == target:
+							found = True
+							break
+
+					if found:
+						continue
+
+					autorecon.pending_targets.append(Target(target, 'IPv4', autorecon))
 				except socket.gaierror:
-					error(target + ' does not appear to be a valid IP address, IP range, or resolvable hostname.')
-					errors = True
+					try:
+						addresses = socket.getaddrinfo(target, None, socket.AF_INET6)
+
+						found = False
+						for t in autorecon.pending_targets:
+							if t.address == target:
+								found = True
+								break
+
+						if found:
+							continue
+
+						autorecon.pending_targets.append(Target(target, 'IPv6', autorecon))
+					except socket.gaierror:
+						error(target + ' does not appear to be a valid IP address, IP range, or resolvable hostname.')
+						errors = True
 
 	if len(autorecon.pending_targets) == 0:
 		error('You must specify at least one target to scan!')
@@ -1739,7 +1803,7 @@ async def main():
 	pending = []
 	i = 0
 	while autorecon.pending_targets:
-		pending.append(asyncio.create_task(scan_target(Target(autorecon.pending_targets.pop(0), autorecon))))
+		pending.append(asyncio.create_task(scan_target(autorecon.pending_targets.pop(0))))
 		i+=1
 		if i >= num_initial_targets:
 			break
@@ -1778,7 +1842,7 @@ async def main():
 
 		for task in done:
 			if autorecon.pending_targets:
-				pending.add(asyncio.create_task(scan_target(Target(autorecon.pending_targets.pop(0), autorecon))))
+				pending.add(asyncio.create_task(scan_target(autorecon.pending_targets.pop(0))))
 			if task in pending:
 				pending.remove(task)
 
@@ -1797,7 +1861,7 @@ async def main():
 		if num_new_targets > 0:
 			i = 0
 			while autorecon.pending_targets:
-				pending.add(asyncio.create_task(scan_target(Target(autorecon.pending_targets.pop(0), autorecon))))
+				pending.add(asyncio.create_task(scan_target(autorecon.pending_targets.pop(0))))
 				i+=1
 				if i >= num_new_targets:
 					break
