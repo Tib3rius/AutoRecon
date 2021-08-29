@@ -24,4 +24,4 @@ class RsyncList(ServiceScan):
 		self.match_service_name('^rsync')
 
 	async def run(self, service):
-		await service.execute('rsync -av --list-only rsync://{address}:{port}', outfile='{protocol}_{port}_rsync_file_list.txt')
+		await service.execute('rsync -av --list-only rsync://{addressv6}:{port}', outfile='{protocol}_{port}_rsync_file_list.txt')

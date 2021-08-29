@@ -50,7 +50,8 @@ class Enum4Linux(ServiceScan):
 		self.run_once(True)
 
 	async def run(self, service):
-		await service.execute('enum4linux -a -M -l -d {address} 2>&1', outfile='enum4linux.txt')
+		if service.target.type == 'IPv4':
+			await service.execute('enum4linux -a -M -l -d {address} 2>&1', outfile='enum4linux.txt')
 
 class NBTScan(ServiceScan):
 
@@ -65,7 +66,8 @@ class NBTScan(ServiceScan):
 		self.run_once(True)
 
 	async def run(self, service):
-		await service.execute('nbtscan -rvh {address} 2>&1', outfile='nbtscan.txt')
+		if service.target.type == 'IPv4':
+			await service.execute('nbtscan -rvh {address} 2>&1', outfile='nbtscan.txt')
 
 class SMBClient(ServiceScan):
 
@@ -93,9 +95,10 @@ class SMBMap(ServiceScan):
 		self.match_service_name(['^smb', '^microsoft\-ds', '^netbios'])
 
 	async def run(self, service):
-		await service.execute('smbmap -H {address} -P {port} 2>&1', outfile='smbmap-share-permissions.txt')
-		await service.execute('smbmap -u null -p "" -H {address} -P {port} 2>&1', outfile='smbmap-share-permissions.txt')
-		await service.execute('smbmap -H {address} -P {port} -R 2>&1', outfile='smbmap-list-contents.txt')
-		await service.execute('smbmap -u null -p "" -H {address} -P {port} -R 2>&1', outfile='smbmap-list-contents.txt')
-		await service.execute('smbmap -H {address} -P {port} -x "ipconfig /all" 2>&1', outfile='smbmap-execute-command.txt')
-		await service.execute('smbmap -u null -p "" -H {address} -P {port} -x "ipconfig /all" 2>&1', outfile='smbmap-execute-command.txt')
+		if service.target.type == 'IPv4':
+			await service.execute('smbmap -H {address} -P {port} 2>&1', outfile='smbmap-share-permissions.txt')
+			await service.execute('smbmap -u null -p "" -H {address} -P {port} 2>&1', outfile='smbmap-share-permissions.txt')
+			await service.execute('smbmap -H {address} -P {port} -R 2>&1', outfile='smbmap-list-contents.txt')
+			await service.execute('smbmap -u null -p "" -H {address} -P {port} -R 2>&1', outfile='smbmap-list-contents.txt')
+			await service.execute('smbmap -H {address} -P {port} -x "ipconfig /all" 2>&1', outfile='smbmap-execute-command.txt')
+			await service.execute('smbmap -u null -p "" -H {address} -P {port} -x "ipconfig /all" 2>&1', outfile='smbmap-execute-command.txt')

@@ -24,7 +24,8 @@ class NmapMSSQL(ServiceScan):
 		self.match_service_name(['^mssql', '^ms\-sql'])
 
 	def manual(self, service, plugin_was_run):
-		service.add_manual_command('(sqsh) interactive database shell:', 'sqsh -U <username> -P <password> -S {address}:{port}')
+		if service.target.type == 'IPv4':
+			service.add_manual_command('(sqsh) interactive database shell:', 'sqsh -U <username> -P <password> -S {address}:{port}')
 
 	async def run(self, service):
 		await service.execute('nmap {nmap_extra} -sV -p {port} --script="banner,(ms-sql* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" --script-args="mssql.instance-port={port},mssql.username=sa,mssql.password=sa" -oN "{scandir}/{protocol}_{port}_mssql_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_mssql_nmap.xml" {address}')
@@ -40,7 +41,8 @@ class NmapMYSQL(ServiceScan):
 		self.match_service_name('^mysql')
 
 	def manual(self, service, plugin_was_run):
-		service.add_manual_command('(sqsh) interactive database shell:', 'sqsh -U <username> -P <password> -S {address}:{port}')
+		if service.target.type == 'IPv4':
+			service.add_manual_command('(sqsh) interactive database shell:', 'sqsh -U <username> -P <password> -S {address}:{port}')
 
 	async def run(self, service):
 		await service.execute('nmap {nmap_extra} -sV -p {port} --script="banner,(mysql* or ssl*) and not (brute or broadcast or dos or external or fuzzer)" -oN "{scandir}/{protocol}_{port}_mysql_nmap.txt" -oX "{scandir}/xml/{protocol}_{port}_mysql_nmap.xml" {address}')
@@ -72,8 +74,9 @@ class OracleTNScmd(ServiceScan):
 		self.match_service_name('^oracle')
 
 	async def run(self, service):
-		await service.execute('tnscmd10g ping -h {address} -p {port} 2>&1', outfile='{protocol}_{port}_oracle_tnscmd_ping.txt')
-		await service.execute('tnscmd10g version -h {address} -p {port} 2>&1', outfile='{protocol}_{port}_oracle_tnscmd_version.txt')
+		if service.target.type == 'IPv4':
+			await service.execute('tnscmd10g ping -h {address} -p {port} 2>&1', outfile='{protocol}_{port}_oracle_tnscmd_ping.txt')
+			await service.execute('tnscmd10g version -h {address} -p {port} 2>&1', outfile='{protocol}_{port}_oracle_tnscmd_version.txt')
 
 class OracleScanner(ServiceScan):
 

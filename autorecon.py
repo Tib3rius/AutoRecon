@@ -58,6 +58,7 @@ class Target:
 
 		# Create variables for command references.
 		address = target.address
+		addressv6 = target.address
 		scandir = target.scandir
 
 		nmap_extra = self.autorecon.args.nmap
@@ -66,6 +67,7 @@ class Target:
 
 		if target.type == 'IPv6':
 			nmap_extra += ' -6'
+			addressv6 = '[' + addressv6 + ']'
 
 		plugin = inspect.currentframe().f_back.f_locals['self']
 
@@ -136,6 +138,7 @@ class Service:
 
 		# Create variables for command references.
 		address = target.address
+		addressv6 = target.address
 		scandir = target.scandir
 		protocol = self.protocol
 		port = self.port
@@ -158,6 +161,7 @@ class Service:
 
 		if self.target.type == 'IPv6':
 			nmap_extra += ' -6'
+			addressv6 = '[' + addressv6 + ']'
 
 		plugin = inspect.currentframe().f_back.f_locals['self']
 
@@ -849,22 +853,23 @@ def handle_keyboard(key):
 				info('{bgreen}' + current_time + '{rst} - There is {byellow}1{rst} scan still running against {byellow}' + target.address + '{rst}' + tasks_list)
 
 async def port_scan(plugin, target):
-	if autorecon.config['ports']['tcp'] or autorecon.config['ports']['udp']:
-		target.ports = {'tcp':None, 'udp':None}
-		if autorecon.config['ports']['tcp']:
-			target.ports['tcp'] = ','.join(autorecon.config['ports']['tcp'])
-		if autorecon.config['ports']['udp']:
-			target.ports['udp'] = ','.join(autorecon.config['ports']['udp'])
-		if plugin.type is None:
-			warn('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} does not have a type set, and --ports was used. Skipping.')
-			return {'type':'port', 'plugin':plugin, 'result':[]}
-		else:
-			if plugin.type == 'tcp' and not autorecon.config['ports']['tcp']:
-				warn('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} is a TCP port scan but no TCP ports were set using --ports. Skipping')
+	if autorecon.config['ports']:
+		if autorecon.config['ports']['tcp'] or autorecon.config['ports']['udp']:
+			target.ports = {'tcp':None, 'udp':None}
+			if autorecon.config['ports']['tcp']:
+				target.ports['tcp'] = ','.join(autorecon.config['ports']['tcp'])
+			if autorecon.config['ports']['udp']:
+				target.ports['udp'] = ','.join(autorecon.config['ports']['udp'])
+			if plugin.type is None:
+				warn('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} does not have a type set, and --ports was used. Skipping.')
 				return {'type':'port', 'plugin':plugin, 'result':[]}
-			elif plugin.type == 'udp' and not autorecon.config['ports']['udp']:
-				warn('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} is a UDP port scan but no UDP ports were set using --ports. Skipping')
-				return {'type':'port', 'plugin':plugin, 'result':[]}
+			else:
+				if plugin.type == 'tcp' and not autorecon.config['ports']['tcp']:
+					warn('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} is a TCP port scan but no TCP ports were set using --ports. Skipping')
+					return {'type':'port', 'plugin':plugin, 'result':[]}
+				elif plugin.type == 'udp' and not autorecon.config['ports']['udp']:
+					warn('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} is a UDP port scan but no UDP ports were set using --ports. Skipping')
+					return {'type':'port', 'plugin':plugin, 'result':[]}
 
 	async with target.autorecon.port_scan_semaphore:
 		info('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} running against {byellow}' + target.address + '{rst}')
@@ -951,6 +956,7 @@ async def service_scan(plugin, service):
 	async with semaphore:
 		# Create variables for fformat references.
 		address = service.target.address
+		addressv6 = service.target.address
 		scandir = service.target.scandir
 		protocol = service.protocol
 		port = service.port
@@ -968,6 +974,7 @@ async def service_scan(plugin, service):
 
 		if service.target.type == 'IPv6':
 			nmap_extra += ' -6'
+			addressv6 = '[' + addressv6 + ']'
 
 		tag = service.tag() + '/' + plugin.slug
 
@@ -1146,6 +1153,7 @@ async def scan_target(target):
 
 			# Create variables for command references.
 			address = target.address
+			addressv6 = target.address
 			scandir = target.scandir
 			protocol = service.protocol
 			port = service.port
@@ -1162,6 +1170,7 @@ async def scan_target(target):
 
 			if target.type == 'IPv6':
 				nmap_extra += ' -6'
+				addressv6 = '[' + addressv6 + ']'
 
 			service_match = False
 			matching_plugins = []

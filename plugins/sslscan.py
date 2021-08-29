@@ -13,4 +13,4 @@ class SSLScan(ServiceScan):
 
 	async def run(self, service):
 		if service.protocol == 'tcp' and service.secure:
-			await service.execute('sslscan --show-certificate --no-colour {address}:{port} 2>&1', outfile='{protocol}_{port}_sslscan.html')
+			await service.execute('sslscan --show-certificate --no-colour {addressv6}:{port} 2>&1', outfile='{protocol}_{port}_sslscan.html')
