@@ -1,11 +1,20 @@
-import asyncio, os, sys, re, signal, pkgutil, inspect, importlib, unidecode, argparse, string, ipaddress, socket, toml, time, math
+import asyncio, os, re, sys, signal, pkgutil, inspect, importlib, unidecode, argparse, string, ipaddress, socket, time, math
 from datetime import datetime
-import colorama
 from typing import final
 from colorama import Fore, Style
 import traceback
-from pynput import keyboard
 import termios, tty
+
+try:
+	import colorama, toml
+
+	if os.getuid() == 0:
+		import keyboard
+	elif 'DISPLAY' in os.environ and (os.environ['DISPLAY'] != None or os.environ['DISPLAY'] != ''):
+		import pynput
+except ModuleNotFoundError:
+	print('One or more required modules was not installed. Please run or re-run: ' + ('sudo ' if os.getuid() == 0 else '') + 'python3 -m pip install -r requirements.txt')
+	sys.exit(1)
 
 colorama.init()
 
@@ -455,6 +464,7 @@ class AutoRecon(object):
 			'nmap',
 			'nmap_append',
 			'disable_sanity_checks',
+			'disable_keyboard_control',
 			'force_services',
 			'accessible',
 			'verbose'
@@ -478,6 +488,7 @@ class AutoRecon(object):
 			'nmap': '-vv --reason -Pn',
 			'nmap_append': '',
 			'disable_sanity_checks': False,
+			'disable_keyboard_control': False,
 			'force_services': None,
 			'accessible': False,
 			'verbose': 0
@@ -761,8 +772,10 @@ def cancel_all_tasks(signal, frame):
 				except ProcessLookupError: # Will get raised if the process finishes before we get to killing it.
 					pass
 
-	# Restore original terminal settings.
-	termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, terminal_settings)
+	if not autorecon.config['disable_keyboard_control']:
+		if os.getuid() == 0 or ('DISPLAY' in os.environ and (os.environ['DISPLAY'] != None or os.environ['DISPLAY'] != '')):
+			# Restore original terminal settings.
+			termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, terminal_settings)
 
 def timeout(signal, frame):
 	raise Exception("Function timed out.")
@@ -785,19 +798,25 @@ async def start_heartbeat(target, period=60):
 				info('{bgreen}' + current_time + '{rst} - There is {byellow}1{rst} scan still running against {byellow}' + target.address + '{rst}' + tasks_list)
 
 def handle_keyboard(key):
-	if key == keyboard.Key.up:
+	# We need to do this to support pynput and keyboard over SSH / Docker.
+	if os.getuid() != 0:
+		key_conversion = {pynput.keyboard.Key.up:'up', pynput.keyboard.Key.down:'down', pynput.keyboard.KeyCode.from_char('s'):'s'}
+		if key in key_conversion.keys():
+			key = key_conversion[key]
+
+	if key == 'up':
 		if autorecon.config['verbose'] == 2:
 			info('Verbosity is already at the highest level.')
 		else:
 			autorecon.config['verbose'] += 1
 			info('Verbosity increased to ' + str(autorecon.config['verbose']))
-	elif key == keyboard.Key.down:
+	elif key == 'down':
 		if autorecon.config['verbose'] == 0:
 			info('Verbosity is already at the lowest level.')
 		else:
 			autorecon.config['verbose'] -= 1
 			info('Verbosity decreased to ' + str(autorecon.config['verbose']))
-	elif key == keyboard.KeyCode.from_char('s'):
+	elif key == 's':
 		for target in autorecon.scanning_targets:
 			count = len(target.running_tasks)
 
@@ -1275,6 +1294,7 @@ async def main():
 	nmap_group.add_argument('--nmap', action='store', help='Override the {nmap_extra} variable in scans. Default: %(default)s')
 	nmap_group.add_argument('--nmap-append', action='store', help='Append to the default {nmap_extra} variable in scans. Default: %(default)s')
 	parser.add_argument('--disable-sanity-checks', action='store_true', help='Disable sanity checks that would otherwise prevent the scans from running. Default: %(default)s')
+	parser.add_argument('--disable-keyboard-control', action='store_true', help='Disables keyboard control ([s]tatus, Up, Down) if you are in SSH or Docker.')
 	parser.add_argument('--force-services', action='store', nargs='+', help='A space separated list of services in the following style: tcp/80/http/insecure tcp/443/https/secure')
 	parser.add_argument('--accessible', action='store_true', help='Attempts to make AutoRecon output more accessible to screenreaders. Default: %(default)s')
 	parser.add_argument('-v', '--verbose', action='count', help='Enable verbose output. Repeat for more verbosity.')
@@ -1628,11 +1648,20 @@ async def main():
 		if i >= num_initial_targets:
 			break
 
-	# This makes it possible to capture keypresses without <enter> and without displaying them.
-	tty.setcbreak(sys.stdin.fileno())
+	if not autorecon.config['disable_keyboard_control']:
+		if os.getuid() == 0 or ('DISPLAY' in os.environ and (os.environ['DISPLAY'] != None or os.environ['DISPLAY'] != '')):
+			# This makes it possible to capture keypresses without <enter> and without displaying them.
+			tty.setcbreak(sys.stdin.fileno())
 
-	verbosity_monitor = keyboard.Listener(on_press=handle_keyboard)
-	verbosity_monitor.start()
+			if os.getuid() == 0:
+				keyboard.add_hotkey('s', lambda:handle_keyboard('s'))
+				keyboard.add_hotkey('up', lambda:handle_keyboard('up'))
+				keyboard.add_hotkey('down', lambda:handle_keyboard('down'))
+			else:
+				keyboard_monitor = pynput.keyboard.Listener(on_press=handle_keyboard)
+				keyboard_monitor.start()
+		else:
+			warn('No "DISPLAY" environment variable was found. This likely means you are in an SSH session or using Docker. Keyboard control features have been disabled. If you run AutoRecon as root you should not have this problem.')
 
 	timed_out = False
 	while pending:
@@ -1677,19 +1706,20 @@ async def main():
 				if i >= num_new_targets:
 					break
 
-	# The verbosity_monitor.stop() function sometimes seems to block forever.
-	# Since it will get killed at the end of the program anyway, if it takes
-	# more than 1 second to work, we'll time it out.
-	signal.signal(signal.SIGALRM, timeout)
-	signal.alarm(1)
+	if os.getuid() != 0 and ('DISPLAY' in os.environ and (os.environ['DISPLAY'] != None or os.environ['DISPLAY'] != '')):
+		# The keyboard_monitor.stop() function sometimes seems to block forever.
+		# Since it will get killed at the end of the program anyway, if it takes
+		# more than 1 second to work, we'll time it out.
+		signal.signal(signal.SIGALRM, timeout)
+		signal.alarm(1)
 
-	try:
-		verbosity_monitor.stop()
-	except:
-		pass
+		try:
+			keyboard_monitor.stop()
+		except:
+			pass
 
-	# Cancel the alarm.
-	signal.alarm(0)
+		# Cancel the alarm.
+		signal.alarm(0)
 
 	if timed_out:
 		cancel_all_tasks(None, None)
@@ -1707,8 +1737,10 @@ async def main():
 	if autorecon.missing_services:
 		warn('{byellow}AutoRecon identified the following services, but could not match them to any plugins based on the service name. Please report these to Tib3rius: ' + ', '.join(autorecon.missing_services) + '{rst}')
 
-	# Restore original terminal settings.
-	termios.tcsetattr(sys.stdin, termios.TCSADRAIN, terminal_settings)
+	if not autorecon.config['disable_keyboard_control']:
+		if os.getuid() == 0 or ('DISPLAY' in os.environ and (os.environ['DISPLAY'] != None or os.environ['DISPLAY'] != '')):
+			# Restore original terminal settings.
+			termios.tcsetattr(sys.stdin, termios.TCSADRAIN, terminal_settings)
 
 if __name__ == '__main__':
 	# Capture Ctrl+C and cancel everything.
