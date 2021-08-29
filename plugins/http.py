@@ -81,31 +81,33 @@ class DirBuster(ServiceScan):
 
 	def __init__(self):
 		super().__init__()
-		self.name = "DirBuster"
+		self.name = "Directory Buster"
 		self.slug = 'dirbuster'
 		self.priority = 0
 		self.tags = ['default', 'safe', 'long', 'http']
 
 	def configure(self):
 		self.add_choice_option('tool', default='feroxbuster', choices=['feroxbuster', 'gobuster', 'dirsearch', 'ffuf', 'dirb'], help='The tool to use for directory busting. Default: %(default)s')
-		self.add_list_option('wordlist', default=['/usr/share/seclists/Discovery/Web-Content/common.txt'], help='The wordlist(s) to use when directory busting. Separate multiple wordlists with spaces. Default: %(default)s')
+		self.add_list_option('wordlist', default=[os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'wordlists', 'all.txt'))], help='The wordlist(s) to use when directory busting. Separate multiple wordlists with spaces. Default: %(default)s')
 		self.add_option('threads', default=10, help='The number of threads to use when directory busting. Default: %(default)s')
+		self.add_option('ext', default='txt,html,php,asp,aspx,jsp', help='The extensions you wish to fuzz (no dot, comma separated). Default: %(default)s')
 		self.match_service_name('^http')
 		self.match_service_name('^nacn_http$', negative_match=True)
 
 	async def run(self, service):
+		dot_extensions = ','.join(['.' + x for x in self.get_option('ext').split(',')])
 		for wordlist in self.get_option('wordlist'):
 			name = os.path.splitext(os.path.basename(wordlist))[0]
 			if self.get_option('tool') == 'feroxbuster':
-				await service.execute('feroxbuster -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -x "txt,html,php,asp,aspx,jsp" -v -k -n -q -o "{scandir}/{protocol}_{port}_{http_scheme}_feroxbuster_' + name + '.txt"')
+				await service.execute('feroxbuster -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -x ' + self.get_option('ext') + ' -v -k -n -q -o "{scandir}/{protocol}_{port}_{http_scheme}_feroxbuster_' + name + '.txt"')
 			elif self.get_option('tool') == 'gobuster':
-				await service.execute('gobuster dir -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e -k -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx,jsp" -z -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_' + name + '.txt"')
+				await service.execute('gobuster dir -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e -k -x "' + self.get_option('ext') + '" -z -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_' + name + '.txt"')
 			elif self.get_option('tool') == 'dirsearch':
-				await service.execute('dirsearch -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -r -e txt,html,php,asp,aspx,jsp -f -w ' + wordlist + ' --format=plain --output="{scandir}/{protocol}_{port}_{http_scheme}_dirsearch_' + name + '.txt"')
+				await service.execute('dirsearch -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -e ' + self.get_option('ext') + ' -f -q -w ' + wordlist + ' --format=plain -o "{scandir}/{protocol}_{port}_{http_scheme}_dirsearch_' + name + '.txt"')
 			elif self.get_option('tool') == 'ffuf':
-				await service.execute('ffuf -u {http_scheme}://{address}:{port}/FUZZ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e ".txt,.html,.php,.asp,.aspx,.jsp" -v | tee {scandir}/{protocol}_{port}_{http_scheme}_ffuf_' + name + '.txt')
+				await service.execute('ffuf -u {http_scheme}://{address}:{port}/FUZZ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e "' + dot_extensions + '" -v -noninteractive | tee {scandir}/{protocol}_{port}_{http_scheme}_ffuf_' + name + '.txt')
 			elif self.get_option('tool') == 'dirb':
-				await service.execute('dirb {http_scheme}://{address}:{port}/ ' + wordlist + ' -l -r -S -X ",.txt,.html,.php,.asp,.aspx,.jsp" -o "{scandir}/{protocol}_{port}_{http_scheme}_dirb_' + name + '.txt"')
+				await service.execute('dirb {http_scheme}://{address}:{port}/ ' + wordlist + ' -l -r -S -X ",' + dot_extensions + '" -o "{scandir}/{protocol}_{port}_{http_scheme}_dirb_' + name + '.txt"')
 
 	def manual(self, service, plugin_was_run):
 		service.add_manual_command('(feroxbuster) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:', [
@@ -114,8 +116,8 @@ class DirBuster(ServiceScan):
 		])
 
 		service.add_manual_command('(gobuster v3) Multi-threaded directory/file enumeration for web servers using various wordlists:', [
-			'gobuster dir -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/seclists/Discovery/Web-Content/big.txt -e -k -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx,jsp" -z -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_big.txt"',
-			'gobuster dir -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx,jsp" -z -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_dirbuster.txt"'
+			'gobuster dir -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/seclists/Discovery/Web-Content/big.txt -e -k -x "txt,html,php,asp,aspx,jsp" -z -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_big.txt"',
+			'gobuster dir -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -x "txt,html,php,asp,aspx,jsp" -z -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_dirbuster.txt"'
 		])
 
 		service.add_manual_command('(dirsearch) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:', [
@@ -129,8 +131,8 @@ class DirBuster(ServiceScan):
 		])
 
 		service.add_manual_command('(gobuster v1 & v2) Multi-threaded directory/file enumeration for web servers using various wordlists:', [
-			'gobuster -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/seclists/Discovery/Web-Content/big.txt -e -k -l -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx,jsp" -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_big.txt"',
-			'gobuster -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -l -s "200,204,301,302,307,403,500" -x "txt,html,php,asp,aspx,jsp" -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_dirbuster.txt"'
+			'gobuster -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/seclists/Discovery/Web-Content/big.txt -e -k -l -x "txt,html,php,asp,aspx,jsp" -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_big.txt"',
+			'gobuster -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -l -x "txt,html,php,asp,aspx,jsp" -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_dirbuster.txt"'
 		])
 
 class Nikto(ServiceScan):
