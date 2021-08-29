@@ -1,4 +1,4 @@
-import asyncio, os, re, sys, signal, pkgutil, inspect, importlib, unidecode, argparse, string, ipaddress, socket, time, math
+import asyncio, os, re, sys, signal, pkgutil, inspect, importlib, argparse, string, ipaddress, socket, time, math
 from datetime import datetime
 from typing import final
 from colorama import Fore, Style
@@ -6,7 +6,7 @@ import traceback
 import termios, tty
 
 try:
-	import colorama, toml
+	import colorama, toml, unidecode
 
 	if os.getuid() == 0:
 		import keyboard
