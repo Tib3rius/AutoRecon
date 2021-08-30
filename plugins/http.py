@@ -48,7 +48,7 @@ class Curl(ServiceScan):
 		self.add_option("path", default="/", help="The path on the web server to curl. Default: %(default)s")
 		self.match_service_name('^http')
 		self.match_service_name('^nacn_http$', negative_match=True)
-		self.add_pattern('(?i)Powered by [^\n]+')
+		self.add_pattern('(?i)powered[ -]by[^\n]+')
 
 	async def run(self, service):
 		if service.protocol == 'tcp':
