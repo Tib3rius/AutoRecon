@@ -1,5 +1,3 @@
 unidecode
 toml
 colorama
-pynput
-keyboard
