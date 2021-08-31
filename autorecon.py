@@ -617,10 +617,9 @@ class AutoRecon(object):
 
 		process = await asyncio.create_subprocess_shell(
 			cmd,
-			stdin=None,
+			stdin=open('/dev/null'),
 			stdout=asyncio.subprocess.PIPE,
-			stderr=asyncio.subprocess.PIPE,
-			executable='/bin/bash')
+			stderr=asyncio.subprocess.PIPE)
 
 		cout = CommandStreamReader(process.stdout, target, tag, patterns=combined_patterns, outfile=outfile)
 		cerr = CommandStreamReader(process.stderr, target, tag, patterns=combined_patterns, outfile=errfile)
