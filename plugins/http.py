@@ -88,7 +88,7 @@ class DirBuster(ServiceScan):
 
 	def configure(self):
 		self.add_choice_option('tool', default='feroxbuster', choices=['feroxbuster', 'gobuster', 'dirsearch', 'ffuf', 'dirb'], help='The tool to use for directory busting. Default: %(default)s')
-		self.add_list_option('wordlist', default=['/usr/share/seclists/Discovery/Web-Content/common.txt'], help='The wordlist(s) to use when directory busting. Separate multiple wordlists with spaces. Default: %(default)s')
+		self.add_list_option('wordlist', default=['/usr/share/seclists/Discovery/Web-Content/common.txt', '/usr/share/seclists/Discovery/Web-Content/big.txt', '/usr/share/seclists/Discovery/Web-Content/raft-large-words.txt'], help='The wordlist(s) to use when directory busting. Separate multiple wordlists with spaces. Default: %(default)s')
 		self.add_option('threads', default=10, help='The number of threads to use when directory busting. Default: %(default)s')
 		self.add_option('ext', default='txt,html,php,asp,aspx,jsp', help='The extensions you wish to fuzz (no dot, comma separated). Default: %(default)s')
 		self.match_service_name('^http')
@@ -99,45 +99,42 @@ class DirBuster(ServiceScan):
 		for wordlist in self.get_option('wordlist'):
 			name = os.path.splitext(os.path.basename(wordlist))[0]
 			if self.get_option('tool') == 'feroxbuster':
-				await service.execute('feroxbuster -u {http_scheme}://{addressv6}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -x ' + self.get_option('ext') + ' -v -k -n -q -o "{scandir}/{protocol}_{port}_{http_scheme}_feroxbuster_' + name + '.txt"')
+				await service.execute('feroxbuster -u {http_scheme}://{addressv6}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -x "' + self.get_option('ext') + '" -v -k -n -q -o "{scandir}/{protocol}_{port}_{http_scheme}_feroxbuster_' + name + '.txt"')
 			elif self.get_option('tool') == 'gobuster':
 				await service.execute('gobuster dir -u {http_scheme}://{addressv6}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e -k -x "' + self.get_option('ext') + '" -z -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_' + name + '.txt"')
 			elif self.get_option('tool') == 'dirsearch':
-				if service.target.type == 'IPv6':
+				if service.target.ipversion == 'IPv6':
 					error('dirsearch does not support IPv6.')
 				else:
-					await service.execute('dirsearch -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -e ' + self.get_option('ext') + ' -f -q -w ' + wordlist + ' --format=plain -o "{scandir}/{protocol}_{port}_{http_scheme}_dirsearch_' + name + '.txt"')
+					await service.execute('dirsearch -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -e "' + self.get_option('ext') + '" -f -q -w ' + wordlist + ' --format=plain -o "{scandir}/{protocol}_{port}_{http_scheme}_dirsearch_' + name + '.txt"')
 			elif self.get_option('tool') == 'ffuf':
 				await service.execute('ffuf -u {http_scheme}://{addressv6}:{port}/FUZZ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e "' + dot_extensions + '" -v -noninteractive | tee {scandir}/{protocol}_{port}_{http_scheme}_ffuf_' + name + '.txt')
 			elif self.get_option('tool') == 'dirb':
 				await service.execute('dirb {http_scheme}://{addressv6}:{port}/ ' + wordlist + ' -l -r -S -X ",' + dot_extensions + '" -o "{scandir}/{protocol}_{port}_{http_scheme}_dirb_' + name + '.txt"')
 
 	def manual(self, service, plugin_was_run):
-		service.add_manual_command('(feroxbuster) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:', [
-			'feroxbuster -u {http_scheme}://{addressv6}:{port} -t ' + str(self.get_option('threads')) + ' -w /usr/share/seclists/Discovery/Web-Content/big.txt -x "txt,html,php,asp,aspx,jsp" -v -k -n -o {scandir}/{protocol}_{port}_{http_scheme}_feroxbuster_big.txt',
-			'feroxbuster -u {http_scheme}://{addressv6}:{port} -t ' + str(self.get_option('threads')) + ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x "txt,html,php,asp,aspx,jsp" -v -k -n -o {scandir}/{protocol}_{port}_{http_scheme}_feroxbuster_dirbuster.txt'
-		])
-
-		service.add_manual_command('(gobuster v3) Multi-threaded directory/file enumeration for web servers using various wordlists:', [
-			'gobuster dir -u {http_scheme}://{addressv6}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/seclists/Discovery/Web-Content/big.txt -e -k -x "txt,html,php,asp,aspx,jsp" -z -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_big.txt"',
-			'gobuster dir -u {http_scheme}://{addressv6}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -x "txt,html,php,asp,aspx,jsp" -z -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_dirbuster.txt"'
-		])
-
-		if service.target.type == 'IPv4':
-			service.add_manual_command('(dirsearch) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:', [
-				'dirsearch -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -r -e txt,html,php,asp,aspx,jsp -f -w /usr/share/seclists/Discovery/Web-Content/big.txt --format=plain --output="{scandir}/{protocol}_{port}_{http_scheme}_dirsearch_big.txt"',
-				'dirsearch -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -r -e txt,html,php,asp,aspx,jsp -f -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt --format=plain --output="{scandir}/{protocol}_{port}_{http_scheme}_dirsearch_dirbuster.txt"'
+		dot_extensions = ','.join(['.' + x for x in self.get_option('ext').split(',')])
+		if self.get_option('tool') == 'feroxbuster':
+			service.add_manual_command('(feroxbuster) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:', [
+				'feroxbuster -u {http_scheme}://{addressv6}:{port} -t ' + str(self.get_option('threads')) + ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x "' + self.get_option('ext') + '" -v -k -n -o {scandir}/{protocol}_{port}_{http_scheme}_feroxbuster_dirbuster.txt'
 			])
-
-		service.add_manual_command('(dirb) Recursive directory/file enumeration for web servers using various wordlists:', [
-			'dirb {http_scheme}://{addressv6}:{port}/ /usr/share/seclists/Discovery/Web-Content/big.txt -l -r -S -X ",.txt,.html,.php,.asp,.aspx,.jsp" -o "{scandir}/{protocol}_{port}_{http_scheme}_dirb_big.txt"',
-			'dirb {http_scheme}://{addressv6}:{port}/ /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -l -r -S -X ",.txt,.html,.php,.asp,.aspx,.jsp" -o "{scandir}/{protocol}_{port}_{http_scheme}_dirb_dirbuster.txt"'
-		])
-
-		service.add_manual_command('(gobuster v1 & v2) Multi-threaded directory/file enumeration for web servers using various wordlists:', [
-			'gobuster -u {http_scheme}://{addressv6}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/seclists/Discovery/Web-Content/big.txt -e -k -l -x "txt,html,php,asp,aspx,jsp" -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_big.txt"',
-			'gobuster -u {http_scheme}://{addressv6}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -l -x "txt,html,php,asp,aspx,jsp" -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_dirbuster.txt"'
-		])
+		elif self.get_option('tool') == 'gobuster':
+			service.add_manual_command('(gobuster v3) Multi-threaded directory/file enumeration for web servers using various wordlists:', [
+				'gobuster dir -u {http_scheme}://{addressv6}:{port}/ -t ' + str(self.get_option('threads')) + ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -x "' + self.get_option('ext') + '" -z -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_dirbuster.txt"'
+			])
+		elif self.get_option('tool') == 'dirsearch':
+			if service.target.ipversion == 'IPv4':
+				service.add_manual_command('(dirsearch) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:', [
+					'dirsearch -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -r -e "' + self.get_option('ext') + '" -f -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt --format=plain --output="{scandir}/{protocol}_{port}_{http_scheme}_dirsearch_dirbuster.txt"'
+				])
+		elif self.get_option('tool') == 'ffuf':
+			service.add_manual_command('(ffuf) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:', [
+				'ffuf -u {http_scheme}://{addressv6}:{port}/FUZZ -t ' + str(self.get_option('threads')) + ' -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -e "' + dot_extensions + '" -v -noninteractive | tee {scandir}/{protocol}_{port}_{http_scheme}_ffuf_dirbuster.txt'
+			])
+		elif self.get_option('tool') == 'dirb':
+			service.add_manual_command('(dirb) Recursive directory/file enumeration for web servers using various wordlists:', [
+				'dirb {http_scheme}://{addressv6}:{port}/ /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -l -r -S -X ",' + dot_extensions + '" -o "{scandir}/{protocol}_{port}_{http_scheme}_dirb_dirbuster.txt"'
+			])
 
 class Nikto(ServiceScan):
 
@@ -151,7 +148,7 @@ class Nikto(ServiceScan):
 		self.match_service_name('^nacn_http$', negative_match=True)
 
 	def manual(self, service, plugin_was_run):
-		if service.target.type == 'IPv4':
+		if service.target.ipversion == 'IPv4':
 			service.add_manual_command('(nikto) old but generally reliable web server enumeration tool:', 'nikto -ask=no -h {http_scheme}://{address}:{port} 2>&1 | tee "{scandir}/{protocol}_{port}_{http_scheme}_nikto.txt"')
 
 class WhatWeb(ServiceScan):
@@ -166,7 +163,7 @@ class WhatWeb(ServiceScan):
 		self.match_service_name('^nacn_http$', negative_match=True)
 
 	async def run(self, service):
-		if service.protocol == 'tcp' and service.target.type == 'IPv4':
+		if service.protocol == 'tcp' and service.target.ipversion == 'IPv4':
 			await service.execute('whatweb --color=never --no-errors -a 3 -v {http_scheme}://{address}:{port} 2>&1', outfile='{protocol}_{port}_{http_scheme}_whatweb.txt')
 
 class WkHTMLToImage(ServiceScan):

@@ -25,9 +25,10 @@ class DNSZoneTransfer(ServiceScan):
 
 	async def run(self, service):
 		if self.get_global('domain'):
-			await service.execute('dig AXFR -p {port} @{address} ' + self.get_global('domain'), outfile='{protocol}_{port}_dns_zone-transfer.txt')
-		else:
-			await service.execute('dig AXFR -p {port} @{address}', outfile='{protocol}_{port}_dns_zone-transfer.txt')
+			await service.execute('dig AXFR -p {port} @{address} ' + self.get_global('domain'), outfile='{protocol}_{port}_dns_zone-transfer-domain.txt')
+		if service.target.type == 'hostname':
+			await service.execute('dig AXFR -p {port} @{address} {address}', outfile='{protocol}_{port}_dns_zone-transfer-hostname.txt')
+		await service.execute('dig AXFR -p {port} @{address}', outfile='{protocol}_{port}_dns_zone-transfer.txt')
 
 class DNSReverseLookup(ServiceScan):
 

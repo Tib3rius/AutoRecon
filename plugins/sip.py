@@ -24,5 +24,5 @@ class SIPVicious(ServiceScan):
 		self.match_service_name('^asterisk')
 
 	def manual(self, service, plugin_was_run):
-		if service.target.type == 'IPv4':
+		if service.target.ipversion == 'IPv4':
 			service.add_manual_command('svwar:', 'svwar -D -m INVITE -p {port} {address}')

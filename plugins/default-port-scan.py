@@ -27,7 +27,6 @@ class AllTCPPortScan(PortScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "All TCP Ports"
-		self.type = 'tcp'
 		self.tags = ["default", "default-port-scan", "long"]
 
 	async def run(self, target):

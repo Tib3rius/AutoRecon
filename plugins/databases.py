@@ -24,7 +24,7 @@ class NmapMSSQL(ServiceScan):
 		self.match_service_name(['^mssql', '^ms\-sql'])
 
 	def manual(self, service, plugin_was_run):
-		if service.target.type == 'IPv4':
+		if service.target.ipversion == 'IPv4':
 			service.add_manual_command('(sqsh) interactive database shell:', 'sqsh -U <username> -P <password> -S {address}:{port}')
 
 	async def run(self, service):
@@ -41,7 +41,7 @@ class NmapMYSQL(ServiceScan):
 		self.match_service_name('^mysql')
 
 	def manual(self, service, plugin_was_run):
-		if service.target.type == 'IPv4':
+		if service.target.ipversion == 'IPv4':
 			service.add_manual_command('(sqsh) interactive database shell:', 'sqsh -U <username> -P <password> -S {address}:{port}')
 
 	async def run(self, service):
@@ -74,7 +74,7 @@ class OracleTNScmd(ServiceScan):
 		self.match_service_name('^oracle')
 
 	async def run(self, service):
-		if service.target.type == 'IPv4':
+		if service.target.ipversion == 'IPv4':
 			await service.execute('tnscmd10g ping -h {address} -p {port} 2>&1', outfile='{protocol}_{port}_oracle_tnscmd_ping.txt')
 			await service.execute('tnscmd10g version -h {address} -p {port} 2>&1', outfile='{protocol}_{port}_oracle_tnscmd_version.txt')
 

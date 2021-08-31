@@ -25,8 +25,9 @@ class Pattern:
 
 class Target:
 
-	def __init__(self, address, type, autorecon):
+	def __init__(self, address, ipversion, type, autorecon):
 		self.address = address
+		self.ipversion = ipversion
 		self.type = type
 		self.autorecon = autorecon
 		self.basedir = ''
@@ -61,7 +62,7 @@ class Target:
 		if self.autorecon.args.nmap_append:
 			nmap_extra += ' ' + self.autorecon.args.nmap_append
 
-		if target.type == 'IPv6':
+		if target.ipversion == 'IPv6':
 			nmap_extra += ' -6'
 			addressv6 = '[' + addressv6 + ']'
 
@@ -155,7 +156,7 @@ class Service:
 		if protocol == 'udp':
 			nmap_extra += ' -sU'
 
-		if self.target.type == 'IPv6':
+		if self.target.ipversion == 'IPv6':
 			nmap_extra += ' -6'
 			addressv6 = '[' + addressv6 + ']'
 
@@ -973,7 +974,7 @@ async def service_scan(plugin, service):
 		if protocol == 'udp':
 			nmap_extra += ' -sU'
 
-		if service.target.type == 'IPv6':
+		if service.target.ipversion == 'IPv6':
 			nmap_extra += ' -6'
 			addressv6 = '[' + addressv6 + ']'
 
@@ -1170,7 +1171,7 @@ async def scan_target(target):
 			if protocol == 'udp':
 				nmap_extra += ' -sU'
 
-			if target.type == 'IPv6':
+			if target.ipversion == 'IPv6':
 				nmap_extra += ' -6'
 				addressv6 = '[' + addressv6 + ']'
 
@@ -1701,9 +1702,9 @@ async def main():
 				continue
 
 			if isinstance(ip, ipaddress.IPv4Address):
-				autorecon.pending_targets.append(Target(ip_str, 'IPv4', autorecon))
+				autorecon.pending_targets.append(Target(ip_str, 'IPv4', 'ip', autorecon))
 			elif isinstance(ip, ipaddress.IPv6Address):
-				autorecon.pending_targets.append(Target(ip_str, 'IPv6', autorecon))
+				autorecon.pending_targets.append(Target(ip_str, 'IPv6', 'ip', autorecon))
 			else:
 				fail('This should never happen unless IPv8 is invented.')
 		except ValueError:
@@ -1727,9 +1728,9 @@ async def main():
 							continue
 
 						if isinstance(ip, ipaddress.IPv4Address):
-							autorecon.pending_targets.append(Target(ip_str, 'IPv4', autorecon))
+							autorecon.pending_targets.append(Target(ip_str, 'IPv4', 'ip', autorecon))
 						elif isinstance(ip, ipaddress.IPv6Address):
-							autorecon.pending_targets.append(Target(ip_str, 'IPv6', autorecon))
+							autorecon.pending_targets.append(Target(ip_str, 'IPv6', 'ip', autorecon))
 						else:
 							fail('This should never happen unless IPv8 is invented.')
 
@@ -1747,7 +1748,7 @@ async def main():
 					if found:
 						continue
 
-					autorecon.pending_targets.append(Target(target, 'IPv4', autorecon))
+					autorecon.pending_targets.append(Target(target, 'IPv4', 'hostname', autorecon))
 				except socket.gaierror:
 					try:
 						addresses = socket.getaddrinfo(target, None, socket.AF_INET6)
@@ -1761,7 +1762,7 @@ async def main():
 						if found:
 							continue
 
-						autorecon.pending_targets.append(Target(target, 'IPv6', autorecon))
+						autorecon.pending_targets.append(Target(target, 'IPv6', 'hostname', autorecon))
 					except socket.gaierror:
 						error(target + ' does not appear to be a valid IP address, IP range, or resolvable hostname.')
 						errors = True
