@@ -1,10 +1,10 @@
 from autorecon import ServiceScan
 
-class DNS(ServiceScan):
+class NmapDNS(ServiceScan):
 
 	def __init__(self):
 		super().__init__()
-		self.name = 'DNS'
+		self.name = 'Nmap DNS'
 		self.tags = ['default', 'safe', 'dns']
 
 	def configure(self):

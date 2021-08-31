@@ -454,6 +454,7 @@ class AutoRecon(object):
 		self.argparse_group = None
 		self.args = None
 		self.missing_services = []
+		self.taglist = []
 		self.tags = []
 		self.excluded_tags = []
 		self.patterns = []
@@ -601,6 +602,9 @@ class AutoRecon(object):
 				fail('Plugin "' + plugin.name + '" in ' + filename + ' is neither a PortScan nor a ServiceScan.', file=sys.stderr)
 
 			plugin.tags = [tag.lower() for tag in plugin.tags]
+
+			# Add plugin tags to tag list.
+			[autorecon.taglist.append(t) for t in plugin.tags if t not in autorecon.tags]
 
 			plugin.autorecon = self
 			if configure_function_found:
@@ -1412,6 +1416,12 @@ async def main():
 				print('cannot import ' + filename + ' plugin')
 				print(ex)
 				sys.exit(1)
+
+	for plugin in autorecon.plugins.values():
+		if plugin.slug in autorecon.taglist:
+			fail('Plugin ' + plugin.name + ' has a slug (' + plugin.slug + ') with the same name as a tag. Please either change the plugin name or override the slug.')
+		# Add plugin slug to tags.
+		plugin.tags += [plugin.slug]
 
 	if len(autorecon.plugin_types['port']) == 0:
 		fail('Error: There are no valid PortScan plugins in the plugins directory "' + autorecon.config['plugins_dir'] + '".')

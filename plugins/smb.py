@@ -41,7 +41,7 @@ class Enum4Linux(ServiceScan):
 	def __init__(self):
 		super().__init__()
 		self.name = "Enum4Linux"
-		self.tags = ['default', 'safe', 'enum4linux', 'active-directory']
+		self.tags = ['default', 'safe', 'active-directory']
 
 	def configure(self):
 		self.match_service_name(['^ldap', '^smb', '^microsoft\-ds', '^netbios'])
