@@ -466,6 +466,7 @@ class AutoRecon(object):
 			'tags',
 			'exclude_tags',
 			'plugins_dir',
+			'add_plugins-dir',
 			'outdir',
 			'single_target',
 			'only_scans_dir',
@@ -491,6 +492,7 @@ class AutoRecon(object):
 			'tags': 'default',
 			'exclude_tags': None,
 			'plugins_dir': os.path.dirname(os.path.abspath(__file__)) + '/plugins',
+			'add_plugins_dir': None,
 			'outdir': 'results',
 			'single_target': False,
 			'only_scans_dir': False,
@@ -1334,6 +1336,7 @@ async def main():
 	parser.add_argument('--tags', action='store', type=str, default='default', help='Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be included, it must have all the tags specified in at least one group. Default: %(default)s')
 	parser.add_argument('--exclude-tags', action='store', type=str, default='', help='Tags to determine which plugins should be excluded. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be excluded, it must have all the tags specified in at least one group. Default: %(default)s')
 	parser.add_argument('--plugins-dir', action='store', type=str, help='The location of the plugins directory. Default: %(default)s')
+	parser.add_argument('--add-plugins-dir', action='store', type=str, help='The location of an additional plugins directory to add to the main one. Default: %(default)s')
 	parser.add_argument('-l', '--list', action='store', nargs='?', const='plugins', help='List all plugins or plugins of a specific type. e.g. --list, --list port, --list service')
 	parser.add_argument('-o', '--output', action='store', dest='outdir', help='The output directory for results. Default: %(default)s')
 	parser.add_argument('--single-target', action='store_true', help='Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will be created within the output directory. Default: %(default)s')
@@ -1370,54 +1373,68 @@ async def main():
 		try:
 			config_toml = toml.load(c)
 			for key, val in config_toml.items():
+				key = slugify(key)
 				if key == 'global-file':
 					autorecon.config['global_file'] = val
 				elif key == 'plugins-dir':
 					autorecon.config['plugins_dir'] = val
+				elif key == 'add-plugins-dir':
+					autorecon.config['add_plugins_dir'] = val
 		except toml.decoder.TomlDecodeError:
 			fail('Error: Couldn\'t parse ' + args.config_file + ' config file. Check syntax.')
 
 	args_dict = vars(args)
 	for key in args_dict:
-		if key == 'global_file' and args_dict['global_file'] is not None:
+		key = slugify(key)
+		if key == 'global-file' and args_dict['global_file'] is not None:
 			autorecon.config['global_file'] = args_dict['global_file']
-		elif key == 'plugins_dir' and args_dict['plugins_dir'] is not None:
+		elif key == 'plugins-dir' and args_dict['plugins_dir'] is not None:
 			autorecon.config['plugins_dir'] = args_dict['plugins_dir']
+		elif key == 'add-plugins-dir' and args_dict['add_plugins_dir'] is not None:
+			autorecon.config['add_plugins_dir'] = args_dict['add_plugins_dir']
 
 	if not os.path.isdir(autorecon.config['plugins_dir']):
 		fail('Error: Specified plugins directory "' + autorecon.config['plugins_dir'] + '" does not exist.')
 
-	for plugin_file in os.listdir(autorecon.config['plugins_dir']):
-		if not plugin_file.startswith('_') and plugin_file.endswith('.py'):
+	if autorecon.config['add_plugins_dir'] and not os.path.isdir(autorecon.config['add_plugins_dir']):
+		fail('Error: Specified additional plugins directory "' + autorecon.config['add_plugins_dir'] + '" does not exist.')
 
-			dirname, filename = os.path.split(os.path.join(autorecon.config['plugins_dir'], plugin_file))
-			dirname = os.path.abspath(dirname)
+	plugins_dirs = [autorecon.config['plugins_dir']]
+	if autorecon.config['add_plugins_dir']:
+		plugins_dirs.append(autorecon.config['add_plugins_dir'])
 
-			# Temporarily insert the plugin directory into the sys.path so importing plugins works.
-			sys.path.insert(1, dirname)
+	for plugins_dir in plugins_dirs:
+		for plugin_file in os.listdir(plugins_dir):
+			if not plugin_file.startswith('_') and plugin_file.endswith('.py'):
 
-			try:
-				plugin = importlib.import_module(filename[:-3])
-				# Remove the plugin directory from the path after import.
-				sys.path.pop(1)
-				clsmembers = inspect.getmembers(plugin, predicate=inspect.isclass)
-				for (_, c) in clsmembers:
-					if c.__module__ == 'autorecon':
-						continue
+				dirname, filename = os.path.split(os.path.join(plugins_dir, plugin_file))
+				dirname = os.path.abspath(dirname)
 
-					if c.__name__.lower() in autorecon.config['protected_classes']:
-						print('Plugin "' + c.__name__ + '" in ' + filename + ' is using a protected class name. Please change it.')
-						sys.exit(1)
+				# Temporarily insert the plugin directory into the sys.path so importing plugins works.
+				sys.path.insert(1, dirname)
 
-					# Only add classes that are a sub class of either PortScan or ServiceScan
-					if issubclass(c, PortScan) or issubclass(c, ServiceScan):
-						autorecon.register(c(), filename)
-					else:
-						print('Plugin "' + c.__name__ + '" in ' + filename + ' is not a subclass of either PortScan or ServiceScan.')
-			except (ImportError, SyntaxError) as ex:
-				print('cannot import ' + filename + ' plugin')
-				print(ex)
-				sys.exit(1)
+				try:
+					plugin = importlib.import_module(filename[:-3])
+					# Remove the plugin directory from the path after import.
+					sys.path.pop(1)
+					clsmembers = inspect.getmembers(plugin, predicate=inspect.isclass)
+					for (_, c) in clsmembers:
+						if c.__module__ == 'autorecon':
+							continue
+
+						if c.__name__.lower() in autorecon.config['protected_classes']:
+							print('Plugin "' + c.__name__ + '" in ' + filename + ' is using a protected class name. Please change it.')
+							sys.exit(1)
+
+						# Only add classes that are a sub class of either PortScan or ServiceScan
+						if issubclass(c, PortScan) or issubclass(c, ServiceScan):
+							autorecon.register(c(), filename)
+						else:
+							print('Plugin "' + c.__name__ + '" in ' + filename + ' is not a subclass of either PortScan or ServiceScan.')
+				except (ImportError, SyntaxError) as ex:
+					print('cannot import ' + filename + ' plugin')
+					print(ex)
+					sys.exit(1)
 
 	for plugin in autorecon.plugins.values():
 		if plugin.slug in autorecon.taglist:
