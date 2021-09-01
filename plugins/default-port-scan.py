@@ -5,9 +5,10 @@ class QuickTCPPortScan(PortScan):
 
 	def __init__(self):
 		super().__init__()
-		self.name = "Top TCP Ports"
+		self.name = 'Top TCP Ports'
+		self.description = 'Performs an Nmap scan of the top 1000 TCP ports.'
 		self.type = 'tcp'
-		self.tags = ["default", "default-port-scan"]
+		self.tags = ['default', 'default-port-scan']
 		self.priority = 0
 
 	async def run(self, target):
@@ -26,8 +27,9 @@ class AllTCPPortScan(PortScan):
 
 	def __init__(self):
 		super().__init__()
-		self.name = "All TCP Ports"
-		self.tags = ["default", "default-port-scan", "long"]
+		self.name = 'All TCP Ports'
+		self.description = 'Performs an Nmap scan of all TCP ports.'
+		self.tags = ['default', 'default-port-scan', 'long']
 
 	async def run(self, target):
 		if target.ports: # Don't run this plugin if there are custom ports.
@@ -41,9 +43,10 @@ class Top100UDPPortScan(PortScan):
 
 	def __init__(self):
 		super().__init__()
-		self.name = "Top 100 UDP Ports"
+		self.name = 'Top 100 UDP Ports'
+		self.description = 'Performs an Nmap scan of the top 100 UDP ports.'
 		self.type = 'udp'
-		self.tags = ["default", "default-port-scan", "long"]
+		self.tags = ['default', 'default-port-scan', 'long']
 
 	async def run(self, target):
 		# Only run UDP scan if user is root.

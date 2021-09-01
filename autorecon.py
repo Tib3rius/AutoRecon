@@ -265,6 +265,7 @@ class Plugin(object):
 	def __init__(self):
 		self.name = None
 		self.slug = None
+		self.description = None
 		self.tags = ['default']
 		self.priority = 1
 		self.patterns = []
@@ -1333,6 +1334,7 @@ async def main():
 	parser.add_argument('--tags', action='store', type=str, default='default', help='Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be included, it must have all the tags specified in at least one group. Default: %(default)s')
 	parser.add_argument('--exclude-tags', action='store', type=str, default='', help='Tags to determine which plugins should be excluded. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be excluded, it must have all the tags specified in at least one group. Default: %(default)s')
 	parser.add_argument('--plugins-dir', action='store', type=str, help='The location of the plugins directory. Default: %(default)s')
+	parser.add_argument('-l', '--list', action='store', nargs='?', const='plugins', help='List all plugins or plugins of a specific type. e.g. --list, --list port, --list service')
 	parser.add_argument('-o', '--output', action='store', dest='outdir', help='The output directory for results. Default: %(default)s')
 	parser.add_argument('--single-target', action='store_true', help='Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will be created within the output directory. Default: %(default)s')
 	parser.add_argument('--only-scans-dir', action='store_true', help='Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created. Default: %(default)s')
@@ -1539,6 +1541,17 @@ async def main():
 				continue
 			autorecon.config[key] = args_dict[key]
 	autorecon.args = args
+
+	if args.list:
+		type = args.list.lower()
+		if type in ['plugin', 'plugins', 'port', 'ports', 'portscan', 'portscans']:
+			for p in autorecon.plugin_types['port']:
+				print('PortScan: ' + p.name + ' (' + p.slug + ')' + (' - ' + p.description if p.description else ''))
+		if type in ['plugin', 'plugins', 'service', 'services', 'servicescan', 'servicescans']:
+			for p in autorecon.plugin_types['service']:
+				print('ServiceScan: ' + p.name + ' (' + p.slug + ')' + (' - ' + p.description if p.description else ''))
+
+		sys.exit(0)
 
 	if autorecon.config['ports']:
 		ports_to_scan = {'tcp':[], 'udp':[]}
