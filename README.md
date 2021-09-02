@@ -20,7 +20,7 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 
 ## Features
 
-* Supports multiple targets in the form of IP addresses, IP ranges (CIDR notation), and resolvable hostnames. IPv6 is supported.
+* Supports multiple targets in the form of IP addresses, IP ranges (CIDR notation), and resolvable hostnames. IPv6 is also supported.
 * Can scan multiple targets concurrently, utilizing multiple processors if they are available.
 * Advanced plugin system allowing for easy creation of new scans.
 * Customizable port scanning plugins for flexibility in your initial scans.
