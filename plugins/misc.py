@@ -1,4 +1,5 @@
-from autorecon import ServiceScan, fformat
+from autorecon.plugins import ServiceScan
+from autorecon.io import fformat
 
 class NmapCassandra(ServiceScan):
 

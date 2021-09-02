@@ -1,9 +1,5 @@
-import asyncio, os, re, sys, signal, pkgutil, inspect, importlib, argparse, string, ipaddress, socket, time, math
+import argparse, asyncio, importlib, inspect, ipaddress, math, os, re, sys, signal, select, socket, termios, time, traceback, tty
 from datetime import datetime
-from typing import final
-import traceback
-import termios, tty
-import select
 
 try:
 	import colorama, toml, unidecode
@@ -14,724 +10,15 @@ except ModuleNotFoundError:
 
 colorama.init()
 
+from autorecon.config import config, configurable_keys, configurable_boolean_keys
+from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, fail, CommandStreamReader
+from autorecon.plugins import Pattern, PortScan, ServiceScan, AutoRecon
+from autorecon.targets import Target, Service
+
 # Save current terminal settings so we can restore them.
 terminal_settings = termios.tcgetattr(sys.stdin.fileno())
 
-class Pattern:
-
-	def __init__(self, pattern, description=None):
-		self.pattern = pattern
-		self.description = description
-
-class Target:
-
-	def __init__(self, address, ipversion, type, autorecon):
-		self.address = address
-		self.ipversion = ipversion
-		self.type = type
-		self.autorecon = autorecon
-		self.basedir = ''
-		self.reportdir = ''
-		self.scandir = ''
-		self.lock = asyncio.Lock()
-		self.ports = None
-		self.pending_services = []
-		self.services = []
-		self.scans = []
-		self.running_tasks = {}
-
-	async def add_service(self, service):
-		async with self.lock:
-			self.pending_services.append(service)
-
-	def extract_service(self, line, regex=None):
-		return self.autorecon.extract_service(line, regex)
-
-	async def extract_services(self, stream, regex=None):
-		return await self.autorecon.extract_services(stream, regex)
-
-	async def execute(self, cmd, blocking=True, outfile=None, errfile=None):
-		target = self
-
-		# Create variables for command references.
-		address = target.address
-		addressv6 = target.address
-		scandir = target.scandir
-
-		nmap_extra = self.autorecon.args.nmap
-		if self.autorecon.args.nmap_append:
-			nmap_extra += ' ' + self.autorecon.args.nmap_append
-
-		if target.ipversion == 'IPv6':
-			nmap_extra += ' -6'
-			addressv6 = '[' + addressv6 + ']'
-
-		plugin = inspect.currentframe().f_back.f_locals['self']
-
-		cmd = e(cmd)
-
-		tag = plugin.slug
-
-		if target.autorecon.config['verbose'] >= 1:
-			info('Port scan {bblue}' + plugin.name + ' (' + tag + '){rst} is running the following command against {byellow}' + address + '{rst}: ' + cmd)
-
-		if outfile is not None:
-			outfile = os.path.join(target.scandir, e(outfile))
-
-		if errfile is not None:
-			errfile = os.path.join(target.scandir, e(errfile))
-
-		async with target.lock:
-			with open(os.path.join(target.scandir, '_commands.log'), 'a') as file:
-				file.writelines(cmd + '\n\n')
-
-		process, stdout, stderr = await self.autorecon.execute(cmd, target, tag, patterns=plugin.patterns, outfile=outfile, errfile=errfile)
-
-		target.running_tasks[tag]['processes'].append({'process': process, 'stderr': stderr, 'cmd': cmd})
-
-		# If process should block, sleep until stdout and stderr have finished.
-		if blocking:
-			while (not (stdout.ended and stderr.ended)):
-				await asyncio.sleep(0.1)
-			await process.wait()
-
-		return process, stdout, stderr
-
-class Service:
-
-	def __init__(self, protocol, port, name, secure=False):
-		self.target = None
-		self.protocol = protocol.lower()
-		self.port = int(port)
-		self.name = name
-		self.secure = secure
-		self.manual_commands = {}
-
-	@final
-	def tag(self):
-		return self.protocol + '/' + str(self.port) + '/' + self.name
-
-	@final
-	def full_tag(self):
-		return self.protocol + '/' + str(self.port) + '/' + self.name + '/' + ('secure' if self.secure else 'insecure')
-
-	@final
-	def add_manual_commands(self, description, commands):
-		if not isinstance(commands, list):
-			commands = [commands]
-		if description not in self.manual_commands:
-			self.manual_commands[description] = []
-
-		# Merge in new unique commands, while preserving order.
-		[self.manual_commands[description].append(m) for m in commands if m not in self.manual_commands[description]]
-
-	@final
-	def add_manual_command(self, description, command):
-		self.add_manual_commands(description, command)
-
-	@final
-	async def execute(self, cmd, blocking=True, outfile=None, errfile=None):
-		target = self.target
-
-		# Create variables for command references.
-		address = target.address
-		addressv6 = target.address
-		scandir = target.scandir
-		protocol = self.protocol
-		port = self.port
-		name = self.name
-
-		if target.autorecon.config['create_port_dirs']:
-			scandir = os.path.join(scandir, protocol + str(port))
-			os.makedirs(scandir, exist_ok=True)
-			os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
-
-		# Special cases for HTTP.
-		http_scheme = 'https' if 'https' in self.name or self.secure is True else 'http'
-
-		nmap_extra = self.target.autorecon.args.nmap
-		if self.target.autorecon.args.nmap_append:
-			nmap_extra += ' ' + self.target.autorecon.args.nmap_append
-
-		if protocol == 'udp':
-			nmap_extra += ' -sU'
-
-		if self.target.ipversion == 'IPv6':
-			nmap_extra += ' -6'
-			addressv6 = '[' + addressv6 + ']'
-
-		plugin = inspect.currentframe().f_back.f_locals['self']
-
-		cmd = e(cmd)
-
-		tag = self.tag() + '/' + plugin.slug
-
-		if target.autorecon.config['verbose'] >= 1:
-			info('Service scan {bblue}' + plugin.name + ' (' + tag + '){rst} is running the following command against {byellow}' + address + '{rst}: ' + cmd)
-
-		if outfile is not None:
-			outfile = os.path.join(scandir, e(outfile))
-
-		if errfile is not None:
-			errfile = os.path.join(scandir, e(errfile))
-
-		async with target.lock:
-			with open(os.path.join(target.scandir, '_commands.log'), 'a') as file:
-				file.writelines(cmd + '\n\n')
-
-		process, stdout, stderr = await target.autorecon.execute(cmd, target, tag, patterns=plugin.patterns, outfile=outfile, errfile=errfile)
-
-		target.running_tasks[tag]['processes'].append({'process': process, 'stderr': stderr, 'cmd': cmd})
-
-		# If process should block, sleep until stdout and stderr have finished.
-		if blocking:
-			while (not (stdout.ended and stderr.ended)):
-				await asyncio.sleep(0.1)
-			await process.wait()
-
-		return process, stdout, stderr
-
-class CommandStreamReader(object):
-
-	def __init__(self, stream, target, tag, patterns=None, outfile=None):
-		self.stream = stream
-		self.target = target
-		self.tag = tag
-		self.lines = []
-		self.patterns = patterns or []
-		self.outfile = outfile
-		self.ended = False
-
-	# Read lines from the stream until it ends.
-	async def _read(self):
-		while True:
-			if self.stream.at_eof():
-				break
-			try:
-				line = (await self.stream.readline()).decode('utf8').rstrip()
-			except ValueError:
-				error('{bblue}[' + self.target.address + '/' + self.tag + ']{crst} A line was longer than 64 KiB and cannot be processed. Ignoring.')
-				continue
-
-			if self.target.autorecon.config['verbose'] >= 2:
-				if line != '':
-					info('{bblue}[' + self.target.address + '/' + self.tag + ']{crst} ' + line.replace('{', '{{').replace('}', '}}'))
-
-			# Check lines for pattern matches.
-			for p in self.patterns:
-				matches = p.pattern.findall(line)
-				for match in matches:
-					async with self.target.lock:
-						with open(os.path.join(self.target.scandir, '_patterns.log'), 'a') as file:
-							if p.description:
-								if self.target.autorecon.config['verbose'] >= 1:
-									info('{bblue}[' + self.target.address + '/' + self.tag + ']{crst} {bmagenta}' + p.description.replace('{match}', '{bblue}' + match + '{crst}{bmagenta}') + '{rst}')
-								file.writelines(p.description.replace('{match}', match) + '\n\n')
-							else:
-								if self.target.autorecon.config['verbose'] >= 1:
-									info('{bblue}[' + self.target.address + '/' + self.tag + ']{crst} {bmagenta}Matched Pattern: {bblue}' + match + '{rst}')
-								file.writelines('Matched Pattern: ' + match + '\n\n')
-
-			if self.outfile is not None:
-				with open(self.outfile, 'a') as writer:
-					writer.write(line + '\n')
-			self.lines.append(line)
-		self.ended = True
-
-	# Read a line from the stream cache.
-	async def readline(self):
-		while True:
-			try:
-				return self.lines.pop(0)
-			except IndexError:
-				if self.ended:
-					return None
-				else:
-					await asyncio.sleep(0.1)
-
-	# Read all lines from the stream cache.
-	async def readlines(self):
-		lines = []
-		while True:
-			line = await self.readline()
-			if line is not None:
-				lines.append(line)
-			else:
-				break
-		return lines
-
-class Plugin(object):
-
-	def __init__(self):
-		self.name = None
-		self.slug = None
-		self.description = None
-		self.tags = ['default']
-		self.priority = 1
-		self.patterns = []
-		self.autorecon = None
-		self.disabled = False
-
-	@final
-	def add_option(self, name, default=None, help=None):
-		self.autorecon.add_argument(self, name, metavar='VALUE', default=default, help=help)
-
-	@final
-	def add_constant_option(self, name, const, default=None, help=None):
-		self.autorecon.add_argument(self, name, action='store_const', const=const, default=default, help=help)
-
-	@final
-	def add_true_option(self, name, help=None):
-		self.autorecon.add_argument(self, name, action='store_true', help=help)
-
-	@final
-	def add_false_option(self, name, help=None):
-		self.autorecon.add_argument(self, name, action='store_false', help=help)
-
-	@final
-	def add_list_option(self, name, default=None, help=None):
-		self.autorecon.add_argument(self, name, nargs='+', metavar='VALUE', default=default, help=help)
-
-	@final
-	def add_choice_option(self, name, choices, default=None, help=None):
-		if not isinstance(choices, list):
-			fail('The choices argument for ' + self.name + '\'s ' + name + ' choice option should be a list.')
-		self.autorecon.add_argument(self, name, choices=choices, default=default, help=help)
-
-	@final
-	def get_option(self, name):
-		# TODO: make sure name is simple.
-		name = self.slug.replace('-', '_') + '.' + slugify(name).replace('-', '_')
-
-		if name in vars(self.autorecon.args):
-			return vars(self.autorecon.args)[name]
-		else:
-			return None
-
-	@final
-	def get_global_option(self, name, default=None):
-		name = 'global.' + slugify(name).replace('-', '_')
-
-		if name in vars(self.autorecon.args):
-			if vars(self.autorecon.args)[name] is None:
-				if default:
-					return default
-				else:
-					return None
-			else:
-				return vars(self.autorecon.args)[name]
-		else:
-			if default:
-				return default
-			return None
-
-	@final
-	def get_global(self, name, default=None):
-		return self.get_global_option(name, default)
-
-	@final
-	def add_pattern(self, pattern, description=None):
-		try:
-			compiled = re.compile(pattern)
-			if description:
-				self.patterns.append(Pattern(compiled, description=description))
-			else:
-				self.patterns.append(Pattern(compiled))
-		except re.error:
-			fail('Error: The pattern "' + pattern + '" in the plugin "' + self.name + '" is invalid regex.')
-
-class PortScan(Plugin):
-
-	def __init__(self):
-		super().__init__()
-		self.type = None
-
-	async def run(self, target):
-		raise NotImplementedError
-
-class ServiceScan(Plugin):
-
-	def __init__(self):
-		super().__init__()
-		self.ports = {'tcp':[], 'udp':[]}
-		self.ignore_ports = {'tcp':[], 'udp':[]}
-		self.services = []
-		self.service_names = []
-		self.ignore_service_names = []
-		self.match_all_service_names_boolean = False
-		self.run_once_boolean = False
-		self.require_ssl_boolean = False
-
-	@final
-	def match_service(self, protocol, port, name, negative_match=False):
-		protocol = protocol.lower()
-		if protocol not in ['tcp', 'udp']:
-			print('Invalid protocol.')
-			sys.exit(1)
-
-		if not isinstance(port, list):
-			port = [port]
-
-		port = list(map(int, port))
-
-		if not isinstance(name, list):
-			name = [name]
-
-		valid_regex = True
-		for r in name:
-			try:
-				re.compile(r)
-			except re.error:
-				print('Invalid regex: ' + r)
-				valid_regex = False
-
-		if not valid_regex:
-			sys.exit(1)
-
-		service = {'protocol': protocol, 'port': port, 'name': name, 'negative_match': negative_match}
-		self.services.append(service)
-
-	@final
-	def match_port(self, protocol, port, negative_match=False):
-		protocol = protocol.lower()
-		if protocol not in ['tcp', 'udp']:
-			print('Invalid protocol.')
-			sys.exit(1)
-		else:
-			if not isinstance(port, list):
-				port = [port]
-
-			port = list(map(int, port))
-
-			if negative_match:
-				self.ignore_ports[protocol] = list(set(self.ignore_ports[protocol] + port))
-			else:
-				self.ports[protocol] = list(set(self.ports[protocol] + port))
-
-	@final
-	def match_service_name(self, name, negative_match=False):
-		if not isinstance(name, list):
-			name = [name]
-
-		valid_regex = True
-		for r in name:
-			try:
-				re.compile(r)
-			except re.error:
-				print('Invalid regex: ' + r)
-				valid_regex = False
-
-		if valid_regex:
-			if negative_match:
-				self.ignore_service_names = list(set(self.ignore_service_names + name))
-			else:
-				self.service_names = list(set(self.service_names + name))
-		else:
-			sys.exit(1)
-
-	@final
-	def require_ssl(self, boolean):
-		self.require_ssl_boolean = boolean
-
-	@final
-	def run_once(self, boolean):
-		self.run_once_boolean = boolean
-
-	@final
-	def match_all_service_names(self, boolean):
-		self.match_all_service_names_boolean = boolean
-
-class AutoRecon(object):
-
-	def __init__(self):
-		self.pending_targets = []
-		self.scanning_targets = []
-		self.plugins = {}
-		self.__slug_regex = re.compile('^[a-z0-9\-]+$')
-		self.plugin_types = {'port':[], 'service':[]}
-		self.port_scan_semaphore = None
-		self.service_scan_semaphore = None
-		self.argparse = None
-		self.argparse_group = None
-		self.args = None
-		self.missing_services = []
-		self.taglist = []
-		self.tags = []
-		self.excluded_tags = []
-		self.patterns = []
-		self.configurable_keys = [
-			'ports',
-			'max_scans',
-			'max_port_scans',
-			'tags',
-			'exclude_tags',
-			'plugins_dir',
-			'add_plugins-dir',
-			'outdir',
-			'single_target',
-			'only_scans_dir',
-			'create_port_dirs',
-			'heartbeat',
-			'timeout',
-			'target_timeout',
-			'nmap',
-			'nmap_append',
-			'disable_sanity_checks',
-			'disable_keyboard_control',
-			'force_services',
-			'accessible',
-			'verbose'
-		]
-		self.configurable_boolean_keys = ['single_target', 'only_scans_dir', 'create_port_dirs', 'disable_sanity_checks', 'accessible']
-		self.config = {
-			'protected_classes': ['autorecon', 'target', 'service', 'commandstreamreader', 'plugin', 'portscan', 'servicescan', 'global', 'pattern'],
-			'global_file': os.path.dirname(os.path.realpath(__file__)) + '/global.toml',
-			'ports': None,
-			'max_scans': 50,
-			'max_port_scans': None,
-			'tags': 'default',
-			'exclude_tags': None,
-			'plugins_dir': os.path.dirname(os.path.abspath(__file__)) + '/plugins',
-			'add_plugins_dir': None,
-			'outdir': 'results',
-			'single_target': False,
-			'only_scans_dir': False,
-			'create_port_dirs': False,
-			'heartbeat': 60,
-			'timeout': None,
-			'target_timeout': None,
-			'nmap': '-vv --reason -Pn',
-			'nmap_append': '',
-			'disable_sanity_checks': False,
-			'disable_keyboard_control': False,
-			'force_services': None,
-			'accessible': False,
-			'verbose': 0
-		}
-		self.errors = False
-		self.lock = asyncio.Lock()
-		self.load_slug = None
-		self.load_module = None
-
-	def add_argument(self, plugin, name, **kwargs):
-		# TODO: make sure name is simple.
-		name = '--' + plugin.slug + '.' + slugify(name)
-
-		if self.argparse_group is None:
-			self.argparse_group = self.argparse.add_argument_group('plugin arguments', description='These are optional arguments for certain plugins.')
-		self.argparse_group.add_argument(name, **kwargs)
-
-	def extract_service(self, line, regex):
-		if regex is None:
-			regex = '^(?P<port>\d+)\/(?P<protocol>(tcp|udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
-		match = re.search(regex, line)
-		if match:
-			protocol = match.group('protocol').lower()
-			port = int(match.group('port'))
-			service = match.group('service')
-			secure = True if 'ssl' in service or 'tls' in service else False
-
-			if service.startswith('ssl/') or service.startswith('tls/'):
-				service = service[4:]
-
-			from autorecon import Service
-			return Service(protocol, port, service, secure)
-		else:
-			return None
-
-	async def extract_services(self, stream, regex):
-		if not isinstance(stream, CommandStreamReader):
-			print('Error: extract_services must be passed an instance of a CommandStreamReader.')
-			sys.exit(1)
-
-		services = []
-		while True:
-			line = await stream.readline()
-			if line is not None:
-				service = self.extract_service(line, regex)
-				if service:
-					services.append(service)
-			else:
-				break
-		return services
-
-	def register(self, plugin, filename):
-		if plugin.disabled:
-			return
-
-		for _, loaded_plugin in self.plugins.items():
-			if plugin.name == loaded_plugin.name:
-				fail('Error: Duplicate plugin name "' + plugin.name + '" detected in ' + filename + '.', file=sys.stderr)
-
-		if plugin.slug is None:
-			plugin.slug = slugify(plugin.name)
-		elif not self.__slug_regex.match(plugin.slug):
-			fail('Error: provided slug "' + plugin.slug + '" in ' + filename + ' is not valid (must only contain lowercase letters, numbers, and hyphens).', file=sys.stderr)
-
-		if plugin.slug in self.config['protected_classes']:
-			fail('Error: plugin slug "' + plugin.slug + '" in ' + filename + ' is a protected string. Please change.')
-
-		if plugin.slug not in self.plugins:
-
-			for _, loaded_plugin in self.plugins.items():
-				if plugin is loaded_plugin:
-					fail('Error: plugin "' + plugin.name + '" in ' + filename + ' already loaded as "' + loaded_plugin.name + '" (' + str(loaded_plugin) + ')', file=sys.stderr)
-
-			configure_function_found = False
-			run_coroutine_found = False
-			manual_function_found = False
-
-			for member_name, member_value in inspect.getmembers(plugin, predicate=inspect.ismethod):
-				if member_name == 'configure':
-					configure_function_found = True
-				elif member_name == 'run' and inspect.iscoroutinefunction(member_value):
-					if len(inspect.getfullargspec(member_value).args) != 2:
-						fail('Error: the "run" coroutine in the plugin "' + plugin.name + '" in ' + filename + ' should have two arguments.', file=sys.stderr)
-					run_coroutine_found = True
-				elif member_name == 'manual':
-					if len(inspect.getfullargspec(member_value).args) != 3:
-						fail('Error: the "manual" function in the plugin "' + plugin.name + '" in ' + filename + ' should have three arguments.', file=sys.stderr)
-					manual_function_found = True
-
-			if not run_coroutine_found and not manual_function_found:
-				fail('Error: the plugin "' + plugin.name + '" in ' + filename + ' needs either a "manual" function, a "run" coroutine, or both.', file=sys.stderr)
-
-			from autorecon import PortScan, ServiceScan
-			if issubclass(plugin.__class__, PortScan):
-				self.plugin_types["port"].append(plugin)
-			elif issubclass(plugin.__class__, ServiceScan):
-				self.plugin_types["service"].append(plugin)
-			else:
-				fail('Plugin "' + plugin.name + '" in ' + filename + ' is neither a PortScan nor a ServiceScan.', file=sys.stderr)
-
-			plugin.tags = [tag.lower() for tag in plugin.tags]
-
-			# Add plugin tags to tag list.
-			[autorecon.taglist.append(t) for t in plugin.tags if t not in autorecon.tags]
-
-			plugin.autorecon = self
-			if configure_function_found:
-				plugin.configure()
-			self.plugins[plugin.slug] = plugin
-		else:
-			fail('Error: plugin slug "' + plugin.slug + '" in ' + filename + ' is already assigned.', file=sys.stderr)
-
-	async def execute(self, cmd, target, tag, patterns=None, outfile=None, errfile=None):
-		if patterns:
-			combined_patterns = self.patterns + patterns
-		else:
-			combined_patterns = self.patterns
-
-		process = await asyncio.create_subprocess_shell(
-			cmd,
-			stdin=open('/dev/null'),
-			stdout=asyncio.subprocess.PIPE,
-			stderr=asyncio.subprocess.PIPE)
-
-		cout = CommandStreamReader(process.stdout, target, tag, patterns=combined_patterns, outfile=outfile)
-		cerr = CommandStreamReader(process.stderr, target, tag, patterns=combined_patterns, outfile=errfile)
-
-		asyncio.create_task(cout._read())
-		asyncio.create_task(cerr._read())
-
-		return process, cout, cerr
-
-# Since this file is run as the main method and also imported by plugins,
-# we need to make sure that only one instance of the AutoRecon is
-# created. This cannot be done with Singletons unfortunately, which is
-# why this hack is here.
-if 'autorecon' not in sys.modules: # If this file is not yet imported, create the AutoRecon object
-	autorecon = AutoRecon()
-else: # Otherwise, assign it from the __main__ module.
-	autorecon = sys.modules['__main__'].autorecon
-
-def e(*args, frame_index=1, **kvargs):
-	frame = sys._getframe(frame_index)
-
-	vals = {}
-
-	vals.update(frame.f_globals)
-	vals.update(frame.f_locals)
-	vals.update(kvargs)
-
-	return string.Formatter().vformat(' '.join(args), args, vals)
-
-def fformat(s):
-	return e(s, frame_index=3)
-
-def cprint(*args, color=Fore.RESET, char='*', sep=' ', end='\n', frame_index=1, file=sys.stdout, printmsg=True, **kvargs):
-	frame = sys._getframe(frame_index)
-
-	vals = {
-		'bgreen':  Fore.GREEN  + Style.BRIGHT,
-		'bred':	Fore.RED	+ Style.BRIGHT,
-		'bblue':   Fore.BLUE   + Style.BRIGHT,
-		'byellow': Fore.YELLOW + Style.BRIGHT,
-		'bmagenta': Fore.MAGENTA + Style.BRIGHT,
-
-		'green':  Fore.GREEN,
-		'red':	Fore.RED,
-		'blue':   Fore.BLUE,
-		'yellow': Fore.YELLOW,
-		'magenta': Fore.MAGENTA,
-
-		'bright': Style.BRIGHT,
-		'srst':   Style.NORMAL,
-		'crst':   Fore.RESET,
-		'rst':	Style.NORMAL + Fore.RESET
-	}
-
-	if autorecon.config['accessible']:
-		 vals = {'bgreen':'', 'bred':'', 'bblue':'', 'byellow':'', 'bmagenta':'', 'green':'', 'red':'', 'blue':'', 'yellow':'', 'magenta':'', 'bright':'', 'srst':'', 'crst':'', 'rst':''}
-
-	vals.update(frame.f_globals)
-	vals.update(frame.f_locals)
-	vals.update(kvargs)
-
-	unfmt = ''
-	if char is not None and not autorecon.config['accessible']:
-		unfmt += color + '[' + Style.BRIGHT + char + Style.NORMAL + ']' + Fore.RESET + sep
-	unfmt += sep.join(args)
-
-	fmted = unfmt
-
-	for attempt in range(10):
-		try:
-			fmted = string.Formatter().vformat(unfmt, args, vals)
-			break
-		except KeyError as err:
-			key = err.args[0]
-			unfmt = unfmt.replace('{' + key + '}', '{{' + key + '}}')
-
-	if printmsg:
-		print(fmted, sep=sep, end=end, file=file)
-	else:
-		return fmted
-
-def debug(*args, color=Fore.GREEN, sep=' ', end='\n', file=sys.stdout, **kvargs):
-	if verbose >= 2:
-		if autorecon.config['accessible']:
-			args = ('Debug:',) + args
-		cprint(*args, color=color, char='-', sep=sep, end=end, file=file, frame_index=2, **kvargs)
-
-def info(*args, sep=' ', end='\n', file=sys.stdout, **kvargs):
-	cprint(*args, color=Fore.BLUE, char='*', sep=sep, end=end, file=file, frame_index=2, **kvargs)
-
-def warn(*args, sep=' ', end='\n', file=sys.stderr,**kvargs):
-	if autorecon.config['accessible']:
-		args = ('Warning:',) + args
-	cprint(*args, color=Fore.YELLOW, char='!', sep=sep, end=end, file=file, frame_index=2, **kvargs)
-
-def error(*args, sep=' ', end='\n', file=sys.stderr, **kvargs):
-	if autorecon.config['accessible']:
-		args = ('Error:',) + args
-	cprint(*args, color=Fore.RED, char='!', sep=sep, end=end, file=file, frame_index=2, **kvargs)
-
-def fail(*args, sep=' ', end='\n', file=sys.stderr, **kvargs):
-	if autorecon.config['accessible']:
-		args = ('Failure:',) + args
-	cprint(*args, color=Fore.RED, char='!', sep=sep, end=end, file=file, frame_index=2, **kvargs)
-	exit(-1)
+autorecon = AutoRecon()
 
 def calculate_elapsed_time(start_time, short=False):
 	elapsed_seconds = round(time.time() - start_time)
@@ -771,9 +58,6 @@ def calculate_elapsed_time(start_time, short=False):
 	else:
 		return ', '.join(elapsed_time)
 
-def slugify(name):
-	return re.sub(r'[\W_]+', '-', unidecode.unidecode(name).lower()).strip('-')
-
 def cancel_all_tasks(signal, frame):
 	for task in asyncio.all_tasks():
 		task.cancel()
@@ -786,12 +70,9 @@ def cancel_all_tasks(signal, frame):
 				except ProcessLookupError: # Will get raised if the process finishes before we get to killing it.
 					pass
 
-	if not autorecon.config['disable_keyboard_control']:
+	if not config['disable_keyboard_control']:
 		# Restore original terminal settings.
 		termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, terminal_settings)
-
-def timeout(signal, frame):
-	raise Exception("Function timed out.")
 
 async def start_heartbeat(target, period=60):
 	while True:
@@ -800,7 +81,7 @@ async def start_heartbeat(target, period=60):
 			count = len(target.running_tasks)
 
 			tasks_list = ''
-			if target.autorecon.config['verbose'] >= 1:
+			if config['verbose'] >= 1:
 				tasks_list = ': {bblue}' + ', '.join(target.running_tasks.keys()) + '{rst}'
 
 			current_time = datetime.now().strftime('%H:%M:%S')
@@ -819,18 +100,18 @@ async def keyboard():
 				if len(input) >= 3:
 					if input[:3] == '\x1b[A':
 						input = ''
-						if autorecon.config['verbose'] == 2:
+						if config['verbose'] == 2:
 							info('Verbosity is already at the highest level.')
 						else:
-							autorecon.config['verbose'] += 1
-							info('Verbosity increased to ' + str(autorecon.config['verbose']))
+							config['verbose'] += 1
+							info('Verbosity increased to ' + str(config['verbose']))
 					elif input[:3] == '\x1b[B':
 						input = ''
-						if autorecon.config['verbose'] == 0:
+						if config['verbose'] == 0:
 							info('Verbosity is already at the lowest level.')
 						else:
-							autorecon.config['verbose'] -= 1
-							info('Verbosity decreased to ' + str(autorecon.config['verbose']))
+							config['verbose'] -= 1
+							info('Verbosity decreased to ' + str(config['verbose']))
 					else:
 						if input[0] != 's':
 							input = input[1:]
@@ -841,7 +122,7 @@ async def keyboard():
 						count = len(target.running_tasks)
 
 						tasks_list = []
-						if target.autorecon.config['verbose'] >= 1:
+						if config['verbose'] >= 1:
 							for key, value in target.running_tasks.items():
 								elapsed_time = calculate_elapsed_time(value['start'], short=True)
 								tasks_list.append('{bblue}' + key + '{rst}' + ' (elapsed: ' + elapsed_time + ')')
@@ -861,26 +142,26 @@ async def keyboard():
 		await asyncio.sleep(0.1)
 
 async def port_scan(plugin, target):
-	if autorecon.config['ports']:
-		if autorecon.config['ports']['tcp'] or autorecon.config['ports']['udp']:
+	if config['ports']:
+		if config['ports']['tcp'] or config['ports']['udp']:
 			target.ports = {'tcp':None, 'udp':None}
-			if autorecon.config['ports']['tcp']:
-				target.ports['tcp'] = ','.join(autorecon.config['ports']['tcp'])
-			if autorecon.config['ports']['udp']:
-				target.ports['udp'] = ','.join(autorecon.config['ports']['udp'])
+			if config['ports']['tcp']:
+				target.ports['tcp'] = ','.join(config['ports']['tcp'])
+			if config['ports']['udp']:
+				target.ports['udp'] = ','.join(config['ports']['udp'])
 			if plugin.type is None:
-				warn('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} does not have a type set, and --ports was used. Skipping.')
+				warn('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} does not have a type set, and --ports was used. Skipping.')
 				return {'type':'port', 'plugin':plugin, 'result':[]}
 			else:
-				if plugin.type == 'tcp' and not autorecon.config['ports']['tcp']:
-					warn('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} is a TCP port scan but no TCP ports were set using --ports. Skipping')
+				if plugin.type == 'tcp' and not config['ports']['tcp']:
+					warn('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} is a TCP port scan but no TCP ports were set using --ports. Skipping')
 					return {'type':'port', 'plugin':plugin, 'result':[]}
-				elif plugin.type == 'udp' and not autorecon.config['ports']['udp']:
-					warn('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} is a UDP port scan but no UDP ports were set using --ports. Skipping')
+				elif plugin.type == 'udp' and not config['ports']['udp']:
+					warn('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} is a UDP port scan but no UDP ports were set using --ports. Skipping')
 					return {'type':'port', 'plugin':plugin, 'result':[]}
 
 	async with target.autorecon.port_scan_semaphore:
-		info('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} running against {byellow}' + target.address + '{rst}')
+		info('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} running against {byellow}' + target.address + '{rst}')
 
 		start_time = time.time()
 
@@ -892,11 +173,11 @@ async def port_scan(plugin, target):
 		except Exception as ex:
 			exc_type, exc_value, exc_tb = sys.exc_info()
 			error_text = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb)[-2:])
-			raise Exception(cprint('Error: Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} running against {byellow}' + target.address + '{rst} produced an exception:\n\n' + error_text, color=Fore.RED, char='!', printmsg=False))
+			raise Exception(cprint('Error: Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} running against {byellow}' + target.address + '{rst} produced an exception:\n\n' + error_text, color=Fore.RED, char='!', printmsg=False))
 
 		for process_dict in target.running_tasks[plugin.slug]['processes']:
 			if process_dict['process'].returncode is None:
-				warn('A process was left running after port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} against {byellow}' + target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.')
+				warn('A process was left running after port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} against {byellow}' + target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.')
 				await process_dict['process'].wait()
 
 			if process_dict['process'].returncode != 0:
@@ -907,7 +188,7 @@ async def port_scan(plugin, target):
 						errors.append(line + '\n')
 					else:
 						break
-				error('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} ran a command against {byellow}' + target.address + '{rst} which returned a non-zero exit code (' + str(process_dict['process'].returncode) + '). Check ' + target.scandir + '/_errors.log for more details.')
+				error('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} ran a command against {byellow}' + target.address + '{rst} which returned a non-zero exit code (' + str(process_dict['process'].returncode) + '). Check ' + target.scandir + '/_errors.log for more details.')
 				async with target.lock:
 					with open(os.path.join(target.scandir, '_errors.log'), 'a') as file:
 						file.writelines('[*] Port scan ' + plugin.name + ' (' + plugin.slug + ') ran a command which returned a non-zero exit code (' + str(process_dict['process'].returncode) + ').\n')
@@ -922,14 +203,14 @@ async def port_scan(plugin, target):
 		async with target.lock:
 			target.running_tasks.pop(plugin.slug, None)
 
-		info('Port scan {bblue}' + plugin.name + ' (' + plugin.slug + '){rst} against {byellow}' + target.address + '{rst} finished in ' + elapsed_time)
+		info('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} against {byellow}' + target.address + '{rst} finished in ' + elapsed_time)
 		return {'type':'port', 'plugin':plugin, 'result':result}
 
 async def service_scan(plugin, service):
-	from autorecon import PortScan
+	#from autorecon import PortScan
 	semaphore = service.target.autorecon.service_scan_semaphore
 
-	if not service.target.autorecon.config['force_services']:
+	if not config['force_services']:
 		# If service scan semaphore is locked, see if we can use port scan semaphore.
 		while True:
 			if semaphore.locked():
@@ -941,14 +222,14 @@ async def service_scan(plugin, service):
 							if issubclass(process_list['plugin'].__class__, PortScan):
 								port_scan_task_count += 1
 
-					if not service.target.autorecon.pending_targets and (service.target.autorecon.config['max_port_scans'] - port_scan_task_count) >= 1: # If no more targets, and we have room, use port scan semaphore.
+					if not service.target.autorecon.pending_targets and (config['max_port_scans'] - port_scan_task_count) >= 1: # If no more targets, and we have room, use port scan semaphore.
 						if service.target.autorecon.port_scan_semaphore.locked():
 							await asyncio.sleep(1)
 							continue
 						semaphore = service.target.autorecon.port_scan_semaphore
 						break
 					else: # Do some math to see if we can use the port scan semaphore.
-						if (service.target.autorecon.config['max_port_scans'] - (port_scan_task_count + (len(service.target.autorecon.pending_targets) * service.target.autorecon.config['port_scan_plugin_count']))) >= 1:
+						if (config['max_port_scans'] - (port_scan_task_count + (len(service.target.autorecon.pending_targets) * config['port_scan_plugin_count']))) >= 1:
 							if service.target.autorecon.port_scan_semaphore.locked():
 								await asyncio.sleep(1)
 								continue
@@ -986,7 +267,7 @@ async def service_scan(plugin, service):
 
 		tag = service.tag() + '/' + plugin.slug
 
-		info('Service scan {bblue}' + plugin.name + ' (' + tag + '){rst} running against {byellow}' + service.target.address + '{rst}')
+		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} running against {byellow}' + service.target.address + '{rst}')
 
 		start_time = time.time()
 
@@ -998,11 +279,11 @@ async def service_scan(plugin, service):
 		except Exception as ex:
 			exc_type, exc_value, exc_tb = sys.exc_info()
 			error_text = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb)[-2:])
-			raise Exception(cprint('Error: Service scan {bblue}' + plugin.name + ' (' + tag + '){rst} running against {byellow}' + service.target.address + '{rst} produced an exception:\n\n' + error_text, color=Fore.RED, char='!', printmsg=False))
+			raise Exception(cprint('Error: Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} running against {byellow}' + service.target.address + '{rst} produced an exception:\n\n' + error_text, color=Fore.RED, char='!', printmsg=False))
 
 		for process_dict in service.target.running_tasks[tag]['processes']:
 			if process_dict['process'].returncode is None:
-				warn('A process was left running after service scan {bblue}' + plugin.name + ' (' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.')
+				warn('A process was left running after service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.')
 				await process_dict['process'].wait()
 
 			if process_dict['process'].returncode != 0:
@@ -1013,7 +294,7 @@ async def service_scan(plugin, service):
 						errors.append(line + '\n')
 					else:
 						break
-				error('Service scan {bblue}' + plugin.name + ' (' + tag + '){rst} ran a command against {byellow}' + service.target.address + '{rst} which returned a non-zero exit code (' + str(process_dict['process'].returncode) + '). Check ' + service.target.scandir + '/_errors.log for more details.')
+				error('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} ran a command against {byellow}' + service.target.address + '{rst} which returned a non-zero exit code (' + str(process_dict['process'].returncode) + '). Check ' + service.target.scandir + '/_errors.log for more details.')
 				async with service.target.lock:
 					with open(os.path.join(service.target.scandir, '_errors.log'), 'a') as file:
 						file.writelines('[*] Service scan ' + plugin.name + ' (' + tag + ') ran a command which returned a non-zero exit code (' + str(process_dict['process'].returncode) + ').\n')
@@ -1028,18 +309,21 @@ async def service_scan(plugin, service):
 		async with service.target.lock:
 			service.target.running_tasks.pop(tag, None)
 
-		info('Service scan {bblue}' + plugin.name + ' (' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished in ' + elapsed_time)
+		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished in ' + elapsed_time)
 		return {'type':'service', 'plugin':plugin, 'result':result}
 
 async def scan_target(target):
-	if target.autorecon.config['single_target']:
-		basedir = os.path.abspath(target.autorecon.config['outdir'])
-	else:
-		basedir = os.path.abspath(os.path.join(target.autorecon.config['outdir'], target.address))
-	target.basedir = basedir
-	os.makedirs(basedir, exist_ok=True)
+	os.makedirs(os.path.abspath(config['outdir']), exist_ok=True)
 
-	if not target.autorecon.config['only_scans_dir']:
+	if config['single_target']:
+		basedir = os.path.abspath(config['outdir'])
+	else:
+		basedir = os.path.abspath(os.path.join(config['outdir'], target.address))
+		os.makedirs(basedir, exist_ok=True)
+
+	target.basedir = basedir
+
+	if not config['only_scans_dir']:
 		exploitdir = os.path.join(basedir, 'exploit')
 		os.makedirs(exploitdir, exist_ok=True)
 
@@ -1064,11 +348,11 @@ async def scan_target(target):
 
 	pending = []
 
-	heartbeat = asyncio.create_task(start_heartbeat(target, period=target.autorecon.config['heartbeat']))
+	heartbeat = asyncio.create_task(start_heartbeat(target, period=config['heartbeat']))
 
 	services = []
-	if autorecon.config['force_services']:
-		forced_services = [x.strip().lower() for x in autorecon.config['force_services']]
+	if config['force_services']:
+		forced_services = [x.strip().lower() for x in config['force_services']]
 
 		for forced_service in forced_services:
 			match = re.search('(?P<protocol>(tcp|udp))\/(?P<port>\d+)\/(?P<service>[\w\-\/]+)\/(?P<secure>secure|insecure)', forced_service)
@@ -1119,14 +403,14 @@ async def scan_target(target):
 		done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED, timeout=1)
 
 		# Check if global timeout has occurred.
-		if autorecon.config['target_timeout'] is not None:
+		if config['target_timeout'] is not None:
 			elapsed_seconds = round(time.time() - start_time)
 			m, s = divmod(elapsed_seconds, 60)
-			if m >= autorecon.config['target_timeout']:
+			if m >= config['target_timeout']:
 				timed_out = True
 				break
 
-		if not autorecon.config['force_services']:
+		if not config['force_services']:
 			# Extract Services
 			services = []
 
@@ -1154,7 +438,7 @@ async def scan_target(target):
 
 			info('Found {bmagenta}' + service.name + '{rst} on {bmagenta}' + service.protocol + '/' + str(service.port) + '{rst} on {byellow}' + target.address + '{rst}')
 
-			if not autorecon.config['only_scans_dir']:
+			if not config['only_scans_dir']:
 				with open(os.path.join(target.reportdir, 'notes.txt'), 'a') as file:
 					file.writelines('[*] ' + service.name + ' found on ' + service.protocol + '/' + str(service.port) + '.\n\n\n\n')
 
@@ -1313,9 +597,12 @@ async def scan_target(target):
 
 		for process_list in target.running_tasks.values():
 			for process_dict in process_list['processes']:
-				process_dict['process'].kill()
+				try:
+					process_dict['process'].kill()
+				except ProcessLookupError:
+					pass
 
-		warn('{byellow}Scanning target ' + target.address + ' took longer than the specified target period (' + str(autorecon.config['target_timeout']) + ' min). Cancelling scans and moving to next target.{rst}')
+		warn('{byellow}Scanning target ' + target.address + ' took longer than the specified target period (' + str(config['target_timeout']) + ' min). Cancelling scans and moving to next target.{rst}')
 	else:
 		info('Finished scanning target {byellow}' + target.address + '{rst} in ' + elapsed_time)
 
@@ -1323,8 +610,6 @@ async def scan_target(target):
 		autorecon.scanning_targets.remove(target)
 
 async def main():
-	from autorecon import Plugin, PortScan, ServiceScan, Target # We have to do this to get around issubclass weirdness when loading plugins.
-
 	parser = argparse.ArgumentParser(add_help=False, description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
 	parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs='*')
 	parser.add_argument('-t', '--targets', action='store', type=str, default='', dest='target_file', help='Read targets from file.')
@@ -1362,7 +647,7 @@ async def main():
 	autorecon.argparse = parser
 
 	if args.version:
-		print('AutoRecon v2.0-beta2')
+		print('AutoRecon v2.0-beta3')
 		sys.exit(0)
 
 	# Parse config file and args for global.toml first.
@@ -1375,11 +660,11 @@ async def main():
 			for key, val in config_toml.items():
 				key = slugify(key)
 				if key == 'global-file':
-					autorecon.config['global_file'] = val
+					config['global_file'] = val
 				elif key == 'plugins-dir':
-					autorecon.config['plugins_dir'] = val
+					config['plugins_dir'] = val
 				elif key == 'add-plugins-dir':
-					autorecon.config['add_plugins_dir'] = val
+					config['add_plugins_dir'] = val
 		except toml.decoder.TomlDecodeError:
 			fail('Error: Couldn\'t parse ' + args.config_file + ' config file. Check syntax.')
 
@@ -1387,21 +672,21 @@ async def main():
 	for key in args_dict:
 		key = slugify(key)
 		if key == 'global-file' and args_dict['global_file'] is not None:
-			autorecon.config['global_file'] = args_dict['global_file']
+			config['global_file'] = args_dict['global_file']
 		elif key == 'plugins-dir' and args_dict['plugins_dir'] is not None:
-			autorecon.config['plugins_dir'] = args_dict['plugins_dir']
+			config['plugins_dir'] = args_dict['plugins_dir']
 		elif key == 'add-plugins-dir' and args_dict['add_plugins_dir'] is not None:
-			autorecon.config['add_plugins_dir'] = args_dict['add_plugins_dir']
+			config['add_plugins_dir'] = args_dict['add_plugins_dir']
 
-	if not os.path.isdir(autorecon.config['plugins_dir']):
-		fail('Error: Specified plugins directory "' + autorecon.config['plugins_dir'] + '" does not exist.')
+	if not os.path.isdir(config['plugins_dir']):
+		fail('Error: Specified plugins directory "' + config['plugins_dir'] + '" does not exist.')
 
-	if autorecon.config['add_plugins_dir'] and not os.path.isdir(autorecon.config['add_plugins_dir']):
-		fail('Error: Specified additional plugins directory "' + autorecon.config['add_plugins_dir'] + '" does not exist.')
+	if config['add_plugins_dir'] and not os.path.isdir(config['add_plugins_dir']):
+		fail('Error: Specified additional plugins directory "' + config['add_plugins_dir'] + '" does not exist.')
 
-	plugins_dirs = [autorecon.config['plugins_dir']]
-	if autorecon.config['add_plugins_dir']:
-		plugins_dirs.append(autorecon.config['add_plugins_dir'])
+	plugins_dirs = [config['plugins_dir']]
+	if config['add_plugins_dir']:
+		plugins_dirs.append(config['add_plugins_dir'])
 
 	for plugins_dir in plugins_dirs:
 		for plugin_file in os.listdir(plugins_dir):
@@ -1419,10 +704,10 @@ async def main():
 					sys.path.pop(1)
 					clsmembers = inspect.getmembers(plugin, predicate=inspect.isclass)
 					for (_, c) in clsmembers:
-						if c.__module__ == 'autorecon':
+						if c.__module__ in ['autorecon.plugins', 'autorecon.targets']:
 							continue
 
-						if c.__name__.lower() in autorecon.config['protected_classes']:
+						if c.__name__.lower() in config['protected_classes']:
 							print('Plugin "' + c.__name__ + '" in ' + filename + ' is using a protected class name. Please change it.')
 							sys.exit(1)
 
@@ -1443,17 +728,17 @@ async def main():
 		plugin.tags += [plugin.slug]
 
 	if len(autorecon.plugin_types['port']) == 0:
-		fail('Error: There are no valid PortScan plugins in the plugins directory "' + autorecon.config['plugins_dir'] + '".')
+		fail('Error: There are no valid PortScan plugins in the plugins directory "' + config['plugins_dir'] + '".')
 
 	# Sort plugins by priority.
 	autorecon.plugin_types['port'].sort(key=lambda x: x.priority)
 	autorecon.plugin_types['service'].sort(key=lambda x: x.priority)
 
-	if not os.path.isfile(autorecon.config['global_file']):
-		fail('Error: Specified global file "' + autorecon.config['global_file'] + '" does not exist.')
+	if not os.path.isfile(config['global_file']):
+		fail('Error: Specified global file "' + config['global_file'] + '" does not exist.')
 
 	global_plugin_args = None
-	with open(autorecon.config['global_file']) as g:
+	with open(config['global_file']) as g:
 		try:
 			global_toml = toml.load(g)
 			for key, val in global_toml.items():
@@ -1538,12 +823,12 @@ async def main():
 					autorecon.argparse.set_defaults(**{slugify(key).replace('-', '_') + '.' + slugify(pkey).replace('-', '_'): pval})
 		else: # Process potential other options.
 			key = key.replace('-', '_')
-			if key in autorecon.configurable_keys:
+			if key in configurable_keys:
 				other_options.append(key)
-				autorecon.config[key] = val
+				config[key] = val
 				autorecon.argparse.set_defaults(**{key: val})
 
-	for key, val in autorecon.config.items():
+	for key, val in config.items():
 		if key not in other_options:
 			autorecon.argparse.set_defaults(**{key: val})
 
@@ -1552,11 +837,11 @@ async def main():
 
 	args_dict = vars(args)
 	for key in args_dict:
-		if key in autorecon.configurable_keys and args_dict[key] is not None:
+		if key in configurable_keys and args_dict[key] is not None:
 			# Special case for booleans
-			if key in autorecon.configurable_boolean_keys and autorecon.config[key]:
+			if key in configurable_boolean_keys and config[key]:
 				continue
-			autorecon.config[key] = args_dict[key]
+			config[key] = args_dict[key]
 	autorecon.args = args
 
 	if args.list:
@@ -1570,11 +855,11 @@ async def main():
 
 		sys.exit(0)
 
-	if autorecon.config['ports']:
+	if config['ports']:
 		ports_to_scan = {'tcp':[], 'udp':[]}
 		unique = {'tcp':[], 'udp':[]}
 
-		ports = autorecon.config['ports'].split(',')
+		ports = config['ports'].split(',')
 		mode = 'both'
 		for port in ports:
 			port = port.strip()
@@ -1643,49 +928,49 @@ async def main():
 						unique['udp'].append(num)
 				else:
 					fail('Error: Invalid port number: ' + str(port))
-		autorecon.config['ports'] = ports_to_scan
+		config['ports'] = ports_to_scan
 
-	if autorecon.config['max_scans'] <= 0:
+	if config['max_scans'] <= 0:
 		error('Argument -m/--max-scans must be at least 1.')
 		errors = True
 
-	if autorecon.config['max_port_scans'] is None:
-		autorecon.config['max_port_scans'] = max(1, round(autorecon.config['max_scans'] * 0.2))
+	if config['max_port_scans'] is None:
+		config['max_port_scans'] = max(1, round(config['max_scans'] * 0.2))
 	else:
-		if autorecon.config['max_port_scans'] <= 0:
+		if config['max_port_scans'] <= 0:
 			error('Argument -mp/--max-port-scans must be at least 1.')
 			errors = True
 
-		if autorecon.config['max_port_scans'] > autorecon.config['max_scans']:
+		if config['max_port_scans'] > config['max_scans']:
 			error('Argument -mp/--max-port-scans cannot be greater than argument -m/--max-scans.')
 			errors = True
 
-	if autorecon.config['heartbeat'] <= 0:
+	if config['heartbeat'] <= 0:
 		error('Argument --heartbeat must be at least 1.')
 		errors = True
 
-	if autorecon.config['timeout'] is not None and autorecon.config['timeout'] <= 0:
+	if config['timeout'] is not None and config['timeout'] <= 0:
 		error('Argument --timeout must be at least 1.')
 		errors = True
 
-	if autorecon.config['target_timeout'] is not None and autorecon.config['target_timeout'] <= 0:
+	if config['target_timeout'] is not None and config['target_timeout'] <= 0:
 		error('Argument --target-timeout must be at least 1.')
 		errors = True
 
-	if autorecon.config['timeout'] is not None and autorecon.config['target_timeout'] is not None and autorecon.config['timeout'] < autorecon.config['target_timeout']:
+	if config['timeout'] is not None and config['target_timeout'] is not None and config['timeout'] < config['target_timeout']:
 		error('Argument --timeout cannot be less than --target-timeout.')
 		errors = True
 
 	if not errors:
-		if autorecon.config['force_services']:
-			autorecon.service_scan_semaphore = asyncio.Semaphore(autorecon.config['max_scans'])
+		if config['force_services']:
+			autorecon.service_scan_semaphore = asyncio.Semaphore(config['max_scans'])
 		else:
-			autorecon.port_scan_semaphore = asyncio.Semaphore(autorecon.config['max_port_scans'])
+			autorecon.port_scan_semaphore = asyncio.Semaphore(config['max_port_scans'])
 			# If max scans and max port scans is the same, the service scan semaphore and port scan semaphore should be the same object
-			if autorecon.config['max_scans'] == autorecon.config['max_port_scans']:
+			if config['max_scans'] == config['max_port_scans']:
 				autorecon.service_scan_semaphore = autorecon.port_scan_semaphore
 			else:
-				autorecon.service_scan_semaphore = asyncio.Semaphore(autorecon.config['max_scans'] - autorecon.config['max_port_scans'])
+				autorecon.service_scan_semaphore = asyncio.Semaphore(config['max_scans'] - config['max_port_scans'])
 
 	tags = []
 	for tag_group in list(set(filter(None, args.tags.lower().split(',')))):
@@ -1751,7 +1036,7 @@ async def main():
 			try:
 				target_range = ipaddress.ip_network(target, strict=False)
 				if not args.disable_sanity_checks and target_range.num_addresses > 256:
-					error(target + ' contains ' + str(target_range.num_addresses) + ' addresses. Check that your CIDR notation is correct. If it is, re-run with the --disable-sanity-checks option to suppress this check.')
+					fail(target + ' contains ' + str(target_range.num_addresses) + ' addresses. Check that your CIDR notation is correct. If it is, re-run with the --disable-sanity-checks option to suppress this check.')
 					errors = True
 				else:
 					for ip in target_range.hosts():
@@ -1810,7 +1095,7 @@ async def main():
 		error('You must specify at least one target to scan!')
 		errors = True
 
-	if autorecon.config['single_target'] and len(autorecon.pending_targets) != 1:
+	if config['single_target'] and len(autorecon.pending_targets) != 1:
 		error('You cannot provide more than one target when scanning in single-target mode.')
 		errors = True
 
@@ -1818,7 +1103,7 @@ async def main():
 		error('A total of ' + str(len(autorecon.pending_targets)) + ' targets would be scanned. If this is correct, re-run with the --disable-sanity-checks option to suppress this check.')
 		errors = True
 
-	if not autorecon.config['force_services']:
+	if not config['force_services']:
 		port_scan_plugin_count = 0
 		for plugin in autorecon.plugin_types['port']:
 			matching_tags = False
@@ -1840,14 +1125,14 @@ async def main():
 			error('There are no port scan plugins that match the tags specified.')
 			errors = True
 	else:
-		port_scan_plugin_count = autorecon.config['max_port_scans'] / 5
+		port_scan_plugin_count = config['max_port_scans'] / 5
 
 	if errors:
 		sys.exit(1)
 
-	autorecon.config['port_scan_plugin_count'] = port_scan_plugin_count
+	config['port_scan_plugin_count'] = port_scan_plugin_count
 
-	num_initial_targets = max(1, math.ceil(autorecon.config['max_port_scans'] / port_scan_plugin_count))
+	num_initial_targets = max(1, math.ceil(config['max_port_scans'] / port_scan_plugin_count))
 
 	start_time = time.time()
 
@@ -1859,7 +1144,7 @@ async def main():
 		if i >= num_initial_targets:
 			break
 
-	if not autorecon.config['disable_keyboard_control']:
+	if not config['disable_keyboard_control']:
 		tty.setcbreak(sys.stdin.fileno())
 		keyboard_monitor = asyncio.create_task(keyboard())
 
@@ -1873,10 +1158,10 @@ async def main():
 			sys.exit(1)
 
 		# Check if global timeout has occurred.
-		if autorecon.config['timeout'] is not None:
+		if config['timeout'] is not None:
 			elapsed_seconds = round(time.time() - start_time)
 			m, s = divmod(elapsed_seconds, 60)
-			if m >= autorecon.config['timeout']:
+			if m >= config['timeout']:
 				timed_out = True
 				break
 
@@ -1890,14 +1175,14 @@ async def main():
 		for targ in autorecon.scanning_targets:
 			for process_list in targ.running_tasks.values():
 				# If we're not scanning ports, count ServiceScans instead.
-				if autorecon.config['force_services']:
+				if config['force_services']:
 					if issubclass(process_list['plugin'].__class__, ServiceScan): # TODO should we really count ServiceScans? Test...
 						port_scan_task_count += 1
 				else:
 					if issubclass(process_list['plugin'].__class__, PortScan):
 						port_scan_task_count += 1
 
-		num_new_targets = math.ceil((autorecon.config['max_port_scans'] - port_scan_task_count) / port_scan_plugin_count)
+		num_new_targets = math.ceil((config['max_port_scans'] - port_scan_task_count) / port_scan_plugin_count)
 		if num_new_targets > 0:
 			i = 0
 			while autorecon.pending_targets:
@@ -1912,7 +1197,7 @@ async def main():
 		cancel_all_tasks(None, None)
 
 		elapsed_time = calculate_elapsed_time(start_time)
-		warn('{byellow}AutoRecon took longer than the specified timeout period (' + str(autorecon.config['timeout']) + ' min). Cancelling all scans and exiting.{rst}')
+		warn('{byellow}AutoRecon took longer than the specified timeout period (' + str(config['timeout']) + ' min). Cancelling all scans and exiting.{rst}')
 	else:
 		while len(asyncio.all_tasks()) > 1: # this code runs in the main() task so it will be the only task left running
 			await asyncio.sleep(1)
@@ -1924,7 +1209,7 @@ async def main():
 	if autorecon.missing_services:
 		warn('{byellow}AutoRecon identified the following services, but could not match them to any plugins based on the service name. Please report these to Tib3rius: ' + ', '.join(autorecon.missing_services) + '{rst}')
 
-	if not autorecon.config['disable_keyboard_control']:
+	if not config['disable_keyboard_control']:
 		# Restore original terminal settings.
 		termios.tcsetattr(sys.stdin, termios.TCSADRAIN, terminal_settings)
 
@@ -1934,4 +1219,6 @@ if __name__ == '__main__':
 	try:
 		asyncio.run(main())
 	except asyncio.exceptions.CancelledError:
+		pass
+	except RuntimeError:
 		pass

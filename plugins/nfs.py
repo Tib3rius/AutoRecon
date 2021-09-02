@@ -1,4 +1,4 @@
-from autorecon import ServiceScan
+from autorecon.plugins import ServiceScan
 
 class NmapNFS(ServiceScan):
 

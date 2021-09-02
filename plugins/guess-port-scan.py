@@ -1,4 +1,5 @@
-from autorecon import PortScan, Service
+from autorecon.plugins import PortScan
+from autorecon.targets import Service
 import re
 
 class GuesPortScan(PortScan):

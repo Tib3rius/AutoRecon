@@ -1,4 +1,5 @@
-from autorecon import ServiceScan, error
+from autorecon.plugins import ServiceScan
+from autorecon.io import error
 from shutil import which
 
 class NmapRedis(ServiceScan):

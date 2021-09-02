@@ -1,4 +1,5 @@
-from autorecon import ServiceScan, error, info, fformat
+from autorecon.plugins import ServiceScan
+from autorecon.io import error, info, fformat
 from shutil import which
 import os
 

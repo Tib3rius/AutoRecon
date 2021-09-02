@@ -1,4 +1,5 @@
-from autorecon import PortScan, error
+from autorecon.plugins import PortScan
+from autorecon.io import error
 import os
 
 class QuickTCPPortScan(PortScan):
