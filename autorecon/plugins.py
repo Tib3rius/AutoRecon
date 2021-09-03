@@ -190,6 +190,8 @@ class ServiceScan(Plugin):
 	@final
 	def match_all_service_names(self, boolean):
 		self.match_all_service_names_boolean = boolean
+		# we need at least one service name to enter loop in autorecon and make plugin finally run
+		self.match_service_name('.*')
 
 class AutoRecon(object):
 
