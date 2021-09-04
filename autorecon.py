@@ -246,8 +246,8 @@ async def service_scan(plugin, service):
 		# Create variables for fformat references.
 		address = service.target.address
 		addressv6 = service.target.address
-		ipaddress = target.ip
-		ipaddressv6 = target.ip
+		ipaddress = service.target.ip
+		ipaddressv6 = service.target.ip
 		scandir = service.target.scandir
 		protocol = service.protocol
 		port = service.port
@@ -265,7 +265,7 @@ async def service_scan(plugin, service):
 
 		if service.target.ipversion == 'IPv6':
 			nmap_extra += ' -6'
-			if addressv6 == target.ip:
+			if addressv6 == service.target.ip:
 				addressv6 = '[' + addressv6 + ']'
 			ipaddressv6 = '[' + ipaddressv6 + ']'
 
@@ -862,6 +862,12 @@ async def main():
 				print('ServiceScan: ' + p.name + ' (' + p.slug + ')' + (' - ' + p.description if p.description else ''))
 
 		sys.exit(0)
+
+	for plugin in autorecon.plugins.values():
+		for member_name, _ in inspect.getmembers(plugin, predicate=inspect.ismethod):
+			if member_name == 'check':
+				plugin.check()
+				continue
 
 	if config['ports']:
 		ports_to_scan = {'tcp':[], 'udp':[]}

@@ -73,6 +73,10 @@ class OracleTNScmd(ServiceScan):
 	def configure(self):
 		self.match_service_name('^oracle')
 
+	def check(self):
+		if which('tnscmd10g') is None:
+			error('The tnscmd10g program could not be found. Make sure it is installed. (On Kali, run: sudo apt install tnscmd10g)')
+
 	async def run(self, service):
 		if service.target.ipversion == 'IPv4':
 			await service.execute('tnscmd10g ping -h {address} -p {port} 2>&1', outfile='{protocol}_{port}_oracle_tnscmd_ping.txt')
@@ -87,6 +91,10 @@ class OracleScanner(ServiceScan):
 
 	def configure(self):
 		self.match_service_name('^oracle')
+
+	def check(self):
+		if which('oscanner') is None:
+			error('The oscanner program could not be found. Make sure it is installed. (On Kali, run: sudo apt install oscanner)')
 
 	async def run(self, service):
 		await service.execute('oscanner -v -s {address} -P {port} 2>&1', outfile='{protocol}_{port}_oracle_scanner.txt')

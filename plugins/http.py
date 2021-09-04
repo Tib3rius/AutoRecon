@@ -95,6 +95,18 @@ class DirBuster(ServiceScan):
 		self.match_service_name('^http')
 		self.match_service_name('^nacn_http$', negative_match=True)
 
+	def check(self):
+		tool = self.get_option('tool')
+		if tool == 'feroxbuster':
+			if which('feroxbuster') is None:
+				error('The feroxbuster program could not be found. Make sure it is installed. (On Kali, run: sudo apt install feroxbuster)')
+		elif tool == 'gobuster':
+			if which('gobuster') is None:
+				error('The gobuster program could not be found. Make sure it is installed. (On Kali, run: sudo apt install gobuster)')
+		elif tool == 'dirsearch':
+			if which('dirsearch') is None:
+				error('The dirsearch program could not be found. Make sure it is installed. (On Kali, run: sudo apt install dirsearch)')
+
 	async def run(self, service):
 		dot_extensions = ','.join(['.' + x for x in self.get_option('ext').split(',')])
 		for wordlist in self.get_option('wordlist'):
@@ -178,12 +190,14 @@ class WkHTMLToImage(ServiceScan):
 		self.match_service_name('^http')
 		self.match_service_name('^nacn_http$', negative_match=True)
 
+	def check(self):
+		if which('wkhtmltoimage') is None:
+			error('The wkhtmltoimage program could not be found. Make sure it is installed. (On Kali, run: sudo apt install wkhtmltopdf)')
+
 	async def run(self, service):
 		if which('wkhtmltoimage') is not None:
 			if service.protocol == 'tcp':
 				await service.execute('wkhtmltoimage --format png {http_scheme}://{addressv6}:{port}/ {scandir}/{protocol}_{port}_{http_scheme}_screenshot.png')
-		else:
-			error('The wkhtmltoimage program could not be found. Make sure it is installed. (On Kali, run: sudo apt install wkhtmltopdf)')
 
 class WPScan(ServiceScan):
 
