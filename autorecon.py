@@ -246,6 +246,8 @@ async def service_scan(plugin, service):
 		# Create variables for fformat references.
 		address = service.target.address
 		addressv6 = service.target.address
+		ipaddress = target.ip
+		ipaddressv6 = target.ip
 		scandir = service.target.scandir
 		protocol = service.protocol
 		port = service.port
@@ -263,7 +265,9 @@ async def service_scan(plugin, service):
 
 		if service.target.ipversion == 'IPv6':
 			nmap_extra += ' -6'
-			addressv6 = '[' + addressv6 + ']'
+			if addressv6 == target.ip:
+				addressv6 = '[' + addressv6 + ']'
+			ipaddressv6 = '[' + ipaddressv6 + ']'
 
 		tag = service.tag() + '/' + plugin.slug
 
@@ -447,6 +451,8 @@ async def scan_target(target):
 			# Create variables for command references.
 			address = target.address
 			addressv6 = target.address
+			ipaddress = target.ip
+			ipaddressv6 = target.ip
 			scandir = target.scandir
 			protocol = service.protocol
 			port = service.port
@@ -463,7 +469,9 @@ async def scan_target(target):
 
 			if target.ipversion == 'IPv6':
 				nmap_extra += ' -6'
-				addressv6 = '[' + addressv6 + ']'
+				if addressv6 == target.ip:
+					addressv6 = '[' + addressv6 + ']'
+				ipaddressv6 = '[' + ipaddressv6 + ']'
 
 			service_match = False
 			matching_plugins = []

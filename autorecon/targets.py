@@ -37,6 +37,8 @@ class Target:
 		# Create variables for command references.
 		address = target.address
 		addressv6 = target.address
+		ipaddress = target.ip
+		ipaddressv6 = target.ip
 		scandir = target.scandir
 
 		nmap_extra = target.autorecon.args.nmap
@@ -45,7 +47,9 @@ class Target:
 
 		if target.ipversion == 'IPv6':
 			nmap_extra += ' -6'
-			addressv6 = '[' + addressv6 + ']'
+			if addressv6 == target.ip:
+				addressv6 = '[' + addressv6 + ']'
+			ipaddressv6 = '[' + ipaddressv6 + ']'
 
 		plugin = inspect.currentframe().f_back.f_locals['self']
 
@@ -117,6 +121,8 @@ class Service:
 		# Create variables for command references.
 		address = target.address
 		addressv6 = target.address
+		ipaddress = target.ip
+		ipaddressv6 = target.ip
 		scandir = target.scandir
 		protocol = self.protocol
 		port = self.port
@@ -139,7 +145,9 @@ class Service:
 
 		if target.ipversion == 'IPv6':
 			nmap_extra += ' -6'
-			addressv6 = '[' + addressv6 + ']'
+			if addressv6 == target.ip:
+				addressv6 = '[' + addressv6 + ']'
+			ipaddressv6 = '[' + ipaddressv6 + ']'
 
 		plugin = inspect.currentframe().f_back.f_locals['self']
 
