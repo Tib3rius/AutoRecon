@@ -1,6 +1,5 @@
 from autorecon.plugins import ServiceScan
 from autorecon.io import error, warn
-from shutil import which
 
 class NmapRPC(ServiceScan):
 
