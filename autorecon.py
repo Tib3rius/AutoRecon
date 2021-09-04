@@ -436,7 +436,7 @@ async def scan_target(target):
 			else:
 				continue
 
-			info('Found {bmagenta}' + service.name + '{rst} on {bmagenta}' + service.protocol + '/' + str(service.port) + '{rst} on {byellow}' + target.address + '{rst}')
+			info('Identified service {bmagenta}' + service.name + '{rst} on {bmagenta}' + service.protocol + '/' + str(service.port) + '{rst} on {byellow}' + target.address + '{rst}')
 
 			if not config['only_scans_dir']:
 				with open(os.path.join(target.reportdir, 'notes.txt'), 'a') as file:
@@ -1026,9 +1026,9 @@ async def main():
 				continue
 
 			if isinstance(ip, ipaddress.IPv4Address):
-				autorecon.pending_targets.append(Target(ip_str, 'IPv4', 'ip', autorecon))
+				autorecon.pending_targets.append(Target(ip_str, ip_str, 'IPv4', 'ip', autorecon))
 			elif isinstance(ip, ipaddress.IPv6Address):
-				autorecon.pending_targets.append(Target(ip_str, 'IPv6', 'ip', autorecon))
+				autorecon.pending_targets.append(Target(ip_str, ip_str, 'IPv6', 'ip', autorecon))
 			else:
 				fail('This should never happen unless IPv8 is invented.')
 		except ValueError:
@@ -1052,9 +1052,9 @@ async def main():
 							continue
 
 						if isinstance(ip, ipaddress.IPv4Address):
-							autorecon.pending_targets.append(Target(ip_str, 'IPv4', 'ip', autorecon))
+							autorecon.pending_targets.append(Target(ip_str, ip_str, 'IPv4', 'ip', autorecon))
 						elif isinstance(ip, ipaddress.IPv6Address):
-							autorecon.pending_targets.append(Target(ip_str, 'IPv6', 'ip', autorecon))
+							autorecon.pending_targets.append(Target(ip_str, ip_str, 'IPv6', 'ip', autorecon))
 						else:
 							fail('This should never happen unless IPv8 is invented.')
 
@@ -1062,6 +1062,7 @@ async def main():
 
 				try:
 					addresses = socket.getaddrinfo(target, None, socket.AF_INET)
+					ip = addresses[0][4][0]
 
 					found = False
 					for t in autorecon.pending_targets:
@@ -1072,10 +1073,11 @@ async def main():
 					if found:
 						continue
 
-					autorecon.pending_targets.append(Target(target, 'IPv4', 'hostname', autorecon))
+					autorecon.pending_targets.append(Target(target, ip, 'IPv4', 'hostname', autorecon))
 				except socket.gaierror:
 					try:
 						addresses = socket.getaddrinfo(target, None, socket.AF_INET6)
+						ip = addresses[0][4][0]
 
 						found = False
 						for t in autorecon.pending_targets:
@@ -1086,7 +1088,7 @@ async def main():
 						if found:
 							continue
 
-						autorecon.pending_targets.append(Target(target, 'IPv6', 'hostname', autorecon))
+						autorecon.pending_targets.append(Target(target, ip, 'IPv6', 'hostname', autorecon))
 					except socket.gaierror:
 						error(target + ' does not appear to be a valid IP address, IP range, or resolvable hostname.')
 						errors = True

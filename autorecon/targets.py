@@ -5,8 +5,9 @@ from autorecon.io import e, info
 
 class Target:
 
-	def __init__(self, address, ipversion, type, autorecon):
+	def __init__(self, address, ip, ipversion, type, autorecon):
 		self.address = address
+		self.ip = ip
 		self.ipversion = ipversion
 		self.type = type
 		self.autorecon = autorecon
