@@ -1,4 +1,5 @@
 from autorecon.plugins import ServiceScan
+from autorecon.io import error
 from shutil import which
 
 class NmapMongoDB(ServiceScan):
