@@ -17,6 +17,7 @@ configurable_keys = [
 	'target_timeout',
 	'nmap',
 	'nmap_append',
+	'proxychains',
 	'disable_sanity_checks',
 	'disable_keyboard_control',
 	'force_services',
@@ -28,6 +29,7 @@ configurable_boolean_keys = [
 	'single_target',
 	'only_scans_dir',
 	'create_port_dirs',
+	'proxychains',
 	'disable_sanity_checks',
 	'accessible'
 ]
@@ -51,6 +53,7 @@ config = {
 	'target_timeout': None,
 	'nmap': '-vv --reason -Pn',
 	'nmap_append': '',
+	'proxychains': False,
 	'disable_sanity_checks': False,
 	'disable_keyboard_control': False,
 	'force_services': None,

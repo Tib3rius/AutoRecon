@@ -269,6 +269,9 @@ async def service_scan(plugin, service):
 				addressv6 = '[' + addressv6 + ']'
 			ipaddressv6 = '[' + ipaddressv6 + ']'
 
+		if config['proxychains']:
+			nmap_extra += ' -sT'
+
 		tag = service.tag() + '/' + plugin.slug
 
 		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} running against {byellow}' + service.target.address + '{rst}')
@@ -473,6 +476,9 @@ async def scan_target(target):
 					addressv6 = '[' + addressv6 + ']'
 				ipaddressv6 = '[' + ipaddressv6 + ']'
 
+			if config['proxychains']:
+				nmap_extra += ' -sT'
+
 			service_match = False
 			matching_plugins = []
 			heading = False
@@ -641,6 +647,7 @@ async def main():
 	nmap_group = parser.add_mutually_exclusive_group()
 	nmap_group.add_argument('--nmap', action='store', help='Override the {nmap_extra} variable in scans. Default: %(default)s')
 	nmap_group.add_argument('--nmap-append', action='store', help='Append to the default {nmap_extra} variable in scans. Default: %(default)s')
+	parser.add_argument('--proxychains', action='store_true', help='Use if you are running AutoRecon via proxychains. Default: %(default)s')
 	parser.add_argument('--disable-sanity-checks', action='store_true', help='Disable sanity checks that would otherwise prevent the scans from running. Default: %(default)s')
 	parser.add_argument('--disable-keyboard-control', action='store_true', help='Disables keyboard control ([s]tatus, Up, Down) if you are in SSH or Docker.')
 	parser.add_argument('--force-services', action='store', nargs='+', help='A space separated list of services in the following style: tcp/80/http/insecure tcp/443/https/secure')

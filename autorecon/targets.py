@@ -51,6 +51,9 @@ class Target:
 				addressv6 = '[' + addressv6 + ']'
 			ipaddressv6 = '[' + ipaddressv6 + ']'
 
+		if config['proxychains']:
+			nmap_extra += ' -sT'
+
 		plugin = inspect.currentframe().f_back.f_locals['self']
 
 		cmd = e(cmd)
@@ -148,6 +151,9 @@ class Service:
 			if addressv6 == target.ip:
 				addressv6 = '[' + addressv6 + ']'
 			ipaddressv6 = '[' + ipaddressv6 + ']'
+
+		if config['proxychains']:
+			nmap_extra += ' -sT'
 
 		plugin = inspect.currentframe().f_back.f_locals['self']
 
