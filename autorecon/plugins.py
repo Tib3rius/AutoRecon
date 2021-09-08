@@ -108,7 +108,6 @@ class ServiceScan(Plugin):
 		self.services = []
 		self.service_names = []
 		self.ignore_service_names = []
-		self.match_all_service_names_boolean = False
 		self.run_once_boolean = False
 		self.require_ssl_boolean = False
 
@@ -189,9 +188,9 @@ class ServiceScan(Plugin):
 
 	@final
 	def match_all_service_names(self, boolean):
-		self.match_all_service_names_boolean = boolean
-		# we need at least one service name to enter loop in autorecon and make plugin finally run
-		self.match_service_name('.*')
+		if boolean:
+			# Add a "match all" service name.
+			self.match_service_name('.*')
 
 class Report(Plugin):
 

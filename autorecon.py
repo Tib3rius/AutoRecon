@@ -531,7 +531,7 @@ async def scan_target(target):
 					if re.search(s, service.name):
 						plugin_service_match = True
 
-					if plugin.match_all_service_names_boolean or plugin_service_match:
+					if plugin_service_match:
 						plugin_tag_set = set(plugin.tags)
 
 						matching_tags = False
