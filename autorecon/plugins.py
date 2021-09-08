@@ -191,14 +191,20 @@ class ServiceScan(Plugin):
 	def match_all_service_names(self, boolean):
 		self.match_all_service_names_boolean = boolean
 
+class Report(Plugin):
+
+	def __init__(self):
+		super().__init__()
+
 class AutoRecon(object):
 
 	def __init__(self):
 		self.pending_targets = []
 		self.scanning_targets = []
+		self.completed_targets = []
 		self.plugins = {}
 		self.__slug_regex = re.compile('^[a-z0-9\-]+$')
-		self.plugin_types = {'port':[], 'service':[]}
+		self.plugin_types = {'port':[], 'service':[], 'report':[]}
 		self.port_scan_semaphore = None
 		self.service_scan_semaphore = None
 		self.argparse = None
@@ -259,6 +265,9 @@ class AutoRecon(object):
 		if plugin.disabled:
 			return
 
+		if plugin.name is None:
+			fail('Error: Plugin with class name "' + plugin.__class__.__name__ + '" in ' + filename + ' does not have a name.')
+
 		for _, loaded_plugin in self.plugins.items():
 			if plugin.name == loaded_plugin.name:
 				fail('Error: Duplicate plugin name "' + plugin.name + '" detected in ' + filename + '.', file=sys.stderr)
@@ -296,13 +305,14 @@ class AutoRecon(object):
 			if not run_coroutine_found and not manual_function_found:
 				fail('Error: the plugin "' + plugin.name + '" in ' + filename + ' needs either a "manual" function, a "run" coroutine, or both.', file=sys.stderr)
 
-			#from autorecon import PortScan, ServiceScan
 			if issubclass(plugin.__class__, PortScan):
 				self.plugin_types["port"].append(plugin)
 			elif issubclass(plugin.__class__, ServiceScan):
 				self.plugin_types["service"].append(plugin)
+			elif issubclass(plugin.__class__, Report):
+				self.plugin_types["report"].append(plugin)
 			else:
-				fail('Plugin "' + plugin.name + '" in ' + filename + ' is neither a PortScan nor a ServiceScan.', file=sys.stderr)
+				fail('Plugin "' + plugin.name + '" in ' + filename + ' is neither a PortScan, ServiceScan, nor a Report.', file=sys.stderr)
 
 			plugin.tags = [tag.lower() for tag in plugin.tags]
 

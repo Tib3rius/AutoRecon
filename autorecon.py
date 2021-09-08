@@ -12,7 +12,7 @@ colorama.init()
 
 from autorecon.config import config, configurable_keys, configurable_boolean_keys
 from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, fail, CommandStreamReader
-from autorecon.plugins import Pattern, PortScan, ServiceScan, AutoRecon
+from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
 # Save current terminal settings so we can restore them.
@@ -141,6 +141,40 @@ async def keyboard():
 					input = input[1:]
 		await asyncio.sleep(0.1)
 
+async def get_semaphore(autorecon):
+	semaphore = autorecon.service_scan_semaphore
+	while True:
+		# If service scan semaphore is locked, see if we can use port scan semaphore.
+		if semaphore.locked():
+			if semaphore != autorecon.port_scan_semaphore: # This will be true unless user sets max_scans == max_port_scans
+
+				port_scan_task_count = 0
+				for target in autorecon.scanning_targets:
+					for process_list in target.running_tasks.values():
+						if issubclass(process_list['plugin'].__class__, PortScan):
+							port_scan_task_count += 1
+
+				if not autorecon.pending_targets and (config['max_port_scans'] - port_scan_task_count) >= 1: # If no more targets, and we have room, use port scan semaphore.
+					if autorecon.port_scan_semaphore.locked():
+						await asyncio.sleep(1)
+						continue
+					semaphore = autorecon.port_scan_semaphore
+					break
+				else: # Do some math to see if we can use the port scan semaphore.
+					if (config['max_port_scans'] - (port_scan_task_count + (len(autorecon.pending_targets) * config['port_scan_plugin_count']))) >= 1:
+						if autorecon.port_scan_semaphore.locked():
+							await asyncio.sleep(1)
+							continue
+						semaphore = autorecon.port_scan_semaphore
+						break
+					else:
+						await asyncio.sleep(1)
+			else:
+				break
+		else:
+			break
+	return semaphore
+
 async def port_scan(plugin, target):
 	if config['ports']:
 		if config['ports']['tcp'] or config['ports']['udp']:
@@ -207,40 +241,10 @@ async def port_scan(plugin, target):
 		return {'type':'port', 'plugin':plugin, 'result':result}
 
 async def service_scan(plugin, service):
-	#from autorecon import PortScan
 	semaphore = service.target.autorecon.service_scan_semaphore
 
 	if not config['force_services']:
-		# If service scan semaphore is locked, see if we can use port scan semaphore.
-		while True:
-			if semaphore.locked():
-				if semaphore != service.target.autorecon.port_scan_semaphore: # This will be true unless user sets max_scans == max_port_scans
-
-					port_scan_task_count = 0
-					for targ in service.target.autorecon.scanning_targets:
-						for process_list in targ.running_tasks.values():
-							if issubclass(process_list['plugin'].__class__, PortScan):
-								port_scan_task_count += 1
-
-					if not service.target.autorecon.pending_targets and (config['max_port_scans'] - port_scan_task_count) >= 1: # If no more targets, and we have room, use port scan semaphore.
-						if service.target.autorecon.port_scan_semaphore.locked():
-							await asyncio.sleep(1)
-							continue
-						semaphore = service.target.autorecon.port_scan_semaphore
-						break
-					else: # Do some math to see if we can use the port scan semaphore.
-						if (config['max_port_scans'] - (port_scan_task_count + (len(service.target.autorecon.pending_targets) * config['port_scan_plugin_count']))) >= 1:
-							if service.target.autorecon.port_scan_semaphore.locked():
-								await asyncio.sleep(1)
-								continue
-							semaphore = service.target.autorecon.port_scan_semaphore
-							break
-						else:
-							await asyncio.sleep(1)
-				else:
-					break
-			else:
-				break
+		semaphore = await get_semaphore(service.target.autorecon)
 
 	async with semaphore:
 		# Create variables for fformat references.
@@ -252,6 +256,11 @@ async def service_scan(plugin, service):
 		protocol = service.protocol
 		port = service.port
 		name = service.name
+
+		if config['create_port_dirs']:
+			scandir = os.path.join(scandir, protocol + str(port))
+			os.makedirs(scandir, exist_ok=True)
+			os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
 
 		# Special cases for HTTP.
 		http_scheme = 'https' if 'https' in service.name or service.secure is True else 'http'
@@ -319,6 +328,20 @@ async def service_scan(plugin, service):
 		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished in ' + elapsed_time)
 		return {'type':'service', 'plugin':plugin, 'result':result}
 
+async def generate_report(plugin, targets):
+	semaphore = autorecon.service_scan_semaphore
+
+	if not config['force_services']:
+		semaphore = await get_semaphore(autorecon)
+
+	async with semaphore:
+		try:
+			result = await plugin.run(targets)
+		except Exception as ex:
+			exc_type, exc_value, exc_tb = sys.exc_info()
+			error_text = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb)[-2:])
+			raise Exception(cprint('Error: Report plugin {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} produced an exception:\n\n' + error_text, color=Fore.RED, char='!', printmsg=False))
+
 async def scan_target(target):
 	os.makedirs(os.path.abspath(config['outdir']), exist_ok=True)
 
@@ -330,6 +353,12 @@ async def scan_target(target):
 
 	target.basedir = basedir
 
+	scandir = os.path.join(basedir, 'scans')
+	target.scandir = scandir
+	os.makedirs(scandir, exist_ok=True)
+
+	os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
+
 	if not config['only_scans_dir']:
 		exploitdir = os.path.join(basedir, 'exploit')
 		os.makedirs(exploitdir, exist_ok=True)
@@ -338,7 +367,6 @@ async def scan_target(target):
 		os.makedirs(lootdir, exist_ok=True)
 
 		reportdir = os.path.join(basedir, 'report')
-		target.reportdir = reportdir
 		os.makedirs(reportdir, exist_ok=True)
 
 		open(os.path.join(reportdir, 'local.txt'), 'a').close()
@@ -346,12 +374,10 @@ async def scan_target(target):
 
 		screenshotdir = os.path.join(reportdir, 'screenshots')
 		os.makedirs(screenshotdir, exist_ok=True)
+	else:
+		reportdir = scandir
 
-	scandir = os.path.join(basedir, 'scans')
-	target.scandir = scandir
-	os.makedirs(scandir, exist_ok=True)
-
-	os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
+	target.reportdir = reportdir
 
 	pending = []
 
@@ -397,6 +423,7 @@ async def scan_target(target):
 					break
 
 			if matching_tags and not excluded_tags:
+				target.scans['ports'][plugin.slug] = {'plugin':plugin, 'commands':[]}
 				pending.append(asyncio.create_task(port_scan(plugin, target)))
 
 	async with autorecon.lock:
@@ -528,9 +555,15 @@ async def scan_target(target):
 
 						if plugin_is_runnable and matching_tags and not excluded_tags:
 							# Skip plugin if run_once_boolean and plugin already in target scans
-							if plugin.run_once_boolean and (plugin.slug,) in target.scans:
-								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin should only be run once and it appears to have already been queued. Skipping.{rst}')
-								break
+							if plugin.run_once_boolean:
+								plugin_queued = False
+								for s in target.scans['services']:
+									if plugin.slug in target.scans['services'][s]:
+										plugin_queued = True
+										warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin should only be run once and it appears to have already been queued. Skipping.{rst}')
+										break
+								if plugin_queued:
+									break
 
 							# Skip plugin if require_ssl_boolean and port is not secure
 							if plugin.require_ssl_boolean and not service.secure:
@@ -562,16 +595,22 @@ async def scan_target(target):
 							if member_name == 'manual':
 								plugin.manual(service, plugin_was_run)
 
-								if service.manual_commands and (not plugin.run_once_boolean or (plugin.run_once_boolean and (plugin.slug,) not in target.scans)):
-									with open(os.path.join(scandir, '_manual_commands.txt'), 'a') as file:
-										if not heading:
-											file.write(e('[*] {service.name} on {service.protocol}/{service.port}\n\n'))
-											heading = True
-										for description, commands in service.manual_commands.items():
-											file.write('\t[-] ' + e(description) + '\n\n')
-											for command in commands:
-												file.write('\t\t' + e(command) + '\n\n')
-										file.flush()
+								if service.manual_commands:
+									plugin_run = False
+									for s in target.scans['services']:
+										if plugin.slug in target.scans['services'][s]:
+											plugin_run = True
+											break
+									if not plugin.run_once_boolean or (plugin.run_once_boolean and not plugin_run):
+										with open(os.path.join(scandir, '_manual_commands.txt'), 'a') as file:
+											if not heading:
+												file.write(e('[*] {service.name} on {service.protocol}/{service.port}\n\n'))
+												heading = True
+											for description, commands in service.manual_commands.items():
+												file.write('\t[-] ' + e(description) + '\n\n')
+												for command in commands:
+													file.write('\t\t' + e(command) + '\n\n')
+											file.flush()
 
 								service.manual_commands = {}
 								break
@@ -584,15 +623,23 @@ async def scan_target(target):
 			for plugin in matching_plugins:
 				plugin_tag = service.tag() + '/' + plugin.slug
 
-				scan_tuple = (service.protocol, service.port, service.name, plugin.slug)
 				if plugin.run_once_boolean:
-					scan_tuple = (plugin.slug,)
+					plugin_tag = plugin.slug
 
-				if scan_tuple in target.scans:
-					warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin appears to have already been queued, but it is not marked as run_once. Possible duplicate service tag? Skipping.{rst}')
+				plugin_queued = False
+				if service in target.scans['services']:
+					for s in target.scans['services']:
+						if plugin_tag in target.scans['services'][s]:
+							plugin_queued = True
+							warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin appears to have already been queued, but it is not marked as run_once. Possible duplicate service tag? Skipping.{rst}')
+							break
+
+				if plugin_queued:
 					continue
 				else:
-					target.scans.append(scan_tuple)
+					if service not in target.scans['services']:
+						target.scans['services'][service] = {}
+					target.scans['services'][service][plugin_tag] = {'plugin':plugin, 'commands':[]}
 
 				pending.add(asyncio.create_task(service_scan(plugin, service)))
 
@@ -600,6 +647,27 @@ async def scan_target(target):
 				warn('{byellow}[' + target.address + ']{srst} Service ' + service.full_tag() + ' did not match any plugins based on the service name.{rst}')
 				if service.full_tag() not in target.autorecon.missing_services:
 					target.autorecon.missing_services.append(service.full_tag())
+
+	for plugin in target.autorecon.plugin_types['report']:
+		plugin_tag_set = set(plugin.tags)
+
+		matching_tags = False
+		for tag_group in target.autorecon.tags:
+			if set(tag_group).issubset(plugin_tag_set):
+				matching_tags = True
+				break
+
+		excluded_tags = False
+		for tag_group in target.autorecon.excluded_tags:
+			if set(tag_group).issubset(plugin_tag_set):
+				excluded_tags = True
+				break
+
+		if matching_tags and not excluded_tags:
+			pending.add(asyncio.create_task(generate_report(plugin, [target])))
+
+	while pending:
+		done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED, timeout=1)
 
 	heartbeat.cancel()
 	elapsed_time = calculate_elapsed_time(start_time)
@@ -621,6 +689,7 @@ async def scan_target(target):
 		info('Finished scanning target {byellow}' + target.address + '{rst} in ' + elapsed_time)
 
 	async with autorecon.lock:
+		autorecon.completed_targets.append(target)
 		autorecon.scanning_targets.remove(target)
 
 async def main():
@@ -726,11 +795,11 @@ async def main():
 							print('Plugin "' + c.__name__ + '" in ' + filename + ' is using a protected class name. Please change it.')
 							sys.exit(1)
 
-						# Only add classes that are a sub class of either PortScan or ServiceScan
-						if issubclass(c, PortScan) or issubclass(c, ServiceScan):
+						# Only add classes that are a sub class of either PortScan, ServiceScan, or Report
+						if issubclass(c, PortScan) or issubclass(c, ServiceScan) or issubclass(c, Report):
 							autorecon.register(c(), filename)
 						else:
-							print('Plugin "' + c.__name__ + '" in ' + filename + ' is not a subclass of either PortScan or ServiceScan.')
+							print('Plugin "' + c.__name__ + '" in ' + filename + ' is not a subclass of either PortScan, ServiceScan, or Report.')
 				except (ImportError, SyntaxError) as ex:
 					print('cannot import ' + filename + ' plugin')
 					print(ex)
@@ -748,6 +817,7 @@ async def main():
 	# Sort plugins by priority.
 	autorecon.plugin_types['port'].sort(key=lambda x: x.priority)
 	autorecon.plugin_types['service'].sort(key=lambda x: x.priority)
+	autorecon.plugin_types['report'].sort(key=lambda x: x.priority)
 
 	if not os.path.isfile(config['global_file']):
 		fail('Error: Specified global file "' + config['global_file'] + '" does not exist.')
@@ -867,6 +937,9 @@ async def main():
 		if type in ['plugin', 'plugins', 'service', 'services', 'servicescan', 'servicescans']:
 			for p in autorecon.plugin_types['service']:
 				print('ServiceScan: ' + p.name + ' (' + p.slug + ')' + (' - ' + p.description if p.description else ''))
+		if type in ['plugin', 'plugins', 'report', 'reporting']:
+			for p in autorecon.plugin_types['report']:
+				print('Report: ' + p.name + ' (' + p.slug + ')' + (' - ' + p.description if p.description else ''))
 
 		sys.exit(0)
 
@@ -1215,6 +1288,27 @@ async def main():
 					break
 
 	keyboard_monitor.cancel()
+
+	for plugin in autorecon.plugin_types['report']:
+		plugin_tag_set = set(plugin.tags)
+
+		matching_tags = False
+		for tag_group in autorecon.tags:
+			if set(tag_group).issubset(plugin_tag_set):
+				matching_tags = True
+				break
+
+		excluded_tags = False
+		for tag_group in autorecon.excluded_tags:
+			if set(tag_group).issubset(plugin_tag_set):
+				excluded_tags = True
+				break
+
+		if matching_tags and not excluded_tags:
+			pending.add(asyncio.create_task(generate_report(plugin, autorecon.completed_targets)))
+
+	while pending:
+		done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED, timeout=1)
 
 	if timed_out:
 		cancel_all_tasks(None, None)

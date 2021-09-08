@@ -104,6 +104,10 @@ class CommandStreamReader(object):
 		self.outfile = outfile
 		self.ended = False
 
+		# Empty files that already exist.
+		if self.outfile != None:
+			with open(self.outfile, 'w'): pass
+
 	# Read lines from the stream until it ends.
 	async def _read(self):
 		while True:

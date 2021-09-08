@@ -18,7 +18,7 @@ class Target:
 		self.ports = None
 		self.pending_services = []
 		self.services = []
-		self.scans = []
+		self.scans = {'ports':{}, 'services':{}}
 		self.running_tasks = {}
 
 	async def add_service(self, service):
@@ -31,7 +31,7 @@ class Target:
 	async def extract_services(self, stream, regex=None):
 		return await self.autorecon.extract_services(stream, regex)
 
-	async def execute(self, cmd, blocking=True, outfile=None, errfile=None):
+	async def execute(self, cmd, blocking=True, outfile=None, errfile=None, future_outfile=None):
 		target = self
 
 		# Create variables for command references.
@@ -55,9 +55,7 @@ class Target:
 			nmap_extra += ' -sT'
 
 		plugin = inspect.currentframe().f_back.f_locals['self']
-
 		cmd = e(cmd)
-
 		tag = plugin.slug
 
 		if config['verbose'] >= 1:
@@ -68,6 +66,11 @@ class Target:
 
 		if errfile is not None:
 			errfile = os.path.join(target.scandir, e(errfile))
+
+		if future_outfile is not None:
+			future_outfile = os.path.join(target.scandir, e(future_outfile))
+
+		target.scans['ports'][tag]['commands'].append([cmd, outfile if outfile is not None else future_outfile, errfile])
 
 		async with target.lock:
 			with open(os.path.join(target.scandir, '_commands.log'), 'a') as file:
@@ -118,7 +121,7 @@ class Service:
 		self.add_manual_commands(description, command)
 
 	@final
-	async def execute(self, cmd, blocking=True, outfile=None, errfile=None):
+	async def execute(self, cmd, blocking=True, outfile=None, errfile=None, future_outfile=None):
 		target = self.target
 
 		# Create variables for command references.
@@ -156,10 +159,11 @@ class Service:
 			nmap_extra += ' -sT'
 
 		plugin = inspect.currentframe().f_back.f_locals['self']
-
 		cmd = e(cmd)
-
 		tag = self.tag() + '/' + plugin.slug
+		plugin_tag = tag
+		if plugin.run_once_boolean:
+			plugin_tag = plugin.slug
 
 		if config['verbose'] >= 1:
 			info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} is running the following command against {byellow}' + address + '{rst}: ' + cmd)
@@ -169,6 +173,11 @@ class Service:
 
 		if errfile is not None:
 			errfile = os.path.join(scandir, e(errfile))
+
+		if future_outfile is not None:
+			future_outfile = os.path.join(scandir, e(future_outfile))
+
+		target.scans['services'][self][plugin_tag]['commands'].append([cmd, outfile if outfile is not None else future_outfile, errfile])
 
 		async with target.lock:
 			with open(os.path.join(target.scandir, '_commands.log'), 'a') as file:
