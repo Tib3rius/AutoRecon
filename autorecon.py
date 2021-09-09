@@ -1297,26 +1297,28 @@ async def main():
 
 	keyboard_monitor.cancel()
 
-	for plugin in autorecon.plugin_types['report']:
-		plugin_tag_set = set(plugin.tags)
+	# If there's only one target we don't need a combined report
+	if len(autorecon.completed_targets) > 1:
+		for plugin in autorecon.plugin_types['report']:
+			plugin_tag_set = set(plugin.tags)
 
-		matching_tags = False
-		for tag_group in autorecon.tags:
-			if set(tag_group).issubset(plugin_tag_set):
-				matching_tags = True
-				break
+			matching_tags = False
+			for tag_group in autorecon.tags:
+				if set(tag_group).issubset(plugin_tag_set):
+					matching_tags = True
+					break
 
-		excluded_tags = False
-		for tag_group in autorecon.excluded_tags:
-			if set(tag_group).issubset(plugin_tag_set):
-				excluded_tags = True
-				break
+			excluded_tags = False
+			for tag_group in autorecon.excluded_tags:
+				if set(tag_group).issubset(plugin_tag_set):
+					excluded_tags = True
+					break
 
-		if matching_tags and not excluded_tags:
-			pending.add(asyncio.create_task(generate_report(plugin, autorecon.completed_targets)))
+			if matching_tags and not excluded_tags:
+				pending.add(asyncio.create_task(generate_report(plugin, autorecon.completed_targets)))
 
-	while pending:
-		done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED, timeout=1)
+		while pending:
+			done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED, timeout=1)
 
 	if timed_out:
 		cancel_all_tasks(None, None)
