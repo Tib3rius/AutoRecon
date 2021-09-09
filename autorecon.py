@@ -390,7 +390,7 @@ async def scan_target(target):
 		forced_services = [x.strip().lower() for x in config['force_services']]
 
 		for forced_service in forced_services:
-			match = re.search('(?P<protocol>(tcp|udp))\/(?P<port>\d+)\/(?P<service>[\w\-\/]+)\/(?P<secure>secure|insecure)', forced_service)
+			match = re.search('(?P<protocol>(tcp|udp))\/(?P<port>\d+)\/(?P<service>[\w\-]+)(\/(?P<secure>secure|insecure))?', forced_service)
 			if match:
 				protocol = match.group('protocol')
 				if config['proxychains'] and protocol == 'udp':
@@ -408,7 +408,6 @@ async def scan_target(target):
 		else:
 			error('No services were defined. Please check your service syntax: [tcp|udp]/<port>/<service-name>/[secure|insecure]')
 			heartbeat.cancel()
-			keyboard_monitor.cancel()
 			autorecon.errors = True
 			return
 	else:
@@ -1295,7 +1294,8 @@ async def main():
 				if i >= num_new_targets:
 					break
 
-	keyboard_monitor.cancel()
+	if not config['disable_keyboard_control']:
+		keyboard_monitor.cancel()
 
 	# If there's only one target we don't need a combined report
 	if len(autorecon.completed_targets) > 1:
