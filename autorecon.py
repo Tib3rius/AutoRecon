@@ -183,8 +183,8 @@ async def port_scan(plugin, target):
 				target.ports['tcp'] = ','.join(config['ports']['tcp'])
 			if config['ports']['udp']:
 				target.ports['udp'] = ','.join(config['ports']['udp'])
-			if plugin.type is None:
-				warn('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} does not have a type set, and --ports was used. Skipping.')
+			if plugin.specific_ports is False:
+				warn('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} cannot be used to scan specific ports, and --ports was used. Skipping.')
 				return {'type':'port', 'plugin':plugin, 'result':[]}
 			else:
 				if plugin.type == 'tcp' and not config['ports']['tcp']:
@@ -278,7 +278,7 @@ async def service_scan(plugin, service):
 				addressv6 = '[' + addressv6 + ']'
 			ipaddressv6 = '[' + ipaddressv6 + ']'
 
-		if config['proxychains']:
+		if config['proxychains'] and protocol == 'tcp':
 			nmap_extra += ' -sT'
 
 		tag = service.tag() + '/' + plugin.slug
@@ -391,6 +391,9 @@ async def scan_target(target):
 			match = re.search('(?P<protocol>(tcp|udp))\/(?P<port>\d+)\/(?P<service>[\w\-\/]+)\/(?P<secure>secure|insecure)', forced_service)
 			if match:
 				protocol = match.group('protocol')
+				if config['proxychains'] and protocol == 'udp':
+					error('The service ' + forced_service + ' uses UDP and --proxychains is enabled. Skipping.')
+					continue
 				port = int(match.group('port'))
 				service = match.group('service')
 				secure = True if match.group('secure') == 'secure' else False
@@ -408,6 +411,9 @@ async def scan_target(target):
 			return
 	else:
 		for plugin in target.autorecon.plugin_types['port']:
+			if config['proxychains'] and plugin.type == 'udp':
+				continue
+
 			plugin_tag_set = set(plugin.tags)
 
 			matching_tags = False
@@ -503,7 +509,7 @@ async def scan_target(target):
 					addressv6 = '[' + addressv6 + ']'
 				ipaddressv6 = '[' + ipaddressv6 + ']'
 
-			if config['proxychains']:
+			if config['proxychains'] and protocol == 'tcp':
 				nmap_extra += ' -sT'
 
 			service_match = False

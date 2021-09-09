@@ -95,6 +95,7 @@ class PortScan(Plugin):
 	def __init__(self):
 		super().__init__()
 		self.type = None
+		self.specific_ports = False
 
 	async def run(self, target):
 		raise NotImplementedError
@@ -307,6 +308,12 @@ class AutoRecon(object):
 				fail('Error: the plugin "' + plugin.name + '" in ' + filename + ' needs either a "manual" function, a "run" coroutine, or both.', file=sys.stderr)
 
 			if issubclass(plugin.__class__, PortScan):
+				if plugin.type is None:
+					fail('Error: the PortScan plugin "' + plugin.name + '" in ' + filename + ' requires a type (either tcp or udp).')
+				else:
+					plugin.type = plugin.type.lower()
+					if plugin.type not in ['tcp', 'udp']:
+						fail('Error: the PortScan plugin "' + plugin.name + '" in ' + filename + ' has an invalid type (should be tcp or udp).')
 				self.plugin_types["port"].append(plugin)
 			elif issubclass(plugin.__class__, ServiceScan):
 				self.plugin_types["service"].append(plugin)
