@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import argparse, asyncio, importlib, inspect, ipaddress, math, os, re, sys, signal, select, socket, termios, time, traceback, tty
 from datetime import datetime
 
