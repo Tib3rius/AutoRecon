@@ -415,19 +415,23 @@ async def scan_target(target):
 			if config['proxychains'] and plugin.type == 'udp':
 				continue
 
-			plugin_tag_set = set(plugin.tags)
+			if config['port_scans'] and plugin.slug in config['port_scans']:
+				matching_tags = True
+				excluded_tags = False
+			else:
+				plugin_tag_set = set(plugin.tags)
 
-			matching_tags = False
-			for tag_group in target.autorecon.tags:
-				if set(tag_group).issubset(plugin_tag_set):
-					matching_tags = True
-					break
+				matching_tags = False
+				for tag_group in target.autorecon.tags:
+					if set(tag_group).issubset(plugin_tag_set):
+						matching_tags = True
+						break
 
-			excluded_tags = False
-			for tag_group in target.autorecon.excluded_tags:
-				if set(tag_group).issubset(plugin_tag_set):
-					excluded_tags = True
-					break
+				excluded_tags = False
+				for tag_group in target.autorecon.excluded_tags:
+					if set(tag_group).issubset(plugin_tag_set):
+						excluded_tags = True
+						break
 
 			if matching_tags and not excluded_tags:
 				target.scans['ports'][plugin.slug] = {'plugin':plugin, 'commands':[]}
@@ -539,19 +543,23 @@ async def scan_target(target):
 						plugin_service_match = True
 
 					if plugin_service_match:
-						plugin_tag_set = set(plugin.tags)
+						if config['service_scans'] and plugin.slug in config['service_scans']:
+							matching_tags = True
+							excluded_tags = False
+						else:
+							plugin_tag_set = set(plugin.tags)
 
-						matching_tags = False
-						for tag_group in target.autorecon.tags:
-							if set(tag_group).issubset(plugin_tag_set):
-								matching_tags = True
-								break
+							matching_tags = False
+							for tag_group in target.autorecon.tags:
+								if set(tag_group).issubset(plugin_tag_set):
+									matching_tags = True
+									break
 
-						excluded_tags = False
-						for tag_group in target.autorecon.excluded_tags:
-							if set(tag_group).issubset(plugin_tag_set):
-								excluded_tags = True
-								break
+							excluded_tags = False
+							for tag_group in target.autorecon.excluded_tags:
+								if set(tag_group).issubset(plugin_tag_set):
+									excluded_tags = True
+									break
 
 						# TODO: Maybe make this less messy, keep manual-only plugins separate?
 						plugin_is_runnable = False
@@ -656,19 +664,23 @@ async def scan_target(target):
 					target.autorecon.missing_services.append(service.full_tag())
 
 	for plugin in target.autorecon.plugin_types['report']:
-		plugin_tag_set = set(plugin.tags)
+		if config['reports'] and plugin.slug in config['reports']:
+			matching_tags = True
+			excluded_tags = False
+		else:
+			plugin_tag_set = set(plugin.tags)
 
-		matching_tags = False
-		for tag_group in target.autorecon.tags:
-			if set(tag_group).issubset(plugin_tag_set):
-				matching_tags = True
-				break
+			matching_tags = False
+			for tag_group in target.autorecon.tags:
+				if set(tag_group).issubset(plugin_tag_set):
+					matching_tags = True
+					break
 
-		excluded_tags = False
-		for tag_group in target.autorecon.excluded_tags:
-			if set(tag_group).issubset(plugin_tag_set):
-				excluded_tags = True
-				break
+			excluded_tags = False
+			for tag_group in target.autorecon.excluded_tags:
+				if set(tag_group).issubset(plugin_tag_set):
+					excluded_tags = True
+					break
 
 		if matching_tags and not excluded_tags:
 			pending.add(asyncio.create_task(generate_report(plugin, [target])))
@@ -710,6 +722,9 @@ async def main():
 	parser.add_argument('-g', '--global-file', action='store', type=str, dest='global_file', help='Location of AutoRecon\'s global file. Default: ' + os.path.dirname(os.path.realpath(__file__)) + '/global.toml')
 	parser.add_argument('--tags', action='store', type=str, default='default', help='Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be included, it must have all the tags specified in at least one group. Default: %(default)s')
 	parser.add_argument('--exclude-tags', action='store', type=str, default='', help='Tags to determine which plugins should be excluded. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be excluded, it must have all the tags specified in at least one group. Default: %(default)s')
+	parser.add_argument('--port-scans', action='store', type=str, help='Override --tags / --exclude-tags for the listed PortScan plugins (comma separated). Default: %(default)s')
+	parser.add_argument('--service-scans', action='store', type=str, help='Override --tags / --exclude-tags for the listed ServiceScan plugins (comma separated). Default: %(default)s')
+	parser.add_argument('--reports', action='store', type=str, help='Override --tags / --exclude-tags for the listed Report plugins (comma separated). Default: %(default)s')
 	parser.add_argument('--plugins-dir', action='store', type=str, help='The location of the plugins directory. Default: %(default)s')
 	parser.add_argument('--add-plugins-dir', action='store', type=str, help='The location of an additional plugins directory to add to the main one. Default: %(default)s')
 	parser.add_argument('-l', '--list', action='store', nargs='?', const='plugins', help='List all plugins or plugins of a specific type. e.g. --list, --list port, --list service')
@@ -1090,6 +1105,15 @@ async def main():
 		# Remove duplicate lists from list.
 		[autorecon.excluded_tags.append(t) for t in excluded_tags if t not in autorecon.excluded_tags]
 
+	if config['port_scans']:
+		config['port_scans'] = [x.strip().lower() for x in config['port_scans'].split(',')]
+
+	if config['service_scans']:
+		config['service_scans'] = [x.strip().lower() for x in config['service_scans'].split(',')]
+
+	if config['reports']:
+		config['reports'] = [x.strip().lower() for x in config['reports'].split(',')]
+
 	raw_targets = args.targets
 
 	if len(args.target_file) > 0:
@@ -1209,17 +1233,21 @@ async def main():
 	if not config['force_services']:
 		port_scan_plugin_count = 0
 		for plugin in autorecon.plugin_types['port']:
-			matching_tags = False
-			for tag_group in autorecon.tags:
-				if set(tag_group).issubset(set(plugin.tags)):
-					matching_tags = True
-					break
+			if config['port_scans'] and plugin.slug in config['port_scans']:
+				matching_tags = True
+				excluded_tags = False
+			else:
+				matching_tags = False
+				for tag_group in autorecon.tags:
+					if set(tag_group).issubset(set(plugin.tags)):
+						matching_tags = True
+						break
 
-			excluded_tags = False
-			for tag_group in autorecon.excluded_tags:
-				if set(tag_group).issubset(set(plugin.tags)):
-					excluded_tags = True
-					break
+				excluded_tags = False
+				for tag_group in autorecon.excluded_tags:
+					if set(tag_group).issubset(set(plugin.tags)):
+						excluded_tags = True
+						break
 
 			if matching_tags and not excluded_tags:
 				port_scan_plugin_count += 1
