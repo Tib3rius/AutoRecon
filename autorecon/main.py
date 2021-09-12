@@ -20,8 +20,8 @@ from autorecon.targets import Target, Service
 def install():
 	shutil.rmtree(config['config_dir'], ignore_errors=True)
 	os.makedirs(config['config_dir'], exist_ok=True)
-	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config', 'config.toml'), os.path.join(config['config_dir'], 'config.toml'))
-	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config', 'global.toml'), os.path.join(config['config_dir'], 'global.toml'))
+	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.toml'), os.path.join(config['config_dir'], 'config.toml'))
+	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'global.toml'), os.path.join(config['config_dir'], 'global.toml'))
 	shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'plugins'), os.path.join(config['config_dir'], 'plugins'))
 
 if not os.path.exists(config['config_dir']):
