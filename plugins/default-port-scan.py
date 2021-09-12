@@ -10,23 +10,19 @@ class QuickTCPPortScan(PortScan):
 		self.name = 'Top TCP Ports'
 		self.description = 'Performs an Nmap scan of the top 1000 TCP ports.'
 		self.type = 'tcp'
-		self.specific_ports = True
 		self.tags = ['default', 'default-port-scan']
 		self.priority = 0
 
 	async def run(self, target):
+		if target.ports: # Don't run this plugin if there are custom ports.
+			return []
+
 		if config['proxychains']:
 			traceroute_os = ''
 		else:
 			traceroute_os = ' -A --osscan-guess'
 
-		if target.ports:
-			if target.ports['tcp']:
-				process, stdout, stderr = await target.execute('nmap {nmap_extra} -sV -sC --version-all' + traceroute_os + ' -p ' + target.ports['tcp'] + ' -oN "{scandir}/_custom_ports_tcp_nmap.txt" -oX "{scandir}/xml/_custom_ports_tcp_nmap.xml" {address}', blocking=False)
-			else:
-				return []
-		else:
-			process, stdout, stderr = await target.execute('nmap {nmap_extra} -sV -sC --version-all' + traceroute_os + ' -oN "{scandir}/_quick_tcp_nmap.txt" -oX "{scandir}/xml/_quick_tcp_nmap.xml" {address}', blocking=False)
+		process, stdout, stderr = await target.execute('nmap {nmap_extra} -sV -sC --version-all' + traceroute_os + ' -oN "{scandir}/_quick_tcp_nmap.txt" -oX "{scandir}/xml/_quick_tcp_nmap.xml" {address}', blocking=False)
 		services = await target.extract_services(stdout)
 		await process.wait()
 		return services
@@ -38,25 +34,29 @@ class AllTCPPortScan(PortScan):
 		self.name = 'All TCP Ports'
 		self.description = 'Performs an Nmap scan of all TCP ports.'
 		self.type = 'tcp'
+		self.specific_ports = True
 		self.tags = ['default', 'default-port-scan', 'long']
 
 	async def run(self, target):
-		if target.ports: # Don't run this plugin if there are custom ports.
-			return []
-
 		if config['proxychains']:
 			traceroute_os = ''
 		else:
 			traceroute_os = ' -A --osscan-guess'
 
-		process, stdout, stderr = await target.execute('nmap {nmap_extra} -sV -sC --version-all' + traceroute_os + ' -p- -oN "{scandir}/_full_tcp_nmap.txt" -oX "{scandir}/xml/_full_tcp_nmap.xml" {address}', blocking=False)
+		if target.ports:
+			if target.ports['tcp']:
+				process, stdout, stderr = await target.execute('nmap {nmap_extra} -sV -sC --version-all' + traceroute_os + ' -p ' + target.ports['tcp'] + ' -oN "{scandir}/_full_tcp_nmap.txt" -oX "{scandir}/xml/_full_tcp_nmap.xml" {address}', blocking=False)
+			else:
+				return []
+		else:
+			process, stdout, stderr = await target.execute('nmap {nmap_extra} -sV -sC --version-all' + traceroute_os + ' -p- -oN "{scandir}/_full_tcp_nmap.txt" -oX "{scandir}/xml/_full_tcp_nmap.xml" {address}', blocking=False)
 		services = []
 		while True:
 			line = await stdout.readline()
 			if line is not None:
 				match = re.search('^Discovered open port ([0-9]+)/tcp', line)
 				if match:
-					info('Discovered open port {bmagenta}tcp/' + match.group(1) + '{rst} on {byellow}' + target.address + '{rst}')
+					info('Discovered open port {bmagenta}tcp/' + match.group(1) + '{rst} on {byellow}' + target.address + '{rst}', verbosity=1)
 				service = target.extract_service(line)
 				if service:
 					services.append(service)
@@ -91,7 +91,7 @@ class Top100UDPPortScan(PortScan):
 				if line is not None:
 					match = re.search('^Discovered open port ([0-9]+)/udp', line)
 					if match:
-						info('Discovered open port {bmagenta}udp/' + match.group(1) + '{rst} on {byellow}' + target.address + '{rst}')
+						info('Discovered open port {bmagenta}udp/' + match.group(1) + '{rst} on {byellow}' + target.address + '{rst}', verbosity=1)
 					service = target.extract_service(line)
 					if service:
 						services.append(service)

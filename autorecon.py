@@ -102,7 +102,7 @@ async def keyboard():
 				if len(input) >= 3:
 					if input[:3] == '\x1b[A':
 						input = ''
-						if config['verbose'] == 2:
+						if config['verbose'] == 3:
 							info('Verbosity is already at the highest level.')
 						else:
 							config['verbose'] += 1
@@ -186,18 +186,18 @@ async def port_scan(plugin, target):
 			if config['ports']['udp']:
 				target.ports['udp'] = ','.join(config['ports']['udp'])
 			if plugin.specific_ports is False:
-				warn('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} cannot be used to scan specific ports, and --ports was used. Skipping.')
+				warn('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} cannot be used to scan specific ports, and --ports was used. Skipping.', verbosity=2)
 				return {'type':'port', 'plugin':plugin, 'result':[]}
 			else:
 				if plugin.type == 'tcp' and not config['ports']['tcp']:
-					warn('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} is a TCP port scan but no TCP ports were set using --ports. Skipping')
+					warn('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} is a TCP port scan but no TCP ports were set using --ports. Skipping', verbosity=2)
 					return {'type':'port', 'plugin':plugin, 'result':[]}
 				elif plugin.type == 'udp' and not config['ports']['udp']:
-					warn('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} is a UDP port scan but no UDP ports were set using --ports. Skipping')
+					warn('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} is a UDP port scan but no UDP ports were set using --ports. Skipping', verbosity=2)
 					return {'type':'port', 'plugin':plugin, 'result':[]}
 
 	async with target.autorecon.port_scan_semaphore:
-		info('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} running against {byellow}' + target.address + '{rst}')
+		info('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} running against {byellow}' + target.address + '{rst}', verbosity=1)
 
 		start_time = time.time()
 
@@ -213,7 +213,7 @@ async def port_scan(plugin, target):
 
 		for process_dict in target.running_tasks[plugin.slug]['processes']:
 			if process_dict['process'].returncode is None:
-				warn('A process was left running after port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} against {byellow}' + target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.')
+				warn('A process was left running after port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} against {byellow}' + target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.', verbosity=2)
 				await process_dict['process'].wait()
 
 			if process_dict['process'].returncode != 0:
@@ -224,7 +224,7 @@ async def port_scan(plugin, target):
 						errors.append(line + '\n')
 					else:
 						break
-				error('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} ran a command against {byellow}' + target.address + '{rst} which returned a non-zero exit code (' + str(process_dict['process'].returncode) + '). Check ' + target.scandir + '/_errors.log for more details.')
+				error('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} ran a command against {byellow}' + target.address + '{rst} which returned a non-zero exit code (' + str(process_dict['process'].returncode) + '). Check ' + target.scandir + '/_errors.log for more details.', verbosity=2)
 				async with target.lock:
 					with open(os.path.join(target.scandir, '_errors.log'), 'a') as file:
 						file.writelines('[*] Port scan ' + plugin.name + ' (' + plugin.slug + ') ran a command which returned a non-zero exit code (' + str(process_dict['process'].returncode) + ').\n')
@@ -239,7 +239,7 @@ async def port_scan(plugin, target):
 		async with target.lock:
 			target.running_tasks.pop(plugin.slug, None)
 
-		info('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} against {byellow}' + target.address + '{rst} finished in ' + elapsed_time)
+		info('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} against {byellow}' + target.address + '{rst} finished in ' + elapsed_time, verbosity=2)
 		return {'type':'port', 'plugin':plugin, 'result':result}
 
 async def service_scan(plugin, service):
@@ -285,7 +285,7 @@ async def service_scan(plugin, service):
 
 		tag = service.tag() + '/' + plugin.slug
 
-		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} running against {byellow}' + service.target.address + '{rst}')
+		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} running against {byellow}' + service.target.address + '{rst}', verbosity=1)
 
 		start_time = time.time()
 
@@ -301,7 +301,7 @@ async def service_scan(plugin, service):
 
 		for process_dict in service.target.running_tasks[tag]['processes']:
 			if process_dict['process'].returncode is None:
-				warn('A process was left running after service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.')
+				warn('A process was left running after service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.', verbosity=2)
 				await process_dict['process'].wait()
 
 			if process_dict['process'].returncode != 0:
@@ -312,7 +312,7 @@ async def service_scan(plugin, service):
 						errors.append(line + '\n')
 					else:
 						break
-				error('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} ran a command against {byellow}' + service.target.address + '{rst} which returned a non-zero exit code (' + str(process_dict['process'].returncode) + '). Check ' + service.target.scandir + '/_errors.log for more details.')
+				error('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} ran a command against {byellow}' + service.target.address + '{rst} which returned a non-zero exit code (' + str(process_dict['process'].returncode) + '). Check ' + service.target.scandir + '/_errors.log for more details.', verbosity=2)
 				async with service.target.lock:
 					with open(os.path.join(service.target.scandir, '_errors.log'), 'a') as file:
 						file.writelines('[*] Service scan ' + plugin.name + ' (' + tag + ') ran a command which returned a non-zero exit code (' + str(process_dict['process'].returncode) + ').\n')
@@ -327,7 +327,7 @@ async def service_scan(plugin, service):
 		async with service.target.lock:
 			service.target.running_tasks.pop(tag, None)
 
-		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished in ' + elapsed_time)
+		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished in ' + elapsed_time, verbosity=2)
 		return {'type':'service', 'plugin':plugin, 'result':result}
 
 async def generate_report(plugin, targets):
@@ -394,7 +394,7 @@ async def scan_target(target):
 			if match:
 				protocol = match.group('protocol')
 				if config['proxychains'] and protocol == 'udp':
-					error('The service ' + forced_service + ' uses UDP and --proxychains is enabled. Skipping.')
+					error('The service ' + forced_service + ' uses UDP and --proxychains is enabled. Skipping.', verbosity=2)
 					continue
 				port = int(match.group('port'))
 				service = match.group('service')
@@ -481,7 +481,7 @@ async def scan_target(target):
 			else:
 				continue
 
-			info('Identified service {bmagenta}' + service.name + '{rst} on {bmagenta}' + service.protocol + '/' + str(service.port) + '{rst} on {byellow}' + target.address + '{rst}')
+			info('Identified service {bmagenta}' + service.name + '{rst} on {bmagenta}' + service.protocol + '/' + str(service.port) + '{rst} on {byellow}' + target.address + '{rst}', verbosity=1)
 
 			if not config['only_scans_dir']:
 				with open(os.path.join(target.reportdir, 'notes.txt'), 'a') as file:
@@ -575,7 +575,7 @@ async def scan_target(target):
 								for s in target.scans['services']:
 									if plugin.slug in target.scans['services'][s]:
 										plugin_queued = True
-										warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin should only be run once and it appears to have already been queued. Skipping.{rst}')
+										warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin should only be run once and it appears to have already been queued. Skipping.{rst}', verbosity=2)
 										break
 								if plugin_queued:
 									break
@@ -588,18 +588,18 @@ async def scan_target(target):
 							# Skip plugin if service port is in ignore_ports:
 							if port in plugin.ignore_ports[protocol]:
 								plugin_service_match = False
-								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin cannot be run against ' + protocol + ' port ' + str(port) + '. Skipping.{rst}')
+								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin cannot be run against ' + protocol + ' port ' + str(port) + '. Skipping.{rst}', verbosity=2)
 								break
 
 							# Skip plugin if plugin has required ports and service port is not in them:
 							if plugin.ports[protocol] and port not in plugin.ports[protocol]:
 								plugin_service_match = False
-								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin can only run on specific ports. Skipping.{rst}')
+								warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin can only run on specific ports. Skipping.{rst}', verbosity=2)
 								break
 
 							for i in plugin.ignore_service_names:
 								if re.search(i, service.name):
-									warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin cannot be run against this service. Skipping.{rst}')
+									warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin cannot be run against this service. Skipping.{rst}', verbosity=2)
 									break
 
 							# TODO: check if plugin matches tags, BUT run manual commands anyway!
@@ -646,7 +646,7 @@ async def scan_target(target):
 					for s in target.scans['services']:
 						if plugin_tag in target.scans['services'][s]:
 							plugin_queued = True
-							warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin appears to have already been queued, but it is not marked as run_once. Possible duplicate service tag? Skipping.{rst}')
+							warn('{byellow}[' + plugin_tag + ' against ' + target.address + ']{srst} Plugin appears to have already been queued, but it is not marked as run_once. Possible duplicate service tag? Skipping.{rst}', verbosity=2)
 							break
 
 				if plugin_queued:
@@ -659,7 +659,7 @@ async def scan_target(target):
 				pending.add(asyncio.create_task(service_scan(plugin, service)))
 
 			if not service_match:
-				warn('{byellow}[' + target.address + ']{srst} Service ' + service.full_tag() + ' did not match any plugins based on the service name.{rst}')
+				warn('{byellow}[' + target.address + ']{srst} Service ' + service.full_tag() + ' did not match any plugins based on the service name.{rst}', verbosity=2)
 				if service.full_tag() not in target.autorecon.missing_services:
 					target.autorecon.missing_services.append(service.full_tag())
 

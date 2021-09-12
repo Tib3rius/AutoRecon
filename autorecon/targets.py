@@ -59,8 +59,7 @@ class Target:
 		cmd = e(cmd)
 		tag = plugin.slug
 
-		if config['verbose'] >= 1:
-			info('Port scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} is running the following command against {byellow}' + address + '{rst}: ' + cmd)
+		info('Port scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} is running the following command against {byellow}' + address + '{rst}: ' + cmd, verbosity=2)
 
 		if outfile is not None:
 			outfile = os.path.join(target.scandir, e(outfile))
@@ -166,8 +165,7 @@ class Service:
 		if plugin.run_once_boolean:
 			plugin_tag = plugin.slug
 
-		if config['verbose'] >= 1:
-			info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} is running the following command against {byellow}' + address + '{rst}: ' + cmd)
+		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} is running the following command against {byellow}' + address + '{rst}: ' + cmd, verbosity=2)
 
 		if outfile is not None:
 			outfile = os.path.join(scandir, e(outfile))

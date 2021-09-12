@@ -19,7 +19,9 @@ def e(*args, frame_index=1, **kvargs):
 def fformat(s):
 	return e(s, frame_index=3)
 
-def cprint(*args, color=Fore.RESET, char='*', sep=' ', end='\n', frame_index=1, file=sys.stdout, printmsg=True, **kvargs):
+def cprint(*args, color=Fore.RESET, char='*', sep=' ', end='\n', frame_index=1, file=sys.stdout, printmsg=True, verbosity=0, **kvargs):
+	if printmsg and verbosity > config['verbose']:
+		return ''
 	frame = sys._getframe(frame_index)
 
 	vals = {
@@ -119,9 +121,8 @@ class CommandStreamReader(object):
 				error('{bright}[{yellow}' + self.target.address + '{crst}/{bgreen}' + self.tag + '{crst}]{rst} A line was longer than 64 KiB and cannot be processed. Ignoring.')
 				continue
 
-			if config['verbose'] >= 2:
-				if line != '':
-					info('{bright}[{yellow}' + self.target.address + '{crst}/{bgreen}' + self.tag + '{crst}]{rst} ' + line.replace('{', '{{').replace('}', '}}'))
+			if line != '':
+				info('{bright}[{yellow}' + self.target.address + '{crst}/{bgreen}' + self.tag + '{crst}]{rst} ' + line.replace('{', '{{').replace('}', '}}'), verbosity=3)
 
 			# Check lines for pattern matches.
 			for p in self.patterns:
@@ -130,12 +131,10 @@ class CommandStreamReader(object):
 					async with self.target.lock:
 						with open(os.path.join(self.target.scandir, '_patterns.log'), 'a') as file:
 							if p.description:
-								if config['verbose'] >= 1:
-									info('{bright}[{yellow}' + self.target.address + '{crst}/{bgreen}' + self.tag + '{crst}]{rst} {bmagenta}' + p.description.replace('{match}', match) + '{rst}')
+								info('{bright}[{yellow}' + self.target.address + '{crst}/{bgreen}' + self.tag + '{crst}]{rst} {bmagenta}' + p.description.replace('{match}', match) + '{rst}', verbosity=2)
 								file.writelines(p.description.replace('{match}', match) + '\n\n')
 							else:
-								if config['verbose'] >= 1:
-									info('{bright}[{yellow}' + self.target.address + '{crst}/{bgreen}' + self.tag + '{crst}]{rst} {bmagenta}Matched Pattern: ' + match + '{rst}')
+								info('{bright}[{yellow}' + self.target.address + '{crst}/{bgreen}' + self.tag + '{crst}]{rst} {bmagenta}Matched Pattern: ' + match + '{rst}', verbosity=2)
 								file.writelines('Matched Pattern: ' + match + '\n\n')
 
 			if self.outfile is not None:
