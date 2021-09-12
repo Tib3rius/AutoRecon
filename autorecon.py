@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import appdirs, argparse, asyncio, importlib, inspect, ipaddress, math, os, re, select, shutil, signal, socket, sys, termios, time, traceback, tty
+import argparse, asyncio, importlib, inspect, ipaddress, math, os, re, sys, signal, select, socket, termios, time, traceback, tty
 from datetime import datetime
 
 try:
@@ -16,16 +16,6 @@ from autorecon.config import config, configurable_keys, configurable_boolean_key
 from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, fail, CommandStreamReader
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
-
-def install():
-	shutil.rmtree(config['config_dir'], ignore_errors=True)
-	os.makedirs(config['config_dir'], exist_ok=True)
-	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.toml'), os.path.join(config['config_dir'], 'config.toml'))
-	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'global.toml'), os.path.join(config['config_dir'], 'global.toml'))
-	shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'plugins'), os.path.join(config['config_dir'], 'plugins'))
-
-if not os.path.exists(config['config_dir']):
-	install()
 
 # Save current terminal settings so we can restore them.
 terminal_settings = termios.tcgetattr(sys.stdin.fileno())
@@ -721,15 +711,15 @@ async def scan_target(target):
 		autorecon.completed_targets.append(target)
 		autorecon.scanning_targets.remove(target)
 
-async def run():
+async def main():
 	parser = argparse.ArgumentParser(add_help=False, description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
 	parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs='*')
 	parser.add_argument('-t', '--targets', action='store', type=str, default='', dest='target_file', help='Read targets from file.')
 	parser.add_argument('-p', '--ports', action='store', type=str, help='Comma separated list of ports / port ranges to scan. Specify TCP/UDP ports by prepending list with T:/U: To scan both TCP/UDP, put port(s) at start or specify B: e.g. 53,T:21-25,80,U:123,B:123. Default: %(default)s')
 	parser.add_argument('-m', '--max-scans', action='store', type=int, help='The maximum number of concurrent scans to run. Default: %(default)s')
 	parser.add_argument('-mp', '--max-port-scans', action='store', type=int, help='The maximum number of concurrent port scans to run. Default: 10 (approx 20%% of max-scans unless specified)')
-	parser.add_argument('-c', '--config', action='store', type=str, default=os.path.join(config['config_dir'], 'config.toml'), dest='config_file', help='Location of AutoRecon\'s config file. Default: %(default)s')
-	parser.add_argument('-g', '--global-file', action='store', type=str, dest='global_file', help='Location of AutoRecon\'s global file. Default: ' + os.path.join(config['config_dir'], 'global.toml'))
+	parser.add_argument('-c', '--config', action='store', type=str, default=os.path.dirname(os.path.realpath(__file__)) + '/config.toml', dest='config_file', help='Location of AutoRecon\'s config file. Default: %(default)s')
+	parser.add_argument('-g', '--global-file', action='store', type=str, dest='global_file', help='Location of AutoRecon\'s global file. Default: ' + os.path.dirname(os.path.realpath(__file__)) + '/global.toml')
 	parser.add_argument('--tags', action='store', type=str, default='default', help='Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be included, it must have all the tags specified in at least one group. Default: %(default)s')
 	parser.add_argument('--exclude-tags', action='store', type=str, default='', metavar='TAGS', help='Tags to determine which plugins should be excluded. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be excluded, it must have all the tags specified in at least one group. Default: %(default)s')
 	parser.add_argument('--port-scans', action='store', type=str, metavar='PLUGINS', help='Override --tags / --exclude-tags for the listed PortScan plugins (comma separated). Default: %(default)s')
@@ -763,7 +753,7 @@ async def run():
 	autorecon.argparse = parser
 
 	if args.version:
-		print('AutoRecon v2.0')
+		print('AutoRecon v2.0-beta3')
 		sys.exit(0)
 
 	# Parse config file and args for global.toml first.
@@ -1378,15 +1368,12 @@ async def run():
 		# Restore original terminal settings.
 		termios.tcsetattr(sys.stdin, termios.TCSADRAIN, terminal_settings)
 
-def main():
+if __name__ == '__main__':
 	# Capture Ctrl+C and cancel everything.
 	signal.signal(signal.SIGINT, cancel_all_tasks)
 	try:
-		asyncio.run(run())
+		asyncio.run(main())
 	except asyncio.exceptions.CancelledError:
 		pass
 	except RuntimeError:
 		pass
-
-if __name__ == '__main__':
-	main()

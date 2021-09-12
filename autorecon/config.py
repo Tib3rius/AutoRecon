@@ -1,6 +1,4 @@
-import appdirs, os
-
-config_dir = appdirs.user_config_dir('AutoRecon')
+import os
 
 configurable_keys = [
 	'ports',
@@ -41,8 +39,7 @@ configurable_boolean_keys = [
 
 config = {
 	'protected_classes': ['autorecon', 'target', 'service', 'commandstreamreader', 'plugin', 'portscan', 'servicescan', 'global', 'pattern'],
-	'config_dir': config_dir,
-	'global_file': os.path.join(config_dir, 'global.toml'),
+	'global_file': os.path.dirname(os.path.realpath(os.path.join(__file__, '..'))) + '/global.toml',
 	'ports': None,
 	'max_scans': 50,
 	'max_port_scans': None,
@@ -51,7 +48,7 @@ config = {
 	'port_scans': None,
 	'service_scans': None,
 	'reports': None,
-	'plugins_dir': os.path.join(config_dir, 'plugins'),
+	'plugins_dir': os.path.dirname(os.path.abspath(os.path.join(__file__, '..'))) + '/plugins',
 	'add_plugins_dir': None,
 	'outdir': 'results',
 	'single_target': False,
