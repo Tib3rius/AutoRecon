@@ -117,63 +117,79 @@ See detailed usage options below.
 AutoRecon uses Python 3 specific functionality and does not support Python 2.
 
 ```
-usage: autorecon.py [-t TARGET_FILE] [-p PORTS] [-m MAX_SCANS] [-mp MAX_PORT_SCANS] [-c CONFIG_FILE] [-g GLOBAL_FILE] [--tags TAGS] [--exclude-tags EXCLUDE_TAGS]            
-                    [--plugins-dir PLUGINS_DIR] [-o OUTDIR] [--single-target] [--only-scans-dir] [--create-port-dirs] [--heartbeat HEARTBEAT] [--timeout TIMEOUT]            
-                    [--target-timeout TARGET_TIMEOUT] [--nmap NMAP | --nmap-append NMAP_APPEND] [--disable-sanity-checks] [--disable-keyboard-control]                       
-                    [--force-services FORCE_SERVICES [FORCE_SERVICES ...]] [--accessible] [-v] [--version] [--curl.path VALUE]                                               
-                    [--dirbuster.tool {feroxbuster,gobuster,dirsearch,ffuf,dirb}] [--dirbuster.wordlist VALUE [VALUE ...]] [--dirbuster.threads VALUE]                       
-                    [--dirbuster.ext VALUE] [--onesixtyone.community-strings VALUE] [--global.username-wordlist VALUE] [--global.password-wordlist VALUE]                    
-                    [--global.domain VALUE] [-h]                                                                                                                             
-                    [targets ...]                                                                                                                                            
-                                                                                                                                                                             
-Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.                                                                     
-                                                                                                                                                                             
-positional arguments:                                                                                                                                                        
-  targets               IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.                                      
-                                                                                                                                                                             
-optional arguments:                                                                                                                                                          
-  -t TARGET_FILE, --targets TARGET_FILE                                                                                                                                      
-                        Read targets from file.                                                                                                                              
-  -p PORTS, --ports PORTS                                                                                                                                                    
-                        Comma separated list of ports / port ranges to scan. Specify TCP/UDP ports by prepending list with T:/U: To scan both TCP/UDP, put port(s) at start  
-                        or specify B: e.g. 53,T:21-25,80,U:123,B:123. Default: None                                                                                          
-  -m MAX_SCANS, --max-scans MAX_SCANS                                                                                                                                        
-                        The maximum number of concurrent scans to run. Default: 50                                                                                           
-  -mp MAX_PORT_SCANS, --max-port-scans MAX_PORT_SCANS                                                                                                                        
-                        The maximum number of concurrent port scans to run. Default: 10 (approx 20% of max-scans unless specified)                                           
-  -c CONFIG_FILE, --config CONFIG_FILE                                                                                                                                       
-                        Location of AutoRecon's config file. Default: /mnt/hgfs/AutoRecon/config.toml                                                                        
-  -g GLOBAL_FILE, --global-file GLOBAL_FILE                                                                                                                                  
-                        Location of AutoRecon's global file. Default: /mnt/hgfs/AutoRecon/global.toml                                                                        
-  --tags TAGS           Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to   
-                        create multiple groups. For a plugin to be included, it must have all the tags specified in at least one group. Default: default
-  --exclude-tags EXCLUDE_TAGS                                                                                                                                                
-                        Tags to determine which plugins should be excluded. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to   
-                        create multiple groups. For a plugin to be excluded, it must have all the tags specified in at least one group. Default: None                        
-  --plugins-dir PLUGINS_DIR                                                                                                                                                  
+usage: autorecon.py [-t TARGET_FILE] [-p PORTS] [-m MAX_SCANS] [-mp MAX_PORT_SCANS] [-c CONFIG_FILE] [-g GLOBAL_FILE] [--tags TAGS]
+                    [--exclude-tags TAGS] [--port-scans PLUGINS] [--service-scans PLUGINS] [--reports PLUGINS] [--plugins-dir PLUGINS_DIR]
+                    [--add-plugins-dir PLUGINS_DIR] [-l [TYPE]] [-o OUTDIR] [--single-target] [--only-scans-dir] [--create-port-dirs]
+                    [--heartbeat HEARTBEAT] [--timeout TIMEOUT] [--target-timeout TARGET_TIMEOUT] [--nmap NMAP | --nmap-append NMAP_APPEND]
+                    [--proxychains] [--disable-sanity-checks] [--disable-keyboard-control] [--force-services SERVICE [SERVICE ...]]
+                    [--accessible] [-v] [--version] [--curl.path VALUE] [--dirbuster.tool {feroxbuster,gobuster,dirsearch,ffuf,dirb}]
+                    [--dirbuster.wordlist VALUE [VALUE ...]] [--dirbuster.threads VALUE] [--dirbuster.ext VALUE]
+                    [--onesixtyone.community-strings VALUE] [--global.username-wordlist VALUE] [--global.password-wordlist VALUE]
+                    [--global.domain VALUE] [-h]
+                    [targets ...]
+
+Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.
+
+positional arguments:
+  targets               IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.
+
+optional arguments:
+  -t TARGET_FILE, --targets TARGET_FILE
+                        Read targets from file.
+  -p PORTS, --ports PORTS
+                        Comma separated list of ports / port ranges to scan. Specify TCP/UDP ports by prepending list with T:/U: To scan both
+                        TCP/UDP, put port(s) at start or specify B: e.g. 53,T:21-25,80,U:123,B:123. Default: None
+  -m MAX_SCANS, --max-scans MAX_SCANS
+                        The maximum number of concurrent scans to run. Default: 50
+  -mp MAX_PORT_SCANS, --max-port-scans MAX_PORT_SCANS
+                        The maximum number of concurrent port scans to run. Default: 10 (approx 20% of max-scans unless specified)
+  -c CONFIG_FILE, --config CONFIG_FILE
+                        Location of AutoRecon's config file. Default: /mnt/hgfs/AutoRecon/config.toml
+  -g GLOBAL_FILE, --global-file GLOBAL_FILE
+                        Location of AutoRecon's global file. Default: /mnt/hgfs/AutoRecon/global.toml
+  --tags TAGS           Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group tags together. Separate
+                        groups with a comma (,) to create multiple groups. For a plugin to be included, it must have all the tags specified in
+                        at least one group. Default: default
+  --exclude-tags TAGS   Tags to determine which plugins should be excluded. Separate tags by a plus symbol (+) to group tags together. Separate
+                        groups with a comma (,) to create multiple groups. For a plugin to be excluded, it must have all the tags specified in
+                        at least one group. Default: None
+  --port-scans PLUGINS  Override --tags / --exclude-tags for the listed PortScan plugins (comma separated). Default: None
+  --service-scans PLUGINS
+                        Override --tags / --exclude-tags for the listed ServiceScan plugins (comma separated). Default: None
+  --reports PLUGINS     Override --tags / --exclude-tags for the listed Report plugins (comma separated). Default: None
+  --plugins-dir PLUGINS_DIR
                         The location of the plugins directory. Default: /mnt/hgfs/AutoRecon/plugins
+  --add-plugins-dir PLUGINS_DIR
+                        The location of an additional plugins directory to add to the main one. Default: None
+  -l [TYPE], --list [TYPE]
+                        List all plugins or plugins of a specific type. e.g. --list, --list port, --list service
   -o OUTDIR, --output OUTDIR
                         The output directory for results. Default: results
-  --single-target       Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will be created within the
-                        output directory. Default: False
-  --only-scans-dir      Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created. Default: False
-  --create-port-dirs    Create directories for ports within the "scans" directory (e.g. scans/tcp80, scans/udp53) and store results in these directories. Default: False
+  --single-target       Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will
+                        be created within the output directory. Default: False
+  --only-scans-dir      Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created.
+                        Default: False
+  --create-port-dirs    Create directories for ports within the "scans" directory (e.g. scans/tcp80, scans/udp53) and store results in these
+                        directories. Default: True
   --heartbeat HEARTBEAT
                         Specifies the heartbeat interval (in seconds) for scan status messages. Default: 60
   --timeout TIMEOUT     Specifies the maximum amount of time in minutes that AutoRecon should run for. Default: None
   --target-timeout TARGET_TIMEOUT
-                        Specifies the maximum amount of time in minutes that a target should be scanned for before abandoning it and moving on. Default: None
+                        Specifies the maximum amount of time in minutes that a target should be scanned for before abandoning it and moving on.
+                        Default: None
   --nmap NMAP           Override the {nmap_extra} variable in scans. Default: -vv --reason -Pn
   --nmap-append NMAP_APPEND
-                        Append to the default {nmap_extra} variable in scans. Default: 
+                        Append to the default {nmap_extra} variable in scans. Default: -T4
+  --proxychains         Use if you are running AutoRecon via proxychains. Default: False
   --disable-sanity-checks
                         Disable sanity checks that would otherwise prevent the scans from running. Default: False
   --disable-keyboard-control
                         Disables keyboard control ([s]tatus, Up, Down) if you are in SSH or Docker.
-  --force-services FORCE_SERVICES [FORCE_SERVICES ...]
-                        A space separated list of services in the following style: tcp/80/http/insecure tcp/443/https/secure
+  --force-services SERVICE [SERVICE ...]
+                        A space separated list of services in the following style: tcp/80/http tcp/443/https/secure
   --accessible          Attempts to make AutoRecon output more accessible to screenreaders. Default: False
   -v, --verbose         Enable verbose output. Repeat for more verbosity.
+  --version             Prints the AutoRecon version and exits.
   -h, --help            Show this help message and exit.
 
 plugin arguments:
@@ -183,14 +199,16 @@ plugin arguments:
   --dirbuster.tool {feroxbuster,gobuster,dirsearch,ffuf,dirb}
                         The tool to use for directory busting. Default: feroxbuster
   --dirbuster.wordlist VALUE [VALUE ...]
-                        The wordlist(s) to use when directory busting. Separate multiple wordlists with spaces. Default: ['/usr/share/seclists/Discovery/Web-
-                        Content/common.txt']
+                        The wordlist(s) to use when directory busting. Separate multiple wordlists with spaces. Default:
+                        ['/usr/share/seclists/Discovery/Web-Content/common.txt', '/usr/share/seclists/Discovery/Web-Content/big.txt',
+                        '/usr/share/seclists/Discovery/Web-Content/raft-large-words.txt']
   --dirbuster.threads VALUE
                         The number of threads to use when directory busting. Default: 10
   --dirbuster.ext VALUE
                         The extensions you wish to fuzz (no dot, comma separated). Default: txt,html,php,asp,aspx,jsp
   --onesixtyone.community-strings VALUE
-                        The file containing a list of community strings to try. Default: /usr/share/seclists/Discovery/SNMP/common-snmp-community-strings-onesixtyone.txt
+                        The file containing a list of community strings to try. Default: /usr/share/seclists/Discovery/SNMP/common-snmp-
+                        community-strings-onesixtyone.txt
 
 global plugin arguments:
   These are optional arguments that can be used by all plugins.
@@ -205,11 +223,12 @@ global plugin arguments:
 
 ### Verbosity
 
-AutoRecon supports three levels of verbosity:
+AutoRecon supports four levels of verbosity:
 
-* (none) Minimal output. AutoRecon will announce when target scans start and finish, as well as which services were identified.
-* (-v) Verbose output. AutoRecon will additionally specify the exact commands which are being run, as well as highlighting any patterns which are matched in command output.
-* (-vv) Very verbose output. AutoRecon will output everything. Literally every line from all commands which are currently running. When scanning multiple targets concurrently, this can lead to a ridiculous amount of output. It is not advised to use -vv unless you absolutely need to see live output from commands.
+* (none) Minimal output. AutoRecon will announce when scanning targets starts / ends.
+* (-v) Verbose output. AutoRecon will additionally announce when plugins start running, and report open ports and identified services.
+* (-vv) Very verbose output. AutoRecon will additionally specify the exact commands which are being run by plugins, highlight any patterns which are matched in command output, and announce when plugins end.
+* (-vvv) Very very verbose output. AutoRecon will output everything. Literally every line from all commands which are currently running. When scanning multiple targets concurrently, this can lead to a ridiculous amount of output. It is not advised to use -vvv unless you absolutely need to see live output from commands.
 
 Note: You can change the verbosity of AutoRecon mid-scan by pressing the up and down arrow keys.
 
