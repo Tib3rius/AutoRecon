@@ -28,7 +28,7 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 * A powerful config file lets you use your favorite settings every time.
 * A tagging system that lets you include or exclude certain plugins.
 * Global and per-target timeouts in case you only have limited time.
-* Three levels of verbosity, controllable by command-line options, and during scans using Up/Down arrows.
+* Four levels of verbosity, controllable by command-line options, and during scans using Up/Down arrows.
 * Colorized output for distinguishing separate pieces of information. Can be turned off for accessibility reasons.
 
 ## Requirements
