@@ -1,16 +1,10 @@
 > It's like bowling with bumpers. - [@ippsec](https://twitter.com/ippsec)
 
-# Please Read Before Using
-
-**This is a public beta of AutoRecon version 2, which is effectively a complete rewrite of version 1. As such, there are no promises about stability, and you should expect bugs. During this beta, testers are encouraged to try out the new features, especially the new plugin functionality, and report bugs when they are found. Feedback on improvements and changes is also encouraged. There is no guarantee that the current plugin system "API" will be the same when version 2 is released.**
-
-**A wiki will be added to this repository to more fully explain the features in AutoRecon version 2.**
-
 # AutoRecon
 
 AutoRecon is a multi-threaded network reconnaissance tool which performs automated enumeration of services. It is intended as a time-saving tool for use in CTFs and other penetration testing environments (e.g. OSCP). It may also be useful in real-world engagements.
 
-The tool works by firstly performing port scans / service detection scans. From those initial results, the tool will launch further enumeration scans of those services using a number of different tools. For example, if HTTP is found, nikto will be launched (as well as many others).
+The tool works by firstly performing port scans / service detection scans. From those initial results, the tool will launch further enumeration scans of those services using a number of different tools. For example, if HTTP is found, feroxbuster will be launched (as well as many others).
 
 Everything in the tool is highly configurable. The default configuration performs **no automated exploitation** to keep the tool in line with OSCP exam rules. If you wish to add automatic exploit tools to the configuration, you do so at your own risk. The author will not be held responsible for negative actions that result from the mis-use of this tool.
 
@@ -41,6 +35,30 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 
 - Python 3
 - `python3-pip`
+- `pipx` (optional, but recommended)
+
+### Python 3
+
+If you don't have these installed, and are running Kali Linux, you can execute the following:
+
+```bash
+$ sudo apt install python3
+$ sudo apt install python3-pip
+```
+
+### `pipx`
+
+Further, it's recommended you use `pipx` to manage your python packages; this installs each python package in it's own virtualenv, and makes it available in the global context, which avoids conflicting package dependencies and the resulting instability. To summarize the installation instructions:
+
+```bash
+$ sudo apt install python3-venv
+$ python3 -m pip install --user pipx
+$ python3 -m pipx ensurepath
+```
+
+You will have to re-source your ~/.bashrc or ~/.zshrc file (or open a new tab) after running these commands in order to use pipx.
+
+Note that if you want to run AutoRecon via pipx using sudo, you'll have to install pipx and AutoRecon using sudo as well.
 
 ### Supporting packages
 
@@ -85,20 +103,25 @@ $ sudo apt install seclists curl enum4linux feroxbuster impacket-scripts nbtscan
 
 Ensure you have all of the requirements installed as per the previous section.
 
-Clone the repository and switch to the beta branch:
+### Using `pipx` (recommended)
+
+If installing using pipx, you'll need to run the installation command as root or with sudo in order to be able to run autorecon using sudo:
 
 ```bash
-$ git clone --branch beta https://github.com/Tib3rius/AutoRecon
+$ pipx install git+https://github.com/Tib3rius/AutoRecon.git
 ```
 
-If you already had a copy of the repository, you can run the following from the main directory to get the beta code:
+### Using `pip`
+
+If installing using pip, you'll need to run the installation command as root or with sudo in order to be able to run autorecon using sudo:
 
 ```bash
-$ git pull
-$ git checkout beta
+$ sudo python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
 ```
 
-From within the AutoRecon directory, install the dependencies:
+### Manual
+
+If you'd prefer not to use `pip` or `pipx`, you can always still install and execute `autorecon.py` manually as a script. From within the AutoRecon directory, install the dependencies:
 
 ```bash
 $ python3 -m pip install -r requirements.txt
@@ -117,66 +140,72 @@ See detailed usage options below.
 AutoRecon uses Python 3 specific functionality and does not support Python 2.
 
 ```
-usage: autorecon.py [-t TARGET_FILE] [-p PORTS] [-m MAX_SCANS] [-mp MAX_PORT_SCANS] [-c CONFIG_FILE] [-g GLOBAL_FILE] [--tags TAGS]
-                    [--exclude-tags TAGS] [--port-scans PLUGINS] [--service-scans PLUGINS] [--reports PLUGINS] [--plugins-dir PLUGINS_DIR]
-                    [--add-plugins-dir PLUGINS_DIR] [-l [TYPE]] [-o OUTDIR] [--single-target] [--only-scans-dir] [--create-port-dirs]
-                    [--heartbeat HEARTBEAT] [--timeout TIMEOUT] [--target-timeout TARGET_TIMEOUT] [--nmap NMAP | --nmap-append NMAP_APPEND]
-                    [--proxychains] [--disable-sanity-checks] [--disable-keyboard-control] [--force-services SERVICE [SERVICE ...]]
-                    [--accessible] [-v] [--version] [--curl.path VALUE] [--dirbuster.tool {feroxbuster,gobuster,dirsearch,ffuf,dirb}]
-                    [--dirbuster.wordlist VALUE [VALUE ...]] [--dirbuster.threads VALUE] [--dirbuster.ext VALUE]
-                    [--onesixtyone.community-strings VALUE] [--global.username-wordlist VALUE] [--global.password-wordlist VALUE]
-                    [--global.domain VALUE] [-h]
-                    [targets ...]
+usage: autorecon [-t TARGET_FILE] [-p PORTS] [-m MAX_SCANS] [-mp MAX_PORT_SCANS] [-c CONFIG_FILE] [-g GLOBAL_FILE]
+                 [--tags TAGS] [--exclude-tags TAGS] [--port-scans PLUGINS] [--service-scans PLUGINS]
+                 [--reports PLUGINS] [--plugins-dir PLUGINS_DIR] [--add-plugins-dir PLUGINS_DIR] [-l [TYPE]] [-o OUTDIR]
+                 [--single-target] [--only-scans-dir] [--create-port-dirs] [--heartbeat HEARTBEAT] [--timeout TIMEOUT]
+                 [--target-timeout TARGET_TIMEOUT] [--nmap NMAP | --nmap-append NMAP_APPEND] [--proxychains]
+                 [--disable-sanity-checks] [--disable-keyboard-control] [--force-services SERVICE [SERVICE ...]]
+                 [--accessible] [-v] [--version] [--curl.path VALUE]
+                 [--dirbuster.tool {feroxbuster,gobuster,dirsearch,ffuf,dirb}] [--dirbuster.wordlist VALUE [VALUE ...]]
+                 [--dirbuster.threads VALUE] [--dirbuster.ext VALUE] [--onesixtyone.community-strings VALUE]
+                 [--global.username-wordlist VALUE] [--global.password-wordlist VALUE] [--global.domain VALUE] [-h]
+                 [targets ...]
 
 Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.
 
 positional arguments:
-  targets               IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.
+  targets               IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g.
+                        foo.bar) to scan.
 
 optional arguments:
   -t TARGET_FILE, --targets TARGET_FILE
                         Read targets from file.
   -p PORTS, --ports PORTS
-                        Comma separated list of ports / port ranges to scan. Specify TCP/UDP ports by prepending list with T:/U: To scan both
-                        TCP/UDP, put port(s) at start or specify B: e.g. 53,T:21-25,80,U:123,B:123. Default: None
+                        Comma separated list of ports / port ranges to scan. Specify TCP/UDP ports by prepending list
+                        with T:/U: To scan both TCP/UDP, put port(s) at start or specify B: e.g.
+                        53,T:21-25,80,U:123,B:123. Default: None
   -m MAX_SCANS, --max-scans MAX_SCANS
                         The maximum number of concurrent scans to run. Default: 50
   -mp MAX_PORT_SCANS, --max-port-scans MAX_PORT_SCANS
-                        The maximum number of concurrent port scans to run. Default: 10 (approx 20% of max-scans unless specified)
+                        The maximum number of concurrent port scans to run. Default: 10 (approx 20% of max-scans unless
+                        specified)
   -c CONFIG_FILE, --config CONFIG_FILE
-                        Location of AutoRecon's config file. Default: /mnt/hgfs/AutoRecon/config.toml
+                        Location of AutoRecon's config file. Default: /home/tib3rius/.config/AutoRecon/config.toml
   -g GLOBAL_FILE, --global-file GLOBAL_FILE
-                        Location of AutoRecon's global file. Default: /mnt/hgfs/AutoRecon/global.toml
-  --tags TAGS           Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group tags together. Separate
-                        groups with a comma (,) to create multiple groups. For a plugin to be included, it must have all the tags specified in
-                        at least one group. Default: default
-  --exclude-tags TAGS   Tags to determine which plugins should be excluded. Separate tags by a plus symbol (+) to group tags together. Separate
-                        groups with a comma (,) to create multiple groups. For a plugin to be excluded, it must have all the tags specified in
-                        at least one group. Default: None
-  --port-scans PLUGINS  Override --tags / --exclude-tags for the listed PortScan plugins (comma separated). Default: None
+                        Location of AutoRecon's global file. Default: /home/tib3rius/.config/AutoRecon/global.toml
+  --tags TAGS           Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group
+                        tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be
+                        included, it must have all the tags specified in at least one group. Default: default
+  --exclude-tags TAGS   Tags to determine which plugins should be excluded. Separate tags by a plus symbol (+) to group
+                        tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be
+                        excluded, it must have all the tags specified in at least one group. Default: None
+  --port-scans PLUGINS  Override --tags / --exclude-tags for the listed PortScan plugins (comma separated). Default:
+                        None
   --service-scans PLUGINS
-                        Override --tags / --exclude-tags for the listed ServiceScan plugins (comma separated). Default: None
+                        Override --tags / --exclude-tags for the listed ServiceScan plugins (comma separated). Default:
+                        None
   --reports PLUGINS     Override --tags / --exclude-tags for the listed Report plugins (comma separated). Default: None
   --plugins-dir PLUGINS_DIR
-                        The location of the plugins directory. Default: /mnt/hgfs/AutoRecon/plugins
+                        The location of the plugins directory. Default: /home/tib3rius/.config/AutoRecon/plugins
   --add-plugins-dir PLUGINS_DIR
                         The location of an additional plugins directory to add to the main one. Default: None
   -l [TYPE], --list [TYPE]
                         List all plugins or plugins of a specific type. e.g. --list, --list port, --list service
   -o OUTDIR, --output OUTDIR
                         The output directory for results. Default: results
-  --single-target       Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will
-                        be created within the output directory. Default: False
-  --only-scans-dir      Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created.
-                        Default: False
-  --create-port-dirs    Create directories for ports within the "scans" directory (e.g. scans/tcp80, scans/udp53) and store results in these
-                        directories. Default: True
+  --single-target       Only scan a single target. A directory named after the target will not be created. Instead, the
+                        directory structure will be created within the output directory. Default: False
+  --only-scans-dir      Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report)
+                        will not be created. Default: False
+  --create-port-dirs    Create directories for ports within the "scans" directory (e.g. scans/tcp80, scans/udp53) and
+                        store results in these directories. Default: True
   --heartbeat HEARTBEAT
                         Specifies the heartbeat interval (in seconds) for scan status messages. Default: 60
   --timeout TIMEOUT     Specifies the maximum amount of time in minutes that AutoRecon should run for. Default: None
   --target-timeout TARGET_TIMEOUT
-                        Specifies the maximum amount of time in minutes that a target should be scanned for before abandoning it and moving on.
-                        Default: None
+                        Specifies the maximum amount of time in minutes that a target should be scanned for before
+                        abandoning it and moving on. Default: None
   --nmap NMAP           Override the {nmap_extra} variable in scans. Default: -vv --reason -Pn
   --nmap-append NMAP_APPEND
                         Append to the default {nmap_extra} variable in scans. Default: -T4
@@ -200,23 +229,25 @@ plugin arguments:
                         The tool to use for directory busting. Default: feroxbuster
   --dirbuster.wordlist VALUE [VALUE ...]
                         The wordlist(s) to use when directory busting. Separate multiple wordlists with spaces. Default:
-                        ['/usr/share/seclists/Discovery/Web-Content/common.txt', '/usr/share/seclists/Discovery/Web-Content/big.txt',
-                        '/usr/share/seclists/Discovery/Web-Content/raft-large-words.txt']
+                        ['/usr/share/seclists/Discovery/Web-Content/common.txt', '/usr/share/seclists/Discovery/Web-
+                        Content/big.txt', '/usr/share/seclists/Discovery/Web-Content/raft-large-words.txt']
   --dirbuster.threads VALUE
                         The number of threads to use when directory busting. Default: 10
   --dirbuster.ext VALUE
                         The extensions you wish to fuzz (no dot, comma separated). Default: txt,html,php,asp,aspx,jsp
   --onesixtyone.community-strings VALUE
-                        The file containing a list of community strings to try. Default: /usr/share/seclists/Discovery/SNMP/common-snmp-
-                        community-strings-onesixtyone.txt
+                        The file containing a list of community strings to try. Default:
+                        /usr/share/seclists/Discovery/SNMP/common-snmp-community-strings-onesixtyone.txt
 
 global plugin arguments:
   These are optional arguments that can be used by all plugins.
 
   --global.username-wordlist VALUE
-                        A wordlist of usernames, useful for bruteforcing. Default: /usr/share/seclists/Usernames/top-usernames-shortlist.txt
+                        A wordlist of usernames, useful for bruteforcing. Default: /usr/share/seclists/Usernames/top-
+                        usernames-shortlist.txt
   --global.password-wordlist VALUE
-                        A wordlist of passwords, useful for bruteforcing. Default: /usr/share/seclists/Passwords/darkweb2017-top100.txt
+                        A wordlist of passwords, useful for bruteforcing. Default:
+                        /usr/share/seclists/Passwords/darkweb2017-top100.txt
   --global.domain VALUE
                         The domain to use (if known). Used for DNS and/or Active Directory. Default: None
 ```
@@ -228,7 +259,7 @@ AutoRecon supports four levels of verbosity:
 * (none) Minimal output. AutoRecon will announce when scanning targets starts / ends.
 * (-v) Verbose output. AutoRecon will additionally announce when plugins start running, and report open ports and identified services.
 * (-vv) Very verbose output. AutoRecon will additionally specify the exact commands which are being run by plugins, highlight any patterns which are matched in command output, and announce when plugins end.
-* (-vvv) Very very verbose output. AutoRecon will output everything. Literally every line from all commands which are currently running. When scanning multiple targets concurrently, this can lead to a ridiculous amount of output. It is not advised to use -vvv unless you absolutely need to see live output from commands.
+* (-vvv) Very, very verbose output. AutoRecon will output everything. Literally every line from all commands which are currently running. When scanning multiple targets concurrently, this can lead to a ridiculous amount of output. It is not advised to use -vvv unless you absolutely need to see live output from commands.
 
 Note: You can change the verbosity of AutoRecon mid-scan by pressing the up and down arrow keys.
 
