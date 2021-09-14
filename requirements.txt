@@ -1,3 +1,4 @@
+appdirs
 colorama
 toml
-appdirs
+unidecode

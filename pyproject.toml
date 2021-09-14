@@ -1,28 +1,26 @@
 [tool.poetry]
 name = "autorecon"
-version = "1.0.0"
-description = "A multi-threaded network reconaissance tool which performs automated enumeration of services"
+version = "2.0.0"
+description = "A multi-threaded network reconnaissance tool which performs automated enumeration of services."
 authors = ["Tib3rius"]
-license = "GPL-3.0-only"
-readme = "README.md"
-homepage = "https://github.com/Tib3rius/AutoRecon"
-repository = "https://github.com/Tib3rius/AutoRecon"
+license = "GNU GPL v3"
+exclude = ["autorecon.py"]
 packages = [
-	{include = "autorecon", from = "src"},
+	{ include = "autorecon" },
 ]
 
 [tool.poetry.dependencies]
 python = "^3.7"
-toml = "^0.10.0"
-colorama = "^0.4.3"
-appdirs = "^1.4.3"
+appdirs = "^1.4.4"
+colorama = "^0.4.4"
+toml = "^0.10.2"
+Unidecode = "^1.3.1"
 
 [tool.poetry.dev-dependencies]
 
-
 [tool.poetry.scripts]
-autorecon = 'autorecon.autorecon:main'
+autorecon = "autorecon.main:main"
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
