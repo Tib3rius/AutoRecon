@@ -58,7 +58,12 @@ python3 -m pipx ensurepath
 
 You will have to re-source your ~/.bashrc or ~/.zshrc file (or open a new tab) after running these commands in order to use pipx.
 
-Note that if you want to run AutoRecon via pipx using sudo, you'll have to install pipx and AutoRecon using sudo as well.
+Note that if you want to run AutoRecon using sudo, you have to use _one_ of the following examples:
+
+```bash
+sudo env "PATH=$PATH" autorecon [OPTIONS]
+sudo $(which autorecon) [OPTIONS]
+```
 
 ### Supporting packages
 
