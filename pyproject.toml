@@ -4,6 +4,10 @@ version = "2.0.0"
 description = "A multi-threaded network reconnaissance tool which performs automated enumeration of services."
 authors = ["Tib3rius"]
 license = "GNU GPL v3"
+exclude = ["autorecon.py"]
+packages = [
+	{ include = "autorecon" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.7"

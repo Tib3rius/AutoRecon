@@ -17,15 +17,21 @@ from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, 
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
+VERSION = "2.0.0"
+
 def install():
-	shutil.rmtree(config['config_dir'], ignore_errors=True)
+	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
 	os.makedirs(config['config_dir'], exist_ok=True)
+	open(os.path.join(config['config_dir'], 'VERSION-' + VERSION), 'a').close()
 	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.toml'), os.path.join(config['config_dir'], 'config.toml'))
 	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'global.toml'), os.path.join(config['config_dir'], 'global.toml'))
 	shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default-plugins'), os.path.join(config['config_dir'], 'plugins'))
 
 if not os.path.exists(config['config_dir']):
 	install()
+else:
+	if not os.path.exists(os.path.join(config['config_dir'], 'VERSION-' + VERSION)):
+		pass
 
 # Save current terminal settings so we can restore them.
 terminal_settings = termios.tcgetattr(sys.stdin.fileno())
@@ -763,7 +769,7 @@ async def run():
 	autorecon.argparse = parser
 
 	if args.version:
-		print('AutoRecon v2.0')
+		print('AutoRecon v' + VERSION)
 		sys.exit(0)
 
 	# Parse config file and args for global.toml first.
