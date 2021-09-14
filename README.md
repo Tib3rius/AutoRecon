@@ -42,8 +42,8 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 If you don't have these installed, and are running Kali Linux, you can execute the following:
 
 ```bash
-$ sudo apt install python3
-$ sudo apt install python3-pip
+sudo apt install python3
+sudo apt install python3-pip
 ```
 
 ### `pipx`
@@ -51,9 +51,9 @@ $ sudo apt install python3-pip
 Further, it's recommended you use `pipx` to manage your python packages; this installs each python package in it's own virtualenv, and makes it available in the global context, which avoids conflicting package dependencies and the resulting instability. To summarize the installation instructions:
 
 ```bash
-$ sudo apt install python3-venv
-$ python3 -m pip install --user pipx
-$ python3 -m pipx ensurepath
+sudo apt install python3-venv
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
 ```
 
 You will have to re-source your ~/.bashrc or ~/.zshrc file (or open a new tab) after running these commands in order to use pipx.
@@ -65,7 +65,7 @@ Note that if you want to run AutoRecon via pipx using sudo, you'll have to insta
 Several commands used in AutoRecon reference the SecLists project, in the directory /usr/share/seclists/. You can either manually download the SecLists project to this directory (https://github.com/danielmiessler/SecLists), or if you are using Kali Linux (**highly recommended**) you can run the following:
 
 ```bash
-$ sudo apt install seclists
+sudo apt install seclists
 ```
 
 AutoRecon will still run if you do not install SecLists, though several commands may fail, and some manual commands may not run either.
@@ -96,7 +96,7 @@ wkhtmltopdf
 On Kali Linux, you can ensure these are all installed using the following command:
 
 ```bash
-$ sudo apt install seclists curl enum4linux feroxbuster impacket-scripts nbtscan nikto nmap onesixtyone oscanner redis-tools smbclient smbmap snmp sslscan sipvicious tnscmd10g whatweb wkhtmltopdf
+sudo apt install seclists curl enum4linux feroxbuster impacket-scripts nbtscan nikto nmap onesixtyone oscanner redis-tools smbclient smbmap snmp sslscan sipvicious tnscmd10g whatweb wkhtmltopdf
 ```
 
 ## Installation
@@ -108,7 +108,7 @@ Ensure you have all of the requirements installed as per the previous section.
 If installing using pipx, you'll need to run the installation command as root or with sudo in order to be able to run autorecon using sudo:
 
 ```bash
-$ pipx install git+https://github.com/Tib3rius/AutoRecon.git
+pipx install git+https://github.com/Tib3rius/AutoRecon.git
 ```
 
 ### Using `pip`
@@ -116,7 +116,7 @@ $ pipx install git+https://github.com/Tib3rius/AutoRecon.git
 If installing using pip, you'll need to run the installation command as root or with sudo in order to be able to run autorecon using sudo:
 
 ```bash
-$ sudo python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
+sudo python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
 ```
 
 ### Manual
@@ -124,13 +124,13 @@ $ sudo python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
 If you'd prefer not to use `pip` or `pipx`, you can always still install and execute `autorecon.py` manually as a script. From within the AutoRecon directory, install the dependencies:
 
 ```bash
-$ python3 -m pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
 
 You will then be able to run the `autorecon.py` script:
 
 ```bash
-$ python3 autorecon.py [OPTIONS] 127.0.0.1
+python3 autorecon.py [OPTIONS] 127.0.0.1
 ```
 
 See detailed usage options below.
