@@ -140,6 +140,10 @@ python3 autorecon.py [OPTIONS] 127.0.0.1
 
 See detailed usage options below.
 
+## Upgrading
+
+A plugin update process is in the works. Until then, after upgrading, remove the ~/.config/AutoRecon directory and run AutoRecon with any argument to repopulate with the latest files.
+
 ## Usage
 
 AutoRecon uses Python 3 specific functionality and does not support Python 2.
