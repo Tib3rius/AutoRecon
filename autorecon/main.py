@@ -34,7 +34,7 @@ else:
 	if not os.path.exists(os.path.join(config['config_dir'], 'plugins')):
 		shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default-plugins'), os.path.join(config['config_dir'], 'plugins'))
 	if not os.path.exists(os.path.join(config['config_dir'], 'VERSION-' + VERSION)):
-		pass
+		warn('It looks like the config/plugins in ' + config['config_dir'] + ' are outdated. Please remove the directory and re-run AutoRecon to rebuild them.')
 
 # Save current terminal settings so we can restore them.
 terminal_settings = termios.tcgetattr(sys.stdin.fileno())
