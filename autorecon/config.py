@@ -42,7 +42,7 @@ configurable_boolean_keys = [
 config = {
 	'protected_classes': ['autorecon', 'target', 'service', 'commandstreamreader', 'plugin', 'portscan', 'servicescan', 'global', 'pattern'],
 	'config_dir': config_dir,
-	'global_file': os.path.join(config_dir, 'global.toml'),
+	'global_file': None,
 	'ports': None,
 	'max_scans': 50,
 	'max_port_scans': None,
@@ -51,7 +51,7 @@ config = {
 	'port_scans': None,
 	'service_scans': None,
 	'reports': None,
-	'plugins_dir': os.path.join(config_dir, 'plugins'),
+	'plugins_dir': None,
 	'add_plugins_dir': None,
 	'outdir': 'results',
 	'single_target': False,

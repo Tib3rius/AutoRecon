@@ -19,17 +19,20 @@ from autorecon.targets import Target, Service
 
 VERSION = "2.0.0"
 
-def install():
+if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
 	os.makedirs(config['config_dir'], exist_ok=True)
 	open(os.path.join(config['config_dir'], 'VERSION-' + VERSION), 'a').close()
 	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.toml'), os.path.join(config['config_dir'], 'config.toml'))
 	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'global.toml'), os.path.join(config['config_dir'], 'global.toml'))
 	shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default-plugins'), os.path.join(config['config_dir'], 'plugins'))
-
-if not os.path.exists(config['config_dir']):
-	install()
 else:
+	if not os.path.exists(os.path.join(config['config_dir'], 'config.toml')):
+		shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.toml'), os.path.join(config['config_dir'], 'config.toml'))
+	if not os.path.exists(os.path.join(config['config_dir'], 'global.toml')):
+		shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'global.toml'), os.path.join(config['config_dir'], 'global.toml'))
+	if not os.path.exists(os.path.join(config['config_dir'], 'plugins')):
+		shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default-plugins'), os.path.join(config['config_dir'], 'plugins'))
 	if not os.path.exists(os.path.join(config['config_dir'], 'VERSION-' + VERSION)):
 		pass
 
@@ -728,14 +731,38 @@ async def scan_target(target):
 		autorecon.scanning_targets.remove(target)
 
 async def run():
+	# Find config file.
+	if os.path.isfile(os.path.join(os.getcwd(), 'config.toml')):
+		config_file = os.path.join(os.getcwd(), 'config.toml')
+	elif os.path.isfile(os.path.join(config['config_dir'], 'config.toml')):
+		config_file = os.path.join(config['config_dir'], 'config.toml')
+	else:
+		config_file = None
+
+	# Find global file.
+	if os.path.isfile(os.path.join(os.getcwd(), 'global.toml')):
+		config['global_file'] = os.path.join(os.getcwd(), 'global.toml')
+	elif os.path.isfile(os.path.join(config['config_dir'], 'global.toml')):
+		config['global_file'] = os.path.join(config['config_dir'], 'global.toml')
+	else:
+		config['global_file'] = None
+
+	# Find plugins.
+	if os.path.isdir(os.path.join(os.getcwd(), 'plugins')):
+		config['plugins_dir'] = os.path.join(os.getcwd(), 'plugins')
+	elif os.path.isdir(os.path.join(config['config_dir'], 'plugins')):
+		config['plugins_dir'] = os.path.join(config['config_dir'], 'plugins')
+	else:
+		config['plugins_dir'] = None
+
 	parser = argparse.ArgumentParser(add_help=False, description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
 	parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs='*')
 	parser.add_argument('-t', '--targets', action='store', type=str, default='', dest='target_file', help='Read targets from file.')
 	parser.add_argument('-p', '--ports', action='store', type=str, help='Comma separated list of ports / port ranges to scan. Specify TCP/UDP ports by prepending list with T:/U: To scan both TCP/UDP, put port(s) at start or specify B: e.g. 53,T:21-25,80,U:123,B:123. Default: %(default)s')
 	parser.add_argument('-m', '--max-scans', action='store', type=int, help='The maximum number of concurrent scans to run. Default: %(default)s')
 	parser.add_argument('-mp', '--max-port-scans', action='store', type=int, help='The maximum number of concurrent port scans to run. Default: 10 (approx 20%% of max-scans unless specified)')
-	parser.add_argument('-c', '--config', action='store', type=str, default=os.path.join(config['config_dir'], 'config.toml'), dest='config_file', help='Location of AutoRecon\'s config file. Default: %(default)s')
-	parser.add_argument('-g', '--global-file', action='store', type=str, dest='global_file', help='Location of AutoRecon\'s global file. Default: ' + os.path.join(config['config_dir'], 'global.toml'))
+	parser.add_argument('-c', '--config', action='store', type=str, default=config_file, dest='config_file', help='Location of AutoRecon\'s config file. Default: %(default)s')
+	parser.add_argument('-g', '--global-file', action='store', type=str, dest='global_file', help='Location of AutoRecon\'s global file. Default: %(default)s')
 	parser.add_argument('--tags', action='store', type=str, default='default', help='Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be included, it must have all the tags specified in at least one group. Default: %(default)s')
 	parser.add_argument('--exclude-tags', action='store', type=str, default='', metavar='TAGS', help='Tags to determine which plugins should be excluded. Separate tags by a plus symbol (+) to group tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be excluded, it must have all the tags specified in at least one group. Default: %(default)s')
 	parser.add_argument('--port-scans', action='store', type=str, metavar='PLUGINS', help='Override --tags / --exclude-tags for the listed PortScan plugins (comma separated). Default: %(default)s')
@@ -772,8 +799,18 @@ async def run():
 		print('AutoRecon v' + VERSION)
 		sys.exit(0)
 
+	def unknown_help():
+		if '-h' in unknown:
+			parser.print_help()
+			print()
+
 	# Parse config file and args for global.toml first.
+	if not args.config_file:
+		unknown_help()
+		fail('Error: Could not find config.toml in the current directory or ~/.config/AutoRecon.')
+
 	if not os.path.isfile(args.config_file):
+		unknown_help()
 		fail('Error: Specified config file "' + args.config_file + '" does not exist.')
 
 	with open(args.config_file) as c:
@@ -788,6 +825,7 @@ async def run():
 				elif key == 'add-plugins-dir':
 					config['add_plugins_dir'] = val
 		except toml.decoder.TomlDecodeError:
+			unknown_help()
 			fail('Error: Couldn\'t parse ' + args.config_file + ' config file. Check syntax.')
 
 	args_dict = vars(args)
@@ -800,10 +838,16 @@ async def run():
 		elif key == 'add-plugins-dir' and args_dict['add_plugins_dir'] is not None:
 			config['add_plugins_dir'] = args_dict['add_plugins_dir']
 
+	if not config['plugins_dir']:
+		unknown_help()
+		fail('Error: Could not find plugins directory in the current directory or ~/.config/AutoRecon.')
+
 	if not os.path.isdir(config['plugins_dir']):
+		unknown_help()
 		fail('Error: Specified plugins directory "' + config['plugins_dir'] + '" does not exist.')
 
 	if config['add_plugins_dir'] and not os.path.isdir(config['add_plugins_dir']):
+		unknown_help()
 		fail('Error: Specified additional plugins directory "' + config['add_plugins_dir'] + '" does not exist.')
 
 	plugins_dirs = [config['plugins_dir']]
@@ -830,6 +874,7 @@ async def run():
 							continue
 
 						if c.__name__.lower() in config['protected_classes']:
+							unknown_help()
 							print('Plugin "' + c.__name__ + '" in ' + filename + ' is using a protected class name. Please change it.')
 							sys.exit(1)
 
@@ -839,17 +884,20 @@ async def run():
 						else:
 							print('Plugin "' + c.__name__ + '" in ' + filename + ' is not a subclass of either PortScan, ServiceScan, or Report.')
 				except (ImportError, SyntaxError) as ex:
+					unknown_help()
 					print('cannot import ' + filename + ' plugin')
 					print(ex)
 					sys.exit(1)
 
 	for plugin in autorecon.plugins.values():
 		if plugin.slug in autorecon.taglist:
+			unknown_help()
 			fail('Plugin ' + plugin.name + ' has a slug (' + plugin.slug + ') with the same name as a tag. Please either change the plugin name or override the slug.')
 		# Add plugin slug to tags.
 		plugin.tags += [plugin.slug]
 
 	if len(autorecon.plugin_types['port']) == 0:
+		unknown_help()
 		fail('Error: There are no valid PortScan plugins in the plugins directory "' + config['plugins_dir'] + '".')
 
 	# Sort plugins by priority.
@@ -857,7 +905,12 @@ async def run():
 	autorecon.plugin_types['service'].sort(key=lambda x: x.priority)
 	autorecon.plugin_types['report'].sort(key=lambda x: x.priority)
 
+	if not config['global_file']:
+		unknown_help()
+		fail('Error: Could not find global.toml in the current directory or ~/.config/AutoRecon.')
+
 	if not os.path.isfile(config['global_file']):
+		unknown_help()
 		fail('Error: Specified global file "' + config['global_file'] + '" does not exist.')
 
 	global_plugin_args = None
@@ -920,11 +973,14 @@ async def run():
 								else:
 									autorecon.patterns.append(Pattern(compiled))
 							except re.error:
+								unknown_help()
 								fail('Error: The pattern "' + pattern['pattern'] + '" in the global file is invalid regex.')
 						else:
+							unknown_help()
 							fail('Error: A [[pattern]] in the global file doesn\'t have a required pattern variable.')
 
 		except toml.decoder.TomlDecodeError:
+			unknown_help()
 			fail('Error: Couldn\'t parse ' + g.name + ' file. Check syntax.')
 
 	other_options = []
