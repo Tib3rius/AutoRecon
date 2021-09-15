@@ -176,9 +176,9 @@ optional arguments:
                         The maximum number of concurrent port scans to run. Default: 10 (approx 20% of max-scans unless
                         specified)
   -c CONFIG_FILE, --config CONFIG_FILE
-                        Location of AutoRecon's config file. Default: /home/tib3rius/.config/AutoRecon/config.toml
+                        Location of AutoRecon's config file. Default: ~/.config/AutoRecon/config.toml
   -g GLOBAL_FILE, --global-file GLOBAL_FILE
-                        Location of AutoRecon's global file. Default: /home/tib3rius/.config/AutoRecon/global.toml
+                        Location of AutoRecon's global file. Default: ~/.config/AutoRecon/global.toml
   --tags TAGS           Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group
                         tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be
                         included, it must have all the tags specified in at least one group. Default: default
@@ -192,7 +192,7 @@ optional arguments:
                         None
   --reports PLUGINS     Override --tags / --exclude-tags for the listed Report plugins (comma separated). Default: None
   --plugins-dir PLUGINS_DIR
-                        The location of the plugins directory. Default: /home/tib3rius/.config/AutoRecon/plugins
+                        The location of the plugins directory. Default: ~/.config/AutoRecon/plugins
   --add-plugins-dir PLUGINS_DIR
                         The location of an additional plugins directory to add to the main one. Default: None
   -l [TYPE], --list [TYPE]
