@@ -12,7 +12,7 @@ class CherryTree(Report):
 
 	async def run(self, targets):
 		if len(targets) > 1:
-			report = os.path.join(config['outdir'], 'report.xml.ctd')
+			report = os.path.join(config['output'], 'report.xml.ctd')
 		elif len(targets) == 1:
 			report = os.path.join(targets[0].reportdir, 'report.xml.ctd')
 		else:
@@ -98,7 +98,7 @@ class Markdown(Report):
 
 	async def run(self, targets):
 		if len(targets) > 1:
-			report = os.path.join(config['outdir'], 'report.md')
+			report = os.path.join(config['output'], 'report.md')
 		elif len(targets) == 1:
 			report = os.path.join(targets[0].reportdir, 'report.md')
 		else:

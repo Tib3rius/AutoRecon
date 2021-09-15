@@ -147,14 +147,15 @@ AutoRecon uses Python 3 specific functionality and does not support Python 2.
 ```
 usage: autorecon [-t TARGET_FILE] [-p PORTS] [-m MAX_SCANS] [-mp MAX_PORT_SCANS] [-c CONFIG_FILE] [-g GLOBAL_FILE]
                  [--tags TAGS] [--exclude-tags TAGS] [--port-scans PLUGINS] [--service-scans PLUGINS]
-                 [--reports PLUGINS] [--plugins-dir PLUGINS_DIR] [--add-plugins-dir PLUGINS_DIR] [-l [TYPE]] [-o OUTDIR]
-                 [--single-target] [--only-scans-dir] [--create-port-dirs] [--heartbeat HEARTBEAT] [--timeout TIMEOUT]
-                 [--target-timeout TARGET_TIMEOUT] [--nmap NMAP | --nmap-append NMAP_APPEND] [--proxychains]
-                 [--disable-sanity-checks] [--disable-keyboard-control] [--force-services SERVICE [SERVICE ...]]
-                 [--accessible] [-v] [--version] [--curl.path VALUE]
-                 [--dirbuster.tool {feroxbuster,gobuster,dirsearch,ffuf,dirb}] [--dirbuster.wordlist VALUE [VALUE ...]]
-                 [--dirbuster.threads VALUE] [--dirbuster.ext VALUE] [--onesixtyone.community-strings VALUE]
-                 [--global.username-wordlist VALUE] [--global.password-wordlist VALUE] [--global.domain VALUE] [-h]
+                 [--reports PLUGINS] [--plugins-dir PLUGINS_DIR] [--add-plugins-dir PLUGINS_DIR] [-l [TYPE]]
+                 [-o OUTPUT] [--single-target] [--only-scans-dir] [--create-port-dirs] [--heartbeat HEARTBEAT]
+                 [--timeout TIMEOUT] [--target-timeout TARGET_TIMEOUT] [--nmap NMAP | --nmap-append NMAP_APPEND]
+                 [--proxychains] [--disable-sanity-checks] [--disable-keyboard-control]
+                 [--force-services SERVICE [SERVICE ...]] [--accessible] [-v] [--version] [--curl.path VALUE]
+                 [--dirbuster.tool {feroxbuster,gobuster,dirsearch,ffuf,dirb}]
+                 [--dirbuster.wordlist VALUE [VALUE ...]] [--dirbuster.threads VALUE] [--dirbuster.ext VALUE]
+                 [--onesixtyone.community-strings VALUE] [--global.username-wordlist VALUE]
+                 [--global.password-wordlist VALUE] [--global.domain VALUE] [-h]
                  [targets ...]
 
 Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.
@@ -164,7 +165,7 @@ positional arguments:
                         foo.bar) to scan.
 
 optional arguments:
-  -t TARGET_FILE, --targets TARGET_FILE
+  -t TARGET_FILE, --target-file TARGET_FILE
                         Read targets from file.
   -p PORTS, --ports PORTS
                         Comma separated list of ports / port ranges to scan. Specify TCP/UDP ports by prepending list
@@ -197,7 +198,7 @@ optional arguments:
                         The location of an additional plugins directory to add to the main one. Default: None
   -l [TYPE], --list [TYPE]
                         List all plugins or plugins of a specific type. e.g. --list, --list port, --list service
-  -o OUTDIR, --output OUTDIR
+  -o OUTPUT, --output OUTPUT
                         The output directory for results. Default: results
   --single-target       Only scan a single target. A directory named after the target will not be created. Instead, the
                         directory structure will be created within the output directory. Default: False
