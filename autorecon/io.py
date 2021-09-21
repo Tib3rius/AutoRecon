@@ -71,7 +71,7 @@ def cprint(*args, color=Fore.RESET, char='*', sep=' ', end='\n', frame_index=1, 
 		return fmted
 
 def debug(*args, color=Fore.GREEN, sep=' ', end='\n', file=sys.stdout, **kvargs):
-	if verbose >= 2:
+	if config['verbose'] >= 2:
 		if config['accessible']:
 			args = ('Debug:',) + args
 		cprint(*args, color=color, char='-', sep=sep, end=end, file=file, frame_index=2, **kvargs)
