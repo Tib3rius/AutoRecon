@@ -68,10 +68,11 @@ class CurlRobots(ServiceScan):
 
 	async def run(self, service):
 		if service.protocol == 'tcp':
-			_, stdout, _ = await service.execute('curl -sSikf {http_scheme}://{addressv6}:{port}/robots.txt', future_outfile='{protocol}_{port}_{http_scheme}_curl-robots.txt')
+			process, stdout, _ = await service.execute('curl -sSikf {http_scheme}://{addressv6}:{port}/robots.txt', future_outfile='{protocol}_{port}_{http_scheme}_curl-robots.txt')
+
 			lines = await stdout.readlines()
 
-			if lines:
+			if process.returncode == 0 and lines:
 				filename = fformat('{scandir}/{protocol}_{port}_{http_scheme}_curl-robots.txt')
 				with open(filename, mode='wt', encoding='utf8') as robots:
 					robots.write('\n'.join(lines))

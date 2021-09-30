@@ -17,7 +17,7 @@ from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, 
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
-VERSION = "2.0.1"
+VERSION = "2.0.2"
 
 if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
@@ -627,7 +627,12 @@ async def scan_target(target):
 
 						for member_name, _ in inspect.getmembers(plugin, predicate=inspect.ismethod):
 							if member_name == 'manual':
-								plugin.manual(service, plugin_was_run)
+								try:
+									plugin.manual(service, plugin_was_run)
+								except Exception as ex:
+									exc_type, exc_value, exc_tb = sys.exc_info()
+									error_text = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb)[-2:])
+									cprint('Error: Service scan {bblue}' + plugin.name + ' {green}(' + plugin_tag + '){rst} running against {byellow}' + target.address + '{rst} produced an exception:\n\n' + error_text, color=Fore.RED, char='!', printmsg=True)
 
 								if service.manual_commands:
 									plugin_run = False
