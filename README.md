@@ -30,6 +30,9 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 * Full logging of commands that were run, along with errors if they fail.
 * Global and per-scan pattern matching so you can highlight/extract important information from the noise.
 
+## Quick Install (Google Cloud Shell)
+
+
 ## Quick Install (Docker)
 
 If you don't have a Kali instance, you can quickly install AutoRecon using the Dockerfile in the repository. Simply download the Dockerfile, and run the following command from the same directory:
