@@ -17,7 +17,7 @@ from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, 
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
-VERSION = "2.0.2"
+VERSION = "2.0.3"
 
 if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
@@ -632,7 +632,7 @@ async def scan_target(target):
 								except Exception as ex:
 									exc_type, exc_value, exc_tb = sys.exc_info()
 									error_text = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb)[-2:])
-									cprint('Error: Service scan {bblue}' + plugin.name + ' {green}(' + plugin_tag + '){rst} running against {byellow}' + target.address + '{rst} produced an exception:\n\n' + error_text, color=Fore.RED, char='!', printmsg=True)
+									cprint('Error: Service scan {bblue}' + plugin.name + ' {green}(' + plugin_tag + '){rst} running against {byellow}' + target.address + '{rst} produced an exception when generating manual commands:\n\n' + error_text, color=Fore.RED, char='!', printmsg=True)
 
 								if service.manual_commands:
 									plugin_run = False
@@ -646,9 +646,14 @@ async def scan_target(target):
 												file.write(e('[*] {service.name} on {service.protocol}/{service.port}\n\n'))
 												heading = True
 											for description, commands in service.manual_commands.items():
-												file.write('\t[-] ' + e(description) + '\n\n')
-												for command in commands:
-													file.write('\t\t' + e(command) + '\n\n')
+												try:
+													file.write('\t[-] ' + e(description) + '\n\n')
+													for command in commands:
+														file.write('\t\t' + e(command) + '\n\n')
+												except Exception as ex:
+													exc_type, exc_value, exc_tb = sys.exc_info()
+													error_text = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb)[-2:])
+													cprint('Error: Service scan {bblue}' + plugin.name + ' {green}(' + plugin_tag + '){rst} running against {byellow}' + target.address + '{rst} produced an exception when evaluating manual commands:\n\n' + error_text, color=Fore.RED, char='!', printmsg=True)
 											file.flush()
 
 								service.manual_commands = {}
