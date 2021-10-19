@@ -17,7 +17,7 @@ from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, 
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
-VERSION = "2.0.4"
+VERSION = "2.0.5"
 
 if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
@@ -694,7 +694,7 @@ async def scan_target(target):
 
 			if not service_match:
 				warn('{byellow}[' + target.address + ']{srst} Service ' + service.full_tag() + ' did not match any plugins based on the service name.{rst}', verbosity=2)
-				if service.full_tag() not in target.autorecon.missing_services:
+				if service.name != 'tcpwrapped' and service.full_tag() not in target.autorecon.missing_services:
 					target.autorecon.missing_services.append(service.full_tag())
 
 	for plugin in target.autorecon.plugin_types['report']:
