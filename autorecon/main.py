@@ -517,6 +517,11 @@ async def scan_target(target):
 			protocol = service.protocol
 			port = service.port
 
+			if config['create_port_dirs']:
+				scandir = os.path.join(scandir, protocol + str(port))
+				os.makedirs(scandir, exist_ok=True)
+				os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
+
 			# Special cases for HTTP.
 			http_scheme = 'https' if 'https' in service.name or service.secure is True else 'http'
 
@@ -641,7 +646,7 @@ async def scan_target(target):
 											plugin_run = True
 											break
 									if not plugin.run_once_boolean or (plugin.run_once_boolean and not plugin_run):
-										with open(os.path.join(scandir, '_manual_commands.txt'), 'a') as file:
+										with open(os.path.join(target.scandir, '_manual_commands.txt'), 'a') as file:
 											if not heading:
 												file.write(e('[*] {service.name} on {service.protocol}/{service.port}\n\n'))
 												heading = True
