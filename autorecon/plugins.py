@@ -364,15 +364,6 @@ class ServiceScan(Plugin):
             # Add a "match all" service name.
             self.match_service_name('.*')
 
-    def get_previous_plugin_names(self):
-        return []
-
-    @final
-    def has_previous_plugins(self):
-        if self.get_previous_plugin_names():
-            return True
-        return False
-
 
 class Report(Plugin):
 
@@ -555,5 +546,4 @@ class AutoRecon(object):
         return process, cout, cerr
 
     def queue_new_service_scan(self, plugin, service):
-        # try using append. in the main method "pending" is sometimes set() and sometimes list()
         self.pending.append(asyncio.create_task(service_scan(plugin, service, run_from_service_scan=True)))
