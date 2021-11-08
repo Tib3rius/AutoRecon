@@ -53,7 +53,7 @@ async def get_semaphore(autorecon):
 
 async def service_scan(plugin, service, run_from_service_scan=False):
     # skip running service scan plugins that are meant to be run for specific services
-    if plugin.has_previous_plugins() and not run_from_service_scan:
+    if not plugin.run_standalone and not run_from_service_scan:
         return
 
     semaphore = service.target.autorecon.service_scan_semaphore
@@ -159,13 +159,23 @@ async def service_scan(plugin, service, run_from_service_scan=False):
 
 
 class Pattern:
-    def __init__(self, pattern, description=None, plugins=None):
+    def __init__(self, pattern, description=None, plugin_names=None):
         self.pattern = pattern
         self.description = description
-        if not plugins:
-            self.plugins = []
+        if not plugin_names:
+            self.plugin_names = []
         else:
-            self.plugins = plugins
+            self.plugin_names = plugin_names
+
+    def get_next_service_scan_plugins(self, autorecon):
+        next_plugins = []
+        if not self.plugin_names:
+            return next_plugins
+        for service_plugin in autorecon.plugin_types['service']:
+            for next_plugin in self.plugin_names:
+                if next_plugin == service_plugin.name:
+                    next_plugins.append(service_plugin)
+        return next_plugins
 
 
 class Plugin(object):
@@ -238,13 +248,13 @@ class Plugin(object):
         return self.get_global_option(name, default)
 
     @final
-    def add_pattern(self, pattern, description=None, plugins=None):
+    def add_pattern(self, pattern, description=None, plugin_names=None):
         try:
             compiled = re.compile(pattern)
             if description:
-                self.patterns.append(Pattern(compiled, description=description, plugins=plugins))
+                self.patterns.append(Pattern(compiled, description=description, plugin_names=plugin_names))
             else:
-                self.patterns.append(Pattern(compiled, plugins=plugins))
+                self.patterns.append(Pattern(compiled, plugin_names=plugin_names))
         except re.error:
             fail('Error: The pattern "' + pattern + '" in the plugin "' + self.name + '" is invalid regex.')
 
@@ -265,6 +275,7 @@ class ServiceScan(Plugin):
     def __init__(self):
         super().__init__()
         self.ports = {'tcp': [], 'udp': []}
+        self.run_standalone = True
         self.ignore_ports = {'tcp': [], 'udp': []}
         self.services = []
         self.service_names = []
@@ -542,21 +553,6 @@ class AutoRecon(object):
         asyncio.create_task(cerr._read())
 
         return process, cout, cerr
-
-    def get_plugin_by_name(self, name):
-        for key, value in self.plugins.items():
-            if value.name == name:
-                return self.plugins[key]
-
-    def get_next_service_scan_plugins(self, current_plugin):
-        next_plugins = []
-        for plugin in self.plugin_types['service']:
-            if not plugin.has_previous_plugins():
-                continue
-            for previous_plugin_name in plugin.get_previous_plugin_names():
-                if current_plugin.name == previous_plugin_name:
-                    next_plugins.append(plugin)
-        return next_plugins
 
     def queue_new_service_scan(self, plugin, service):
         # try using append. in the main method "pending" is sometimes set() and sometimes list()
