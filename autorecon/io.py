@@ -97,11 +97,12 @@ def fail(*args, sep=' ', end='\n', file=sys.stderr, **kvargs):
 
 class CommandStreamReader(object):
 
-	def __init__(self, stream, target, tag, patterns=None, outfile=None):
+	def __init__(self, stream, target, tag, patterns=None, outfile=None, plugin=None):
 		self.stream = stream
 		self.target = target
 		self.tag = tag
 		self.lines = []
+		self.plugin = plugin
 		self.patterns = patterns or []
 		self.outfile = outfile
 		self.ended = False
@@ -136,6 +137,22 @@ class CommandStreamReader(object):
 							else:
 								info('{bright}[{yellow}' + self.target.address + '{crst}/{bgreen}' + self.tag + '{crst}]{rst} {bmagenta}Matched Pattern: ' + match + '{rst}', verbosity=2)
 								file.writelines('Matched Pattern: ' + match + '\n\n')
+						debug(str(self.plugin.__dict__))
+						next_plugins = self.target.autorecon.get_next_service_scan_plugins(self.plugin)
+						info(str(next_plugins))
+						for next_plugin in next_plugins:
+							info("Dict: %s" % str(self.target.__dict__))
+							for service, details in self.target.scans.get('services', {}).items():
+								for key, value in details.items():
+									if value.get('plugin') == self.plugin:
+										info("Value: %s" % str(value))
+								#	info("Value: %s" % str(value))
+								#info("Service Details: %s" % str(details))
+								#new_service = Service()
+										self.target.autorecon.queue_new_service_scan(next_plugin, service)
+						#for next_plugin in next_plugins:
+							# async def service_scan(plugin, service, run_from_service_scan=False):
+							#autorecon_queue_service_scan(next_plugin, run_fr)
 
 			if self.outfile is not None:
 				with open(self.outfile, 'a') as writer:

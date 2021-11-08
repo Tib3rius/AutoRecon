@@ -121,7 +121,7 @@ class Service:
 		self.add_manual_commands(description, command)
 
 	@final
-	async def execute(self, cmd, blocking=True, outfile=None, errfile=None, future_outfile=None):
+	async def execute(self, cmd, blocking=True, outfile=None, errfile=None, future_outfile=None, plugin=None):
 		target = self.target
 
 		# Create variables for command references.
@@ -182,7 +182,7 @@ class Service:
 			with open(os.path.join(target.scandir, '_commands.log'), 'a') as file:
 				file.writelines(cmd + '\n\n')
 
-		process, stdout, stderr = await target.autorecon.execute(cmd, target, tag, patterns=plugin.patterns, outfile=outfile, errfile=errfile)
+		process, stdout, stderr = await target.autorecon.execute(cmd, target, tag, patterns=plugin.patterns, outfile=outfile, errfile=errfile, plugin=plugin)
 
 		target.running_tasks[tag]['processes'].append({'process': process, 'stderr': stderr, 'cmd': cmd})
 
