@@ -1,8 +1,44 @@
-import asyncio, inspect, os, re, sys
+import asyncio, inspect, re, sys
 from typing import final
 from autorecon.config import config
-from autorecon.io import slugify, error, fail, CommandStreamReader
+from autorecon.io import slugify, fail, CommandStreamReader
 from autorecon.targets import Service
+
+
+async def get_semaphore(autorecon):
+	semaphore = autorecon.service_scan_semaphore
+	while True:
+		# If service scan semaphore is locked, see if we can use port scan semaphore.
+		if semaphore.locked():
+			if semaphore != autorecon.port_scan_semaphore: # This will be true unless user sets max_scans == max_port_scans
+
+				port_scan_task_count = 0
+				for target in autorecon.scanning_targets:
+					for process_list in target.running_tasks.values():
+						if issubclass(process_list['plugin'].__class__, PortScan):
+							port_scan_task_count += 1
+
+				if not autorecon.pending_targets and (config['max_port_scans'] - port_scan_task_count) >= 1: # If no more targets, and we have room, use port scan semaphore.
+					if autorecon.port_scan_semaphore.locked():
+						await asyncio.sleep(1)
+						continue
+					semaphore = autorecon.port_scan_semaphore
+					break
+				else: # Do some math to see if we can use the port scan semaphore.
+					if (config['max_port_scans'] - (port_scan_task_count + (len(autorecon.pending_targets) * config['port_scan_plugin_count']))) >= 1:
+						if autorecon.port_scan_semaphore.locked():
+							await asyncio.sleep(1)
+							continue
+						semaphore = autorecon.port_scan_semaphore
+						break
+					else:
+						await asyncio.sleep(1)
+			else:
+				break
+		else:
+			break
+	return semaphore
+
 
 class Pattern:
 
