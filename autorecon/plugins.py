@@ -1,8 +1,10 @@
-import asyncio, inspect, re, sys
+import asyncio, inspect, re, sys, os, traceback, time
+from colorama import Fore
 from typing import final
 from autorecon.config import config
-from autorecon.io import slugify, fail, CommandStreamReader
+from autorecon.io import slugify, fail, cprint, info, warn, error, CommandStreamReader
 from autorecon.targets import Service
+from autorecon.helper.tasks import calculate_elapsed_time
 
 
 async def get_semaphore(autorecon):
@@ -40,11 +42,119 @@ async def get_semaphore(autorecon):
 	return semaphore
 
 
+async def service_scan(plugin, service, run_from_service_scan=False):
+	# skip running service scan plugins that should only run on specific applications
+	if not plugin.run_standalone and not run_from_service_scan:
+		return
+
+	semaphore = service.target.autorecon.service_scan_semaphore
+
+	if not config['force_services']:
+		semaphore = await get_semaphore(service.target.autorecon)
+
+	async with semaphore:
+		# Create variables for fformat references.
+		address = service.target.address
+		addressv6 = service.target.address
+		ipaddress = service.target.ip
+		ipaddressv6 = service.target.ip
+		scandir = service.target.scandir
+		protocol = service.protocol
+		port = service.port
+		name = service.name
+
+		if config['create_port_dirs']:
+			scandir = os.path.join(scandir, protocol + str(port))
+			os.makedirs(scandir, exist_ok=True)
+			os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
+
+		# Special cases for HTTP.
+		http_scheme = 'https' if 'https' in service.name or service.secure is True else 'http'
+
+		nmap_extra = service.target.autorecon.args.nmap
+		if service.target.autorecon.args.nmap_append:
+			nmap_extra += ' ' + service.target.autorecon.args.nmap_append
+
+		if protocol == 'udp':
+			nmap_extra += ' -sU'
+
+		if service.target.ipversion == 'IPv6':
+			nmap_extra += ' -6'
+			if addressv6 == service.target.ip:
+				addressv6 = '[' + addressv6 + ']'
+			ipaddressv6 = '[' + ipaddressv6 + ']'
+
+		if config['proxychains'] and protocol == 'tcp':
+			nmap_extra += ' -sT'
+
+		tag = service.tag() + '/' + plugin.slug
+
+		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} running against {byellow}' + service.target.address + '{rst}', verbosity=1)
+
+		start_time = time.time()
+
+		async with service.target.lock:
+			service.target.running_tasks[tag] = {'plugin': plugin, 'processes': [], 'start': start_time}
+
+		try:
+			result = await plugin.run(service)
+		except Exception as ex:
+			exc_type, exc_value, exc_tb = sys.exc_info()
+			error_text = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb)[-2:])
+			raise Exception(cprint('Error: Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} running against {byellow}' + service.target.address + '{rst} produced an exception:\n\n' + error_text, color=Fore.RED, char='!', printmsg=False))
+
+		for process_dict in service.target.running_tasks[tag]['processes']:
+			if process_dict['process'].returncode is None:
+				warn('A process was left running after service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.', verbosity=2)
+				await process_dict['process'].wait()
+
+			if process_dict['process'].returncode != 0:
+				errors = []
+				while True:
+					line = await process_dict['stderr'].readline()
+					if line is not None:
+						errors.append(line + '\n')
+					else:
+						break
+				error('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} ran a command against {byellow}' + service.target.address + '{rst} which returned a non-zero exit code (' + str(process_dict['process'].returncode) + '). Check ' + service.target.scandir + '/_errors.log for more details.', verbosity=2)
+				async with service.target.lock:
+					with open(os.path.join(service.target.scandir, '_errors.log'), 'a') as file:
+						file.writelines('[*] Service scan ' + plugin.name + ' (' + tag + ') ran a command which returned a non-zero exit code (' + str(process_dict['process'].returncode) + ').\n')
+						file.writelines('[-] Command: ' + process_dict['cmd'] + '\n')
+						if errors:
+							file.writelines(['[-] Error Output:\n'] + errors + ['\n'])
+						else:
+							file.writelines('\n')
+
+		elapsed_time = calculate_elapsed_time(start_time)
+
+		async with service.target.lock:
+			service.target.running_tasks.pop(tag, None)
+
+		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished in ' + elapsed_time, verbosity=2)
+		return {'type':'service', 'plugin':plugin, 'result':result}
+
+
 class Pattern:
 
-	def __init__(self, pattern, description=None):
+	def __init__(self, pattern, description=None, plugin_names=None):
 		self.pattern = pattern
 		self.description = description
+		if not plugin_names:
+			self.plugin_names = []
+		else:
+			self.plugin_names = plugin_names
+
+	def get_next_service_scan_plugins(self, autorecon):
+		next_plugins = []
+		if not self.plugin_names:
+			return next_plugins
+		for service_plugin in autorecon.plugin_types['service']:
+			for next_plugin in self.plugin_names:
+				if next_plugin == service_plugin.name:
+					next_plugins.append(service_plugin)
+		return next_plugins
+
 
 class Plugin(object):
 
@@ -116,13 +226,13 @@ class Plugin(object):
 		return self.get_global_option(name, default)
 
 	@final
-	def add_pattern(self, pattern, description=None):
+	def add_pattern(self, pattern, description=None, plugin_names=None):
 		try:
 			compiled = re.compile(pattern)
 			if description:
-				self.patterns.append(Pattern(compiled, description=description))
+				self.patterns.append(Pattern(compiled, description=description, plugin_names=plugin_names))
 			else:
-				self.patterns.append(Pattern(compiled))
+				self.patterns.append(Pattern(compiled, plugin_names=plugin_names))
 		except re.error:
 			fail('Error: The pattern "' + pattern + '" in the plugin "' + self.name + '" is invalid regex.')
 
@@ -141,6 +251,7 @@ class ServiceScan(Plugin):
 	def __init__(self):
 		super().__init__()
 		self.ports = {'tcp':[], 'udp':[]}
+		self.run_standalone = True
 		self.ignore_ports = {'tcp':[], 'udp':[]}
 		self.services = []
 		self.service_names = []
@@ -237,6 +348,7 @@ class Report(Plugin):
 class AutoRecon(object):
 
 	def __init__(self):
+		self.pending = []
 		self.pending_targets = []
 		self.scanning_targets = []
 		self.completed_targets = []
@@ -370,7 +482,7 @@ class AutoRecon(object):
 		else:
 			fail('Error: plugin slug "' + plugin.slug + '" in ' + filename + ' is already assigned.', file=sys.stderr)
 
-	async def execute(self, cmd, target, tag, patterns=None, outfile=None, errfile=None):
+	async def execute(self, cmd, target, tag, patterns=None, outfile=None, errfile=None, plugin=None):
 		if patterns:
 			combined_patterns = self.patterns + patterns
 		else:
@@ -382,10 +494,13 @@ class AutoRecon(object):
 			stdout=asyncio.subprocess.PIPE,
 			stderr=asyncio.subprocess.PIPE)
 
-		cout = CommandStreamReader(process.stdout, target, tag, patterns=combined_patterns, outfile=outfile)
-		cerr = CommandStreamReader(process.stderr, target, tag, patterns=combined_patterns, outfile=errfile)
+		cout = CommandStreamReader(process.stdout, target, tag, patterns=combined_patterns, outfile=outfile, plugin=plugin)
+		cerr = CommandStreamReader(process.stderr, target, tag, patterns=combined_patterns, outfile=errfile, plugin=plugin)
 
 		asyncio.create_task(cout._read())
 		asyncio.create_task(cerr._read())
 
 		return process, cout, cerr
+
+	def queue_new_service_scan(self, plugin, service):
+		self.pending.append(asyncio.create_task(service_scan(plugin, service, run_from_service_scan=True)))
