@@ -79,6 +79,31 @@ class CurlRobots(ServiceScan):
 			else:
 				info('{bblue}[' + fformat('{tag}') + ']{rst} There did not appear to be a robots.txt file in the webroot (/).')
 
+class CurlKnowSecurity(ServiceScan):
+
+	def __init__(self):
+		super().__init__()
+		self.name = "Know Security"
+		self.tags = ['default', 'safe', 'http']
+
+	def configure(self):
+		self.match_service_name('^http')
+		self.match_service_name('^nacn_http$', negative_match=True)
+
+	async def run(self, service):
+		if service.protocol == 'tcp':
+			process, stdout, _ = await service.execute('curl -sSikf {http_scheme}://{addressv6}:{port}/.well-known/security.txt', future_outfile='{protocol}_{port}_{http_scheme}_known-security.txt')
+
+			lines = await stdout.readlines()
+
+			if process.returncode == 0 and lines:
+				filename = fformat('{scandir}/{protocol}_{port}_{http_scheme}_known-security.txt')
+				with open(filename, mode='wt', encoding='utf8') as robots:
+					robots.write('\n'.join(lines))
+			else:
+				info('{bblue}[' + fformat('{tag}') + ']{rst} There did not appear to be a .well-known/security.txt file in the webroot (/).')
+
+
 class DirBuster(ServiceScan):
 
 	def __init__(self):
@@ -122,7 +147,7 @@ class DirBuster(ServiceScan):
 				else:
 					await service.execute('dirsearch -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -e "' + self.get_option('ext') + '" -f -q -w ' + wordlist + ' --format=plain -o "{scandir}/{protocol}_{port}_{http_scheme}_dirsearch_' + name + '.txt"')
 			elif self.get_option('tool') == 'ffuf':
-				await service.execute('ffuf -u {http_scheme}://{addressv6}:{port}/FUZZ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e "' + dot_extensions + '" -v -noninteractive | tee {scandir}/{protocol}_{port}_{http_scheme}_ffuf_' + name + '.txt')
+				await service.execute('ffuf -u {http_scheme}://{addressv6}:{port}/FUZZ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e "' + dot_extensions + '" -v | tee {scandir}/{protocol}_{port}_{http_scheme}_ffuf_' + name + '.txt')
 			elif self.get_option('tool') == 'dirb':
 				await service.execute('dirb {http_scheme}://{addressv6}:{port}/ ' + wordlist + ' -l -r -S -X ",' + dot_extensions + '" -o "{scandir}/{protocol}_{port}_{http_scheme}_dirb_' + name + '.txt"')
 
