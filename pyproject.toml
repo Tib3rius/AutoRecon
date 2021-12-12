@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "autorecon"
-version = "2.0.5"
+version = "2.0.6"
 description = "A multi-threaded network reconnaissance tool which performs automated enumeration of services."
 authors = ["Tib3rius"]
 license = "GNU GPL v3"

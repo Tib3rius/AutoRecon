@@ -79,11 +79,11 @@ class CurlRobots(ServiceScan):
 			else:
 				info('{bblue}[' + fformat('{tag}') + ']{rst} There did not appear to be a robots.txt file in the webroot (/).')
 
-class CurlKnowSecurity(ServiceScan):
+class CurlKnownSecurity(ServiceScan):
 
 	def __init__(self):
 		super().__init__()
-		self.name = "Know Security"
+		self.name = "Known Security"
 		self.tags = ['default', 'safe', 'http']
 
 	def configure(self):
@@ -147,7 +147,7 @@ class DirBuster(ServiceScan):
 				else:
 					await service.execute('dirsearch -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -e "' + self.get_option('ext') + '" -f -q -w ' + wordlist + ' --format=plain -o "{scandir}/{protocol}_{port}_{http_scheme}_dirsearch_' + name + '.txt"')
 			elif self.get_option('tool') == 'ffuf':
-				await service.execute('ffuf -u {http_scheme}://{addressv6}:{port}/FUZZ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e "' + dot_extensions + '" -v | tee {scandir}/{protocol}_{port}_{http_scheme}_ffuf_' + name + '.txt')
+				await service.execute('ffuf -u {http_scheme}://{addressv6}:{port}/FUZZ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e "' + dot_extensions + '" -v -noninteractive | tee {scandir}/{protocol}_{port}_{http_scheme}_ffuf_' + name + '.txt')
 			elif self.get_option('tool') == 'dirb':
 				await service.execute('dirb {http_scheme}://{addressv6}:{port}/ ' + wordlist + ' -l -r -S -X ",' + dot_extensions + '" -o "{scandir}/{protocol}_{port}_{http_scheme}_dirb_' + name + '.txt"')
 
