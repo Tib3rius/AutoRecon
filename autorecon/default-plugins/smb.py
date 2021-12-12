@@ -82,7 +82,7 @@ class SMBClient(ServiceScan):
 		self.run_once(True)
 
 	async def run(self, service):
-		await service.execute('smbclient -L\\\\ -N -I {address} 2>&1', outfile='smbclient.txt')
+		await service.execute('smbclient -L //{address} -N -I {address} 2>&1', outfile='smbclient.txt')
 
 class SMBMap(ServiceScan):
 
