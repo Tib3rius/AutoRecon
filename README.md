@@ -58,13 +58,6 @@ python3 -m pipx ensurepath
 
 You will have to re-source your ~/.bashrc or ~/.zshrc file (or open a new tab) after running these commands in order to use pipx.
 
-Note that if you want to run AutoRecon using sudo, you have to use _one_ of the following examples:
-
-```bash
-sudo env "PATH=$PATH" autorecon [OPTIONS]
-sudo $(which autorecon) [OPTIONS]
-```
-
 ### Supporting packages
 
 Several commands used in AutoRecon reference the SecLists project, in the directory /usr/share/seclists/. You can either manually download the SecLists project to this directory (https://github.com/danielmiessler/SecLists), or if you are using Kali Linux (**highly recommended**) you can run the following:
@@ -113,7 +106,14 @@ Ensure you have all of the requirements installed as per the previous section.
 If installing using pipx, you'll need to run the installation command as root or with sudo in order to be able to run autorecon using sudo:
 
 ```bash
-pipx install git+https://github.com/Tib3rius/AutoRecon.git
+sudo pipx install git+https://github.com/Tib3rius/AutoRecon.git
+```
+
+Note that if you want to run AutoRecon using sudo, you have to use _one_ of the following examples:
+
+```bash
+sudo env "PATH=$PATH" autorecon [OPTIONS]
+sudo $(which autorecon) [OPTIONS]
 ```
 
 ### Using `pip`
