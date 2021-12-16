@@ -694,7 +694,7 @@ async def scan_target(target):
 
 			if not service_match:
 				warn('{byellow}[' + target.address + ']{srst} Service ' + service.full_tag() + ' did not match any plugins based on the service name.{rst}', verbosity=2)
-				if service.name != 'tcpwrapped' and service.full_tag() not in target.autorecon.missing_services:
+				if service.name not in ['status', 'tcpwrapped', 'unknown'] and service.full_tag() not in target.autorecon.missing_services:
 					target.autorecon.missing_services.append(service.full_tag())
 
 	for plugin in target.autorecon.plugin_types['report']:
