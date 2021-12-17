@@ -13,9 +13,11 @@ except ModuleNotFoundError:
 colorama.init()
 
 from autorecon.config import config, configurable_keys, configurable_boolean_keys
-from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, fail, CommandStreamReader
-from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
+from autorecon.io import slugify, e, cprint, info, warn, error, fail
+from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon, service_scan, get_semaphore
 from autorecon.targets import Target, Service
+from autorecon.helper.tasks import calculate_elapsed_time
+
 
 VERSION = "2.0.7"
 
@@ -41,43 +43,6 @@ terminal_settings = termios.tcgetattr(sys.stdin.fileno())
 
 autorecon = AutoRecon()
 
-def calculate_elapsed_time(start_time, short=False):
-	elapsed_seconds = round(time.time() - start_time)
-
-	m, s = divmod(elapsed_seconds, 60)
-	h, m = divmod(m, 60)
-
-	elapsed_time = []
-	if short:
-		elapsed_time.append(str(h).zfill(2))
-	else:
-		if h == 1:
-			elapsed_time.append(str(h) + ' hour')
-		elif h > 1:
-			elapsed_time.append(str(h) + ' hours')
-
-	if short:
-		elapsed_time.append(str(m).zfill(2))
-	else:
-		if m == 1:
-			elapsed_time.append(str(m) + ' minute')
-		elif m > 1:
-			elapsed_time.append(str(m) + ' minutes')
-
-	if short:
-		elapsed_time.append(str(s).zfill(2))
-	else:
-		if s == 1:
-			elapsed_time.append(str(s) + ' second')
-		elif s > 1:
-			elapsed_time.append(str(s) + ' seconds')
-		else:
-			elapsed_time.append('less than a second')
-
-	if short:
-		return ':'.join(elapsed_time)
-	else:
-		return ', '.join(elapsed_time)
 
 def cancel_all_tasks(signal, frame):
 	for task in asyncio.all_tasks():
@@ -162,39 +127,6 @@ async def keyboard():
 					input = input[1:]
 		await asyncio.sleep(0.1)
 
-async def get_semaphore(autorecon):
-	semaphore = autorecon.service_scan_semaphore
-	while True:
-		# If service scan semaphore is locked, see if we can use port scan semaphore.
-		if semaphore.locked():
-			if semaphore != autorecon.port_scan_semaphore: # This will be true unless user sets max_scans == max_port_scans
-
-				port_scan_task_count = 0
-				for target in autorecon.scanning_targets:
-					for process_list in target.running_tasks.values():
-						if issubclass(process_list['plugin'].__class__, PortScan):
-							port_scan_task_count += 1
-
-				if not autorecon.pending_targets and (config['max_port_scans'] - port_scan_task_count) >= 1: # If no more targets, and we have room, use port scan semaphore.
-					if autorecon.port_scan_semaphore.locked():
-						await asyncio.sleep(1)
-						continue
-					semaphore = autorecon.port_scan_semaphore
-					break
-				else: # Do some math to see if we can use the port scan semaphore.
-					if (config['max_port_scans'] - (port_scan_task_count + (len(autorecon.pending_targets) * config['port_scan_plugin_count']))) >= 1:
-						if autorecon.port_scan_semaphore.locked():
-							await asyncio.sleep(1)
-							continue
-						semaphore = autorecon.port_scan_semaphore
-						break
-					else:
-						await asyncio.sleep(1)
-			else:
-				break
-		else:
-			break
-	return semaphore
 
 async def port_scan(plugin, target):
 	if config['ports']:
@@ -261,93 +193,6 @@ async def port_scan(plugin, target):
 		info('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} against {byellow}' + target.address + '{rst} finished in ' + elapsed_time, verbosity=2)
 		return {'type':'port', 'plugin':plugin, 'result':result}
 
-async def service_scan(plugin, service):
-	semaphore = service.target.autorecon.service_scan_semaphore
-
-	if not config['force_services']:
-		semaphore = await get_semaphore(service.target.autorecon)
-
-	async with semaphore:
-		# Create variables for fformat references.
-		address = service.target.address
-		addressv6 = service.target.address
-		ipaddress = service.target.ip
-		ipaddressv6 = service.target.ip
-		scandir = service.target.scandir
-		protocol = service.protocol
-		port = service.port
-		name = service.name
-
-		if config['create_port_dirs']:
-			scandir = os.path.join(scandir, protocol + str(port))
-			os.makedirs(scandir, exist_ok=True)
-			os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
-
-		# Special cases for HTTP.
-		http_scheme = 'https' if 'https' in service.name or service.secure is True else 'http'
-
-		nmap_extra = service.target.autorecon.args.nmap
-		if service.target.autorecon.args.nmap_append:
-			nmap_extra += ' ' + service.target.autorecon.args.nmap_append
-
-		if protocol == 'udp':
-			nmap_extra += ' -sU'
-
-		if service.target.ipversion == 'IPv6':
-			nmap_extra += ' -6'
-			if addressv6 == service.target.ip:
-				addressv6 = '[' + addressv6 + ']'
-			ipaddressv6 = '[' + ipaddressv6 + ']'
-
-		if config['proxychains'] and protocol == 'tcp':
-			nmap_extra += ' -sT'
-
-		tag = service.tag() + '/' + plugin.slug
-
-		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} running against {byellow}' + service.target.address + '{rst}', verbosity=1)
-
-		start_time = time.time()
-
-		async with service.target.lock:
-			service.target.running_tasks[tag] = {'plugin': plugin, 'processes': [], 'start': start_time}
-
-		try:
-			result = await plugin.run(service)
-		except Exception as ex:
-			exc_type, exc_value, exc_tb = sys.exc_info()
-			error_text = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb)[-2:])
-			raise Exception(cprint('Error: Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} running against {byellow}' + service.target.address + '{rst} produced an exception:\n\n' + error_text, color=Fore.RED, char='!', printmsg=False))
-
-		for process_dict in service.target.running_tasks[tag]['processes']:
-			if process_dict['process'].returncode is None:
-				warn('A process was left running after service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.', verbosity=2)
-				await process_dict['process'].wait()
-
-			if process_dict['process'].returncode != 0:
-				errors = []
-				while True:
-					line = await process_dict['stderr'].readline()
-					if line is not None:
-						errors.append(line + '\n')
-					else:
-						break
-				error('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} ran a command against {byellow}' + service.target.address + '{rst} which returned a non-zero exit code (' + str(process_dict['process'].returncode) + '). Check ' + service.target.scandir + '/_errors.log for more details.', verbosity=2)
-				async with service.target.lock:
-					with open(os.path.join(service.target.scandir, '_errors.log'), 'a') as file:
-						file.writelines('[*] Service scan ' + plugin.name + ' (' + tag + ') ran a command which returned a non-zero exit code (' + str(process_dict['process'].returncode) + ').\n')
-						file.writelines('[-] Command: ' + process_dict['cmd'] + '\n')
-						if errors:
-							file.writelines(['[-] Error Output:\n'] + errors + ['\n'])
-						else:
-							file.writelines('\n')
-
-		elapsed_time = calculate_elapsed_time(start_time)
-
-		async with service.target.lock:
-			service.target.running_tasks.pop(tag, None)
-
-		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished in ' + elapsed_time, verbosity=2)
-		return {'type':'service', 'plugin':plugin, 'result':result}
 
 async def generate_report(plugin, targets):
 	semaphore = autorecon.service_scan_semaphore
@@ -400,8 +245,7 @@ async def scan_target(target):
 
 	target.reportdir = reportdir
 
-	pending = []
-
+	# pending = []
 	heartbeat = asyncio.create_task(start_heartbeat(target, period=config['heartbeat']))
 
 	services = []
@@ -423,7 +267,7 @@ async def scan_target(target):
 				services.append(service)
 
 		if services:
-			pending.append(asyncio.create_task(asyncio.sleep(0)))
+			autorecon.pending.append(asyncio.create_task(asyncio.sleep(0)))
 		else:
 			error('No services were defined. Please check your service syntax: [tcp|udp]/<port>/<service-name>/[secure|insecure]')
 			heartbeat.cancel()
@@ -454,7 +298,7 @@ async def scan_target(target):
 
 			if matching_tags and not excluded_tags:
 				target.scans['ports'][plugin.slug] = {'plugin':plugin, 'commands':[]}
-				pending.append(asyncio.create_task(port_scan(plugin, target)))
+				autorecon.pending.append(asyncio.create_task(port_scan(plugin, target)))
 
 	async with autorecon.lock:
 		autorecon.scanning_targets.append(target)
@@ -463,9 +307,10 @@ async def scan_target(target):
 	info('Scanning target {byellow}' + target.address + '{rst}')
 
 	timed_out = False
-	while pending:
-		done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED, timeout=1)
-
+	while autorecon.pending:
+		done, autorecon.pending = await asyncio.wait(autorecon.pending, return_when=asyncio.FIRST_COMPLETED, timeout=1)
+		# this one seems to return a set() instead of a list() so keep the type
+		autorecon.pending = list(autorecon.pending)
 		# Check if global timeout has occurred.
 		if config['target_timeout'] is not None:
 			elapsed_seconds = round(time.time() - start_time)
@@ -489,8 +334,7 @@ async def scan_target(target):
 						continue
 				except asyncio.InvalidStateError:
 					pass
-
-				if task.result()['type'] == 'port':
+				if task.result() and task.result()['type'] == 'port':
 					for service in (task.result()['result'] or []):
 						services.append(service)
 
@@ -690,7 +534,7 @@ async def scan_target(target):
 						target.scans['services'][service] = {}
 					target.scans['services'][service][plugin_tag] = {'plugin':plugin, 'commands':[]}
 
-				pending.add(asyncio.create_task(service_scan(plugin, service)))
+				autorecon.pending.append(asyncio.create_task(service_scan(plugin, service)))
 
 			if not service_match:
 				warn('{byellow}[' + target.address + ']{srst} Service ' + service.full_tag() + ' did not match any plugins based on the service name.{rst}', verbosity=2)
@@ -717,17 +561,17 @@ async def scan_target(target):
 					break
 
 		if matching_tags and not excluded_tags:
-			pending.add(asyncio.create_task(generate_report(plugin, [target])))
+			autorecon.pending.append(asyncio.create_task(generate_report(plugin, [target])))
 
-	while pending:
-		done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED, timeout=1)
-
+	while autorecon.pending:
+		done, autorecon.pending = await asyncio.wait(autorecon.pending, return_when=asyncio.FIRST_COMPLETED, timeout=1)
+		autorecon.pending = list(autorecon.pending)
 	heartbeat.cancel()
 	elapsed_time = calculate_elapsed_time(start_time)
 
 	if timed_out:
 
-		for task in pending:
+		for task in autorecon.pending:
 			task.cancel()
 
 		for process_list in target.running_tasks.values():

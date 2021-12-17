@@ -97,11 +97,12 @@ def fail(*args, sep=' ', end='\n', file=sys.stderr, **kvargs):
 
 class CommandStreamReader(object):
 
-	def __init__(self, stream, target, tag, patterns=None, outfile=None):
+	def __init__(self, stream, target, tag, patterns=None, outfile=None, plugin=None):
 		self.stream = stream
 		self.target = target
 		self.tag = tag
 		self.lines = []
+		self.plugin = plugin
 		self.patterns = patterns or []
 		self.outfile = outfile
 		self.ended = False
@@ -136,6 +137,13 @@ class CommandStreamReader(object):
 							else:
 								info('{bright}[{yellow}' + self.target.address + '{crst}/{bgreen}' + self.tag + '{crst}]{rst} {bmagenta}Matched Pattern: ' + match + '{rst}', verbosity=2)
 								file.writelines('Matched Pattern: ' + match + '\n\n')
+						next_plugins_to_run = p.get_next_service_scan_plugins(self.target.autorecon)
+						for next_plugin in next_plugins_to_run:
+							# ugly way to get the service details somehow.
+							for service, details in self.target.scans.get('services', {}).items():
+								for key, value in details.items():
+									if value.get('plugin') == self.plugin:
+										self.target.autorecon.queue_new_service_scan(next_plugin, service)
 
 			if self.outfile is not None:
 				with open(self.outfile, 'a') as writer:
