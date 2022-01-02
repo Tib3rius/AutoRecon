@@ -235,7 +235,7 @@ async def port_scan(plugin, target):
 				warn('A process was left running after port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} against {byellow}' + target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.', verbosity=2)
 				await process_dict['process'].wait()
 
-			if process_dict['process'].returncode != 0:
+			if process_dict['process'].returncode != 0 or (process_dict['cmd'].contains('curl') and process_dict['process'].returncode != 22):
 				errors = []
 				while True:
 					line = await process_dict['stderr'].readline()
