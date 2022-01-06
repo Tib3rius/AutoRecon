@@ -1,7 +1,6 @@
 # Configure regular AutoRecon options at the top of this file.
 
-create-port-dirs = true
-nmap-append = '-T4'
+# nmap-append = '-T3'
 # verbose = 1
 # max-scans = 30
 

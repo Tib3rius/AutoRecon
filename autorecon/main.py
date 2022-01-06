@@ -17,7 +17,7 @@ from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, 
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
-VERSION = "2.0.7"
+VERSION = "2.0.8"
 
 if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
@@ -278,7 +278,7 @@ async def service_scan(plugin, service):
 		port = service.port
 		name = service.name
 
-		if config['create_port_dirs']:
+		if not config['no_port_dirs']:
 			scandir = os.path.join(scandir, protocol + str(port))
 			os.makedirs(scandir, exist_ok=True)
 			os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
@@ -517,7 +517,7 @@ async def scan_target(target):
 			protocol = service.protocol
 			port = service.port
 
-			if config['create_port_dirs']:
+			if not config['no_port_dirs']:
 				scandir = os.path.join(scandir, protocol + str(port))
 				os.makedirs(scandir, exist_ok=True)
 				os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
@@ -789,7 +789,7 @@ async def run():
 	parser.add_argument('-o', '--output', action='store', help='The output directory for results. Default: %(default)s')
 	parser.add_argument('--single-target', action='store_true', help='Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will be created within the output directory. Default: %(default)s')
 	parser.add_argument('--only-scans-dir', action='store_true', help='Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created. Default: %(default)s')
-	parser.add_argument('--create-port-dirs', action='store_true', help='Create directories for ports within the "scans" directory (e.g. scans/tcp80, scans/udp53) and store results in these directories. Default: %(default)s')
+	parser.add_argument('--no-port-dirs', action='store_true', help='Don\'t create directories for ports (e.g. scans/tcp80, scans/udp53). Instead store all results in the "scans" directory itself. Default: %(default)s')
 	parser.add_argument('--heartbeat', action='store', type=int, help='Specifies the heartbeat interval (in seconds) for scan status messages. Default: %(default)s')
 	parser.add_argument('--timeout', action='store', type=int, help='Specifies the maximum amount of time in minutes that AutoRecon should run for. Default: %(default)s')
 	parser.add_argument('--target-timeout', action='store', type=int, help='Specifies the maximum amount of time in minutes that a target should be scanned for before abandoning it and moving on. Default: %(default)s')

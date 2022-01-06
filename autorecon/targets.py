@@ -134,7 +134,7 @@ class Service:
 		port = self.port
 		name = self.name
 
-		if config['create_port_dirs']:
+		if not config['no_port_dirs']:
 			scandir = os.path.join(scandir, protocol + str(port))
 			os.makedirs(scandir, exist_ok=True)
 			os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
