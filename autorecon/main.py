@@ -323,7 +323,7 @@ async def service_scan(plugin, service):
 				warn('A process was left running after service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.', verbosity=2)
 				await process_dict['process'].wait()
 
-			if process_dict['process'].returncode != 0:
+			if process_dict['process'].returncode != 0 and not (process_dict['cmd'].startswith('curl') and process_dict['process'].returncode == 22):
 				errors = []
 				while True:
 					line = await process_dict['stderr'].readline()
