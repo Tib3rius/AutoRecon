@@ -26,6 +26,7 @@ if not os.path.exists(config['config_dir']):
 	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.toml'), os.path.join(config['config_dir'], 'config.toml'))
 	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'global.toml'), os.path.join(config['config_dir'], 'global.toml'))
 	shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default-plugins'), os.path.join(config['config_dir'], 'plugins'))
+	shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'wordlists'), os.path.join(config['config_dir'], 'wordlists'))
 else:
 	if not os.path.exists(os.path.join(config['config_dir'], 'config.toml')):
 		shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.toml'), os.path.join(config['config_dir'], 'config.toml'))
@@ -33,6 +34,8 @@ else:
 		shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'global.toml'), os.path.join(config['config_dir'], 'global.toml'))
 	if not os.path.exists(os.path.join(config['config_dir'], 'plugins')):
 		shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default-plugins'), os.path.join(config['config_dir'], 'plugins'))
+	if not os.path.exists(os.path.join(config['config_dir'], 'wordlists')):
+		shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'wordlists'), os.path.join(config['config_dir'], 'wordlists'))
 	if not os.path.exists(os.path.join(config['config_dir'], 'VERSION-' + VERSION)):
 		warn('It looks like the config/plugins in ' + config['config_dir'] + ' are outdated. Please remove the directory and re-run AutoRecon to rebuild them.')
 

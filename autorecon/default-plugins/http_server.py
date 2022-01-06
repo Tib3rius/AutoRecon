@@ -1,5 +1,6 @@
 from autorecon.plugins import ServiceScan
 from autorecon.io import error, info, fformat
+from autorecon.config import config
 from shutil import which
 import os
 
@@ -115,7 +116,7 @@ class DirBuster(ServiceScan):
 
 	def configure(self):
 		self.add_choice_option('tool', default='feroxbuster', choices=['feroxbuster', 'gobuster', 'dirsearch', 'ffuf', 'dirb'], help='The tool to use for directory busting. Default: %(default)s')
-		self.add_list_option('wordlist', default=['/usr/share/seclists/Discovery/Web-Content/common.txt', '/usr/share/seclists/Discovery/Web-Content/big.txt', '/usr/share/seclists/Discovery/Web-Content/raft-large-words.txt'], help='The wordlist(s) to use when directory busting. Separate multiple wordlists with spaces. Default: %(default)s')
+		self.add_list_option('wordlist', default=[os.path.join(config['config_dir'], 'wordlists', 'dirbuster.txt')], help='The wordlist(s) to use when directory busting. Separate multiple wordlists with spaces. Default: %(default)s')
 		self.add_option('threads', default=10, help='The number of threads to use when directory busting. Default: %(default)s')
 		self.add_option('ext', default='txt,html,php,asp,aspx,jsp', help='The extensions you wish to fuzz (no dot, comma separated). Default: %(default)s')
 		self.match_service_name('^http')
