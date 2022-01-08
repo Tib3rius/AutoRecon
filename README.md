@@ -149,52 +149,45 @@ A plugin update process is in the works. Until then, after upgrading, remove the
 AutoRecon uses Python 3 specific functionality and does not support Python 2.
 
 ```
-usage: autorecon [-t TARGET_FILE] [-p PORTS] [-m MAX_SCANS] [-mp MAX_PORT_SCANS] [-c CONFIG_FILE] [-g GLOBAL_FILE]
-                 [--tags TAGS] [--exclude-tags TAGS] [--port-scans PLUGINS] [--service-scans PLUGINS]
-                 [--reports PLUGINS] [--plugins-dir PLUGINS_DIR] [--add-plugins-dir PLUGINS_DIR] [-l [TYPE]]
-                 [-o OUTPUT] [--single-target] [--only-scans-dir] [--create-port-dirs] [--heartbeat HEARTBEAT]
-                 [--timeout TIMEOUT] [--target-timeout TARGET_TIMEOUT] [--nmap NMAP | --nmap-append NMAP_APPEND]
-                 [--proxychains] [--disable-sanity-checks] [--disable-keyboard-control]
-                 [--force-services SERVICE [SERVICE ...]] [--accessible] [-v] [--version] [--curl.path VALUE]
-                 [--dirbuster.tool {feroxbuster,gobuster,dirsearch,ffuf,dirb}]
+usage: autorecon [-t TARGET_FILE] [-p PORTS] [-m MAX_SCANS] [-mp MAX_PORT_SCANS] [-c CONFIG_FILE] [-g GLOBAL_FILE] [--tags TAGS]
+                 [--exclude-tags TAGS] [--port-scans PLUGINS] [--service-scans PLUGINS] [--reports PLUGINS] [--plugins-dir PLUGINS_DIR]
+                 [--add-plugins-dir PLUGINS_DIR] [-l [TYPE]] [-o OUTPUT] [--single-target] [--only-scans-dir] [--no-port-dirs]
+                 [--heartbeat HEARTBEAT] [--timeout TIMEOUT] [--target-timeout TARGET_TIMEOUT] [--nmap NMAP | --nmap-append NMAP_APPEND]
+                 [--proxychains] [--disable-sanity-checks] [--disable-keyboard-control] [--force-services SERVICE [SERVICE ...]] [--accessible]
+                 [-v] [--version] [--curl.path VALUE] [--dirbuster.tool {feroxbuster,gobuster,dirsearch,ffuf,dirb}]
                  [--dirbuster.wordlist VALUE [VALUE ...]] [--dirbuster.threads VALUE] [--dirbuster.ext VALUE]
-                 [--onesixtyone.community-strings VALUE] [--global.username-wordlist VALUE]
-                 [--global.password-wordlist VALUE] [--global.domain VALUE] [-h]
+                 [--onesixtyone.community-strings VALUE] [--global.username-wordlist VALUE] [--global.password-wordlist VALUE]
+                 [--global.domain VALUE] [-h]
                  [targets ...]
 
 Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.
 
 positional arguments:
-  targets               IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g.
-                        foo.bar) to scan.
+  targets               IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.
 
 optional arguments:
   -t TARGET_FILE, --target-file TARGET_FILE
                         Read targets from file.
   -p PORTS, --ports PORTS
-                        Comma separated list of ports / port ranges to scan. Specify TCP/UDP ports by prepending list
-                        with T:/U: To scan both TCP/UDP, put port(s) at start or specify B: e.g.
-                        53,T:21-25,80,U:123,B:123. Default: None
+                        Comma separated list of ports / port ranges to scan. Specify TCP/UDP ports by prepending list with T:/U: To scan both
+                        TCP/UDP, put port(s) at start or specify B: e.g. 53,T:21-25,80,U:123,B:123. Default: None
   -m MAX_SCANS, --max-scans MAX_SCANS
                         The maximum number of concurrent scans to run. Default: 50
   -mp MAX_PORT_SCANS, --max-port-scans MAX_PORT_SCANS
-                        The maximum number of concurrent port scans to run. Default: 10 (approx 20% of max-scans unless
-                        specified)
+                        The maximum number of concurrent port scans to run. Default: 10 (approx 20% of max-scans unless specified)
   -c CONFIG_FILE, --config CONFIG_FILE
                         Location of AutoRecon's config file. Default: ~/.config/AutoRecon/config.toml
   -g GLOBAL_FILE, --global-file GLOBAL_FILE
                         Location of AutoRecon's global file. Default: ~/.config/AutoRecon/global.toml
-  --tags TAGS           Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group
-                        tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be
-                        included, it must have all the tags specified in at least one group. Default: default
-  --exclude-tags TAGS   Tags to determine which plugins should be excluded. Separate tags by a plus symbol (+) to group
-                        tags together. Separate groups with a comma (,) to create multiple groups. For a plugin to be
-                        excluded, it must have all the tags specified in at least one group. Default: None
-  --port-scans PLUGINS  Override --tags / --exclude-tags for the listed PortScan plugins (comma separated). Default:
-                        None
+  --tags TAGS           Tags to determine which plugins should be included. Separate tags by a plus symbol (+) to group tags together. Separate
+                        groups with a comma (,) to create multiple groups. For a plugin to be included, it must have all the tags specified in
+                        at least one group. Default: default
+  --exclude-tags TAGS   Tags to determine which plugins should be excluded. Separate tags by a plus symbol (+) to group tags together. Separate
+                        groups with a comma (,) to create multiple groups. For a plugin to be excluded, it must have all the tags specified in
+                        at least one group. Default: None
+  --port-scans PLUGINS  Override --tags / --exclude-tags for the listed PortScan plugins (comma separated). Default: None
   --service-scans PLUGINS
-                        Override --tags / --exclude-tags for the listed ServiceScan plugins (comma separated). Default:
-                        None
+                        Override --tags / --exclude-tags for the listed ServiceScan plugins (comma separated). Default: None
   --reports PLUGINS     Override --tags / --exclude-tags for the listed Report plugins (comma separated). Default: None
   --plugins-dir PLUGINS_DIR
                         The location of the plugins directory. Default: ~/.config/AutoRecon/plugins
@@ -204,21 +197,21 @@ optional arguments:
                         List all plugins or plugins of a specific type. e.g. --list, --list port, --list service
   -o OUTPUT, --output OUTPUT
                         The output directory for results. Default: results
-  --single-target       Only scan a single target. A directory named after the target will not be created. Instead, the
-                        directory structure will be created within the output directory. Default: False
-  --only-scans-dir      Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report)
-                        will not be created. Default: False
-  --create-port-dirs    Create directories for ports within the "scans" directory (e.g. scans/tcp80, scans/udp53) and
-                        store results in these directories. Default: True
+  --single-target       Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will
+                        be created within the output directory. Default: False
+  --only-scans-dir      Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created.
+                        Default: False
+  --no-port-dirs        Don't create directories for ports (e.g. scans/tcp80, scans/udp53). Instead store all results in the "scans" directory
+                        itself. Default: False
   --heartbeat HEARTBEAT
                         Specifies the heartbeat interval (in seconds) for scan status messages. Default: 60
   --timeout TIMEOUT     Specifies the maximum amount of time in minutes that AutoRecon should run for. Default: None
   --target-timeout TARGET_TIMEOUT
-                        Specifies the maximum amount of time in minutes that a target should be scanned for before
-                        abandoning it and moving on. Default: None
-  --nmap NMAP           Override the {nmap_extra} variable in scans. Default: -vv --reason -Pn
+                        Specifies the maximum amount of time in minutes that a target should be scanned for before abandoning it and moving on.
+                        Default: None
+  --nmap NMAP           Override the {nmap_extra} variable in scans. Default: -vv --reason -Pn -T4
   --nmap-append NMAP_APPEND
-                        Append to the default {nmap_extra} variable in scans. Default: -T4
+                        Append to the default {nmap_extra} variable in scans. Default:
   --proxychains         Use if you are running AutoRecon via proxychains. Default: False
   --disable-sanity-checks
                         Disable sanity checks that would otherwise prevent the scans from running. Default: False
@@ -239,25 +232,22 @@ plugin arguments:
                         The tool to use for directory busting. Default: feroxbuster
   --dirbuster.wordlist VALUE [VALUE ...]
                         The wordlist(s) to use when directory busting. Separate multiple wordlists with spaces. Default:
-                        ['/usr/share/seclists/Discovery/Web-Content/common.txt', '/usr/share/seclists/Discovery/Web-
-                        Content/big.txt', '/usr/share/seclists/Discovery/Web-Content/raft-large-words.txt']
+                        ['~/.config/AutoRecon/wordlists/dirbuster.txt']
   --dirbuster.threads VALUE
                         The number of threads to use when directory busting. Default: 10
   --dirbuster.ext VALUE
                         The extensions you wish to fuzz (no dot, comma separated). Default: txt,html,php,asp,aspx,jsp
   --onesixtyone.community-strings VALUE
-                        The file containing a list of community strings to try. Default:
-                        /usr/share/seclists/Discovery/SNMP/common-snmp-community-strings-onesixtyone.txt
+                        The file containing a list of community strings to try. Default: /usr/share/seclists/Discovery/SNMP/common-snmp-
+                        community-strings-onesixtyone.txt
 
 global plugin arguments:
   These are optional arguments that can be used by all plugins.
 
   --global.username-wordlist VALUE
-                        A wordlist of usernames, useful for bruteforcing. Default: /usr/share/seclists/Usernames/top-
-                        usernames-shortlist.txt
+                        A wordlist of usernames, useful for bruteforcing. Default: /usr/share/seclists/Usernames/top-usernames-shortlist.txt
   --global.password-wordlist VALUE
-                        A wordlist of passwords, useful for bruteforcing. Default:
-                        /usr/share/seclists/Passwords/darkweb2017-top100.txt
+                        A wordlist of passwords, useful for bruteforcing. Default: /usr/share/seclists/Passwords/darkweb2017-top100.txt
   --global.domain VALUE
                         The domain to use (if known). Used for DNS and/or Active Directory. Default: None
 ```
