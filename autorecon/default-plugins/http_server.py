@@ -239,3 +239,37 @@ class WPScan(ServiceScan):
 
 	def manual(self, service, plugin_was_run):
 		service.add_manual_command('(wpscan) WordPress Security Scanner (useful if WordPress is found):', 'wpscan --url {http_scheme}://{addressv6}:{port}/ --no-update -e vp,vt,tt,cb,dbe,u,m --plugins-detection aggressive --plugins-version-detection aggressive -f cli-no-color 2>&1 | tee "{scandir}/{protocol}_{port}_{http_scheme}_wpscan.txt"')
+
+class VirtualHost(ServiceScan):
+
+	def __init__(self):
+		super().__init__()
+		self.name = 'Virtual Host Enumeration'
+		self.slug = 'vhost-enum'
+		self.tags = ['default', 'safe', 'http', 'long']
+
+	def configure(self):
+		self.add_option('hostname', help='The hostname to use as the base host (e.g. example.com) for virtual host enumeration. Default: %(default)s')
+		self.add_list_option('wordlist', default=['/usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt'], help='The wordlist(s) to use when enumerating virtual hosts. Separate multiple wordlists with spaces. Default: %(default)s')
+		self.add_option('threads', default=10, help='The number of threads to use when enumerating virtual hosts. Default: %(default)s')
+		self.match_service_name('^http')
+		self.match_service_name('^nacn_http$', negative_match=True)
+
+	def check(self):
+		if which('gobuster') is None:
+			error('The gobuster program could not be found. Make sure it is installed. (On Kali, run: sudo apt install gobuster)')
+
+	async def run(self, service):
+		if service.target.type == 'hostname' or self.get_option('hostname') or self.get_global('domain'):
+			if self.get_option('hostname'):
+				hostname = self.get_option('hostname')
+			elif service.target.type == 'hostname':
+				hostname = service.target.address
+			else:
+				hostname = self.get_global('domain')
+
+			for wordlist in self.get_option('wordlist'):
+				name = os.path.splitext(os.path.basename(wordlist))[0]
+				await service.execute('gobuster vhost -u {http_scheme}://' + hostname + ':{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -r -o "{scandir}/{protocol}_{port}_{http_scheme}_vhosts_' + name + '.txt"')
+		else:
+			info('The target was not a hostname, nor was a hostname provided as an option. Skipping virtual host enumeration.')
