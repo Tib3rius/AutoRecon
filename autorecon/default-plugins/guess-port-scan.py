@@ -2,7 +2,7 @@ from autorecon.plugins import PortScan
 from autorecon.targets import Service
 import re
 
-class GuesPortScan(PortScan):
+class GuessPortScan(PortScan):
 
 	def __init__(self):
 		super().__init__()
