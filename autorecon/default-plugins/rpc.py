@@ -36,6 +36,7 @@ class RPCDump(ServiceScan):
 
 	def configure(self):
 		self.match_service_name(['^msrpc', '^rpcbind', '^erpc'])
+		self.match_port('tcp', [135, 139, 443, 445, 593])
 
 	async def run(self, service):
 		if service.protocol == 'tcp':
