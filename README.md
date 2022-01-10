@@ -31,36 +31,26 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 * Four levels of verbosity, controllable by command-line options, and during scans using Up/Down arrows.
 * Colorized output for distinguishing separate pieces of information. Can be turned off for accessibility reasons.
 
-## Requirements
+## Installation
 
-- Python 3
-- `python3-pip`
-- `pipx` (optional, but recommended)
+There are three ways to install AutoRecon: pipx, pip, and manually. Before installation using any of these methods, certain requirements need to be fulfilled. If you have not refreshed your apt cache recently, run the following command so you are installing the latest available packages:
+
+```bash
+sudo apt update
+```
 
 ### Python 3
 
-If you don't have these installed, and are running Kali Linux, you can execute the following:
+AutoRecon requires the usage of Python 3.7+ and pip, which can be installed on Kali Linux using the following commands:
 
 ```bash
 sudo apt install python3
 sudo apt install python3-pip
 ```
 
-### `pipx`
+### Supporting Packages
 
-Further, it's recommended you use `pipx` to manage your python packages; this installs each python package in it's own virtualenv, and makes it available in the global context, which avoids conflicting package dependencies and the resulting instability. To summarize the installation instructions:
-
-```bash
-sudo apt install python3-venv
-python3 -m pip install --user pipx
-python3 -m pipx ensurepath
-```
-
-You will have to re-source your ~/.bashrc or ~/.zshrc file (or open a new tab) after running these commands in order to use pipx.
-
-### Supporting packages
-
-Several commands used in AutoRecon reference the SecLists project, in the directory /usr/share/seclists/. You can either manually download the SecLists project to this directory (https://github.com/danielmiessler/SecLists), or if you are using Kali Linux (**highly recommended**) you can run the following:
+Several commands used in AutoRecon reference the SecLists project, in the directory /usr/share/seclists/. You can either manually download the SecLists project to this directory (https://github.com/danielmiessler/SecLists), or if you are using Kali Linux (**highly recommended**) you can run the following commands:
 
 ```bash
 sudo apt install seclists
@@ -91,40 +81,51 @@ whatweb
 wkhtmltopdf
 ```
 
-On Kali Linux, you can ensure these are all installed using the following command:
+On Kali Linux, you can ensure these are all installed using the following commands:
 
 ```bash
 sudo apt install seclists curl enum4linux feroxbuster impacket-scripts nbtscan nikto nmap onesixtyone oscanner redis-tools smbclient smbmap snmp sslscan sipvicious tnscmd10g whatweb wkhtmltopdf
 ```
 
-## Installation
+### Installation Method #1: pipx (Recommended)
 
-Ensure you have all of the requirements installed as per the previous section.
+It is recommended you use `pipx` to install AutoRecon. pipx will install AutoRecon in it's own virtual environment, and make it available in the global context, avoiding conflicting package dependencies and the resulting instability. First, install pipx using the following commands:
 
-### Using `pipx` (recommended)
-
-If installing using pipx, you'll need to run the installation command as root or with sudo in order to be able to run autorecon using sudo:
 
 ```bash
-sudo pipx install git+https://github.com/Tib3rius/AutoRecon.git
+sudo apt install python3-venv
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
 ```
 
-Note that if you want to run AutoRecon using sudo, you have to use _one_ of the following examples:
+You will have to re-source your ~/.bashrc or ~/.zshrc file (or open a new tab) after running these commands in order to use pipx.
+
+Install AutoRecon using the following command:
+
+```bash
+pipx install git+https://github.com/Tib3rius/AutoRecon.git
+```
+
+Note that if you want to run AutoRecon using sudo (required for faster SYN scanning and UDP scanning), you have to use _one_ of the following examples:
 
 ```bash
 sudo env "PATH=$PATH" autorecon [OPTIONS]
 sudo $(which autorecon) [OPTIONS]
 ```
 
-### Using `pip`
+### Installation Method #2: pip
 
-If installing using pip, you'll need to run the installation command as root or with sudo in order to be able to run autorecon using sudo:
+Alternatively you can use `pip` to install AutoRecon using the following command:
 
 ```bash
-sudo python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
+python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
 ```
 
-### Manual
+Note that if you want to run AutoRecon using sudo (required for faster SYN scanning and UDP scanning), you will have to run the above command as the root user (or using sudo).
+
+Similarly to `pipx`, if installed using `pip` you can run AutoRecon by simply executing `autorecon`.
+
+### Installation Method #3: Manually
 
 If you'd prefer not to use `pip` or `pipx`, you can always still install and execute `autorecon.py` manually as a script. From within the AutoRecon directory, install the dependencies:
 
@@ -138,11 +139,40 @@ You will then be able to run the `autorecon.py` script:
 python3 autorecon.py [OPTIONS] 127.0.0.1
 ```
 
-See detailed usage options below.
-
 ## Upgrading
 
+### pipx
+
+Upgrading AutoRecon when it has been installed with pipx is the easiest, and is why the method is recommended. Simply run the following command:
+
+```bash
+pipx upgrade autorecon
+```
+
+### pip
+
+If you've installed AutoRecon using pip, you will first have to uninstall AutoRecon and then re-install using the same install command:
+
+```bash
+python3 -m pip uninstall autorecon
+python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
+```
+
+### Manually
+
+If you've installed AutoRecon manually, simply change to the AutoRecon directory and run the following command:
+
+```bash
+git pull
+```
+
+Assuming you did not modify any of the content in the AutoRecon directory, this should pull the latest code from this GitHub repo, after which you can run AutoRecon using the autorecon.py script as per usual.
+
+### Plugins
+
 A plugin update process is in the works. Until then, after upgrading, remove the ~/.config/AutoRecon directory and run AutoRecon with any argument to repopulate with the latest files.
+
+If you depend on the ~/.config/AutoRecon/config.toml file (i.e. you have made modifications to it) then simply remove everything in the ~/.config/AutoRecon apart from the config.toml file (including the VERSION-x.x.x file).
 
 ## Usage
 
@@ -279,6 +309,8 @@ By default, results will be stored in the ./results directory. A new sub directo
 └── scans/
 	├── _commands.log
 	├── _manual_commands.txt
+	├── tcp80/
+	├── udp53/
 	└── xml/
 ```
 
@@ -295,6 +327,8 @@ The report directory contains some auto-generated files and directories that are
 The scans directory is where all results from scans performed by AutoRecon will go. This includes port scans / service detection scans, as well as any service enumeration scans. It also contains two other files:
 * \_commands.log contains a list of every command AutoRecon ran against the target. This is useful if one of the commands fails and you want to run it again with modifications.
 * \_manual_commands.txt contains any commands that are deemed "too dangerous" to run automatically, either because they are too intrusive, require modification based on human analysis, or just work better when there is a human monitoring them.
+
+By default, directories are created for each open port (e.g. tcp80, udp53) and scan results for the services found on those ports are stored in their respective directories. You can disable this behavior using the --no-port-dirs command line option, and scan results will instead be stored in the scans directory itself.
 
 If a scan results in an error, a file called \_errors.log will also appear in the scans directory with some details to alert the user.
 
