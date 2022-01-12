@@ -122,7 +122,7 @@ class CommandStreamReader(object):
 				continue
 
 			if line != '':
-				info('{bright}[{yellow}' + self.target.address + '{crst}/{bgreen}' + self.tag + '{crst}]{rst} ' + line.replace('{', '{{').replace('}', '}}'), verbosity=3)
+				info('{bright}[{yellow}' + self.target.address + '{crst}/{bgreen}' + self.tag + '{crst}]{rst} ' + line.strip().replace('{', '{{').replace('}', '}}'), verbosity=3)
 
 			# Check lines for pattern matches.
 			for p in self.patterns:
