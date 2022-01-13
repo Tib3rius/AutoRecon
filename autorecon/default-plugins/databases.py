@@ -1,5 +1,4 @@
 from autorecon.plugins import ServiceScan
-from autorecon.io import error
 from shutil import which
 
 class NmapMongoDB(ServiceScan):
@@ -77,7 +76,7 @@ class OracleTNScmd(ServiceScan):
 
 	def check(self):
 		if which('tnscmd10g') is None:
-			error('The tnscmd10g program could not be found. Make sure it is installed. (On Kali, run: sudo apt install tnscmd10g)')
+			self.error('The tnscmd10g program could not be found. Make sure it is installed. (On Kali, run: sudo apt install tnscmd10g)')
 
 	async def run(self, service):
 		if service.target.ipversion == 'IPv4':
@@ -96,7 +95,7 @@ class OracleScanner(ServiceScan):
 
 	def check(self):
 		if which('oscanner') is None:
-			error('The oscanner program could not be found. Make sure it is installed. (On Kali, run: sudo apt install oscanner)')
+			self.error('The oscanner program could not be found. Make sure it is installed. (On Kali, run: sudo apt install oscanner)')
 
 	async def run(self, service):
 		await service.execute('oscanner -v -s {address} -P {port} 2>&1', outfile='{protocol}_{port}_oracle_scanner.txt')

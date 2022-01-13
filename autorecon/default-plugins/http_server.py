@@ -1,5 +1,5 @@
 from autorecon.plugins import ServiceScan
-from autorecon.io import error, info, fformat
+from autorecon.io import fformat
 from autorecon.config import config
 from shutil import which
 import os
@@ -78,7 +78,7 @@ class CurlRobots(ServiceScan):
 				with open(filename, mode='wt', encoding='utf8') as robots:
 					robots.write('\n'.join(lines))
 			else:
-				info('{bblue}[' + fformat('{tag}') + ']{rst} There did not appear to be a robots.txt file in the webroot (/).')
+				service.info('{bblue}[' + fformat('{tag}') + ']{rst} There did not appear to be a robots.txt file in the webroot (/).')
 
 class CurlKnownSecurity(ServiceScan):
 
@@ -102,7 +102,7 @@ class CurlKnownSecurity(ServiceScan):
 				with open(filename, mode='wt', encoding='utf8') as robots:
 					robots.write('\n'.join(lines))
 			else:
-				info('{bblue}[' + fformat('{tag}') + ']{rst} There did not appear to be a .well-known/security.txt file in the webroot (/).')
+				service.info('{bblue}[' + fformat('{tag}') + ']{rst} There did not appear to be a .well-known/security.txt file in the webroot (/).')
 
 
 class DirBuster(ServiceScan):
@@ -126,25 +126,25 @@ class DirBuster(ServiceScan):
 		tool = self.get_option('tool')
 		if tool == 'feroxbuster':
 			if which('feroxbuster') is None:
-				error('The feroxbuster program could not be found. Make sure it is installed. (On Kali, run: sudo apt install feroxbuster)')
+				self.error('The feroxbuster program could not be found. Make sure it is installed. (On Kali, run: sudo apt install feroxbuster)')
 		elif tool == 'gobuster':
 			if which('gobuster') is None:
-				error('The gobuster program could not be found. Make sure it is installed. (On Kali, run: sudo apt install gobuster)')
+				self.error('The gobuster program could not be found. Make sure it is installed. (On Kali, run: sudo apt install gobuster)')
 		elif tool == 'dirsearch':
 			if which('dirsearch') is None:
-				error('The dirsearch program could not be found. Make sure it is installed. (On Kali, run: sudo apt install dirsearch)')
+				self.error('The dirsearch program could not be found. Make sure it is installed. (On Kali, run: sudo apt install dirsearch)')
 
 	async def run(self, service):
 		dot_extensions = ','.join(['.' + x for x in self.get_option('ext').split(',')])
 		for wordlist in self.get_option('wordlist'):
 			name = os.path.splitext(os.path.basename(wordlist))[0]
 			if self.get_option('tool') == 'feroxbuster':
-				await service.execute('feroxbuster -u {http_scheme}://{addressv6}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -x "' + self.get_option('ext') + '" -v -k -n -q -o "{scandir}/{protocol}_{port}_{http_scheme}_feroxbuster_' + name + '.txt"')
+				await service.execute('feroxbuster -u {http_scheme}://{addressv6}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -x "' + self.get_option('ext') + '" -v -k -n -q -e -o "{scandir}/{protocol}_{port}_{http_scheme}_feroxbuster_' + name + '.txt"')
 			elif self.get_option('tool') == 'gobuster':
-				await service.execute('gobuster dir -u {http_scheme}://{addressv6}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e -k -x "' + self.get_option('ext') + '" -z -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_' + name + '.txt"')
+				await service.execute('gobuster dir -u {http_scheme}://{addressv6}:{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -e -k -x "' + self.get_option('ext') + '" -z -d -o "{scandir}/{protocol}_{port}_{http_scheme}_gobuster_' + name + '.txt"')
 			elif self.get_option('tool') == 'dirsearch':
 				if service.target.ipversion == 'IPv6':
-					error('dirsearch does not support IPv6.')
+					service.error('dirsearch does not support IPv6.')
 				else:
 					await service.execute('dirsearch -u {http_scheme}://{address}:{port}/ -t ' + str(self.get_option('threads')) + ' -e "' + self.get_option('ext') + '" -f -q -w ' + wordlist + ' --format=plain -o "{scandir}/{protocol}_{port}_{http_scheme}_dirsearch_' + name + '.txt"')
 			elif self.get_option('tool') == 'ffuf':
@@ -191,6 +191,42 @@ class Nikto(ServiceScan):
 		if service.target.ipversion == 'IPv4':
 			service.add_manual_command('(nikto) old but generally reliable web server enumeration tool:', 'nikto -ask=no -h {http_scheme}://{address}:{port} 2>&1 | tee "{scandir}/{protocol}_{port}_{http_scheme}_nikto.txt"')
 
+class VirtualHost(ServiceScan):
+
+	def __init__(self):
+		super().__init__()
+		self.name = 'Virtual Host Enumeration'
+		self.slug = 'vhost-enum'
+		self.tags = ['default', 'safe', 'http', 'long']
+
+	def configure(self):
+		self.add_option('hostname', help='The hostname to use as the base host (e.g. example.com) for virtual host enumeration. Default: %(default)s')
+		self.add_list_option('wordlist', default=['/usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt'], help='The wordlist(s) to use when enumerating virtual hosts. Separate multiple wordlists with spaces. Default: %(default)s')
+		self.add_option('threads', default=10, help='The number of threads to use when enumerating virtual hosts. Default: %(default)s')
+		self.match_service_name('^http')
+		self.match_service_name('^nacn_http$', negative_match=True)
+
+	def check(self):
+		if which('gobuster') is None:
+			self.error('The gobuster program could not be found. Make sure it is installed. (On Kali, run: sudo apt install gobuster)')
+
+	async def run(self, service):
+		hostnames = []
+		if self.get_option('hostname'):
+			hostnames.append(self.get_option('hostname'))
+		if service.target.type == 'hostname' and service.target.address not in hostnames:
+			hostnames.append(service.target.address)
+		if self.get_global('domain') and self.get_global('domain') not in hostnames:
+			hostnames.append(self.get_global('domain'))
+
+		if len(hostnames) > 0:
+			for wordlist in self.get_option('wordlist'):
+				name = os.path.splitext(os.path.basename(wordlist))[0]
+				for hostname in hostnames:
+					await service.execute('gobuster vhost -u {http_scheme}://' + hostname + ':{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -r -o "{scandir}/{protocol}_{port}_{http_scheme}_' + hostname + '_vhosts_' + name + '.txt"')
+		else:
+			service.info('The target was not a hostname, nor was a hostname provided as an option. Skipping virtual host enumeration.')
+
 class WhatWeb(ServiceScan):
 
 	def __init__(self):
@@ -219,7 +255,7 @@ class WkHTMLToImage(ServiceScan):
 
 	def check(self):
 		if which('wkhtmltoimage') is None:
-			error('The wkhtmltoimage program could not be found. Make sure it is installed. (On Kali, run: sudo apt install wkhtmltopdf)')
+			self.error('The wkhtmltoimage program could not be found. Make sure it is installed. (On Kali, run: sudo apt install wkhtmltopdf)')
 
 	async def run(self, service):
 		if which('wkhtmltoimage') is not None:
@@ -239,37 +275,3 @@ class WPScan(ServiceScan):
 
 	def manual(self, service, plugin_was_run):
 		service.add_manual_command('(wpscan) WordPress Security Scanner (useful if WordPress is found):', 'wpscan --url {http_scheme}://{addressv6}:{port}/ --no-update -e vp,vt,tt,cb,dbe,u,m --plugins-detection aggressive --plugins-version-detection aggressive -f cli-no-color 2>&1 | tee "{scandir}/{protocol}_{port}_{http_scheme}_wpscan.txt"')
-
-class VirtualHost(ServiceScan):
-
-	def __init__(self):
-		super().__init__()
-		self.name = 'Virtual Host Enumeration'
-		self.slug = 'vhost-enum'
-		self.tags = ['default', 'safe', 'http', 'long']
-
-	def configure(self):
-		self.add_option('hostname', help='The hostname to use as the base host (e.g. example.com) for virtual host enumeration. Default: %(default)s')
-		self.add_list_option('wordlist', default=['/usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt'], help='The wordlist(s) to use when enumerating virtual hosts. Separate multiple wordlists with spaces. Default: %(default)s')
-		self.add_option('threads', default=10, help='The number of threads to use when enumerating virtual hosts. Default: %(default)s')
-		self.match_service_name('^http')
-		self.match_service_name('^nacn_http$', negative_match=True)
-
-	def check(self):
-		if which('gobuster') is None:
-			error('The gobuster program could not be found. Make sure it is installed. (On Kali, run: sudo apt install gobuster)')
-
-	async def run(self, service):
-		if service.target.type == 'hostname' or self.get_option('hostname') or self.get_global('domain'):
-			if self.get_option('hostname'):
-				hostname = self.get_option('hostname')
-			elif service.target.type == 'hostname':
-				hostname = service.target.address
-			else:
-				hostname = self.get_global('domain')
-
-			for wordlist in self.get_option('wordlist'):
-				name = os.path.splitext(os.path.basename(wordlist))[0]
-				await service.execute('gobuster vhost -u {http_scheme}://' + hostname + ':{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -r -o "{scandir}/{protocol}_{port}_{http_scheme}_vhosts_' + name + '.txt"')
-		else:
-			info('The target was not a hostname, nor was a hostname provided as an option. Skipping virtual host enumeration.')

@@ -1,5 +1,4 @@
 from autorecon.plugins import ServiceScan
-from autorecon.io import error
 from shutil import which
 
 class NmapRedis(ServiceScan):
@@ -27,7 +26,7 @@ class RedisCli(ServiceScan):
 
 	def check(self):
 		if which('redis-cli') is None:
-			error('The redis-cli program could not be found. Make sure it is installed. (On Kali, run: sudo apt install redis-tools)')
+			self.error('The redis-cli program could not be found. Make sure it is installed. (On Kali, run: sudo apt install redis-tools)')
 
 	async def run(self, service):
 		if which('redis-cli') is not None:

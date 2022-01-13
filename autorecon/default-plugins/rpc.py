@@ -1,5 +1,4 @@
 from autorecon.plugins import ServiceScan
-from autorecon.io import error, warn
 
 class NmapRPC(ServiceScan):
 
@@ -35,7 +34,7 @@ class RPCDump(ServiceScan):
 		self.tags = ['default', 'safe', 'rpc']
 
 	def configure(self):
-		self.match_service_name(['^msrpc', '^rpcbind', '^erpc'])
+		self.match_service_name(['^msrpc', '^rpcbind', '^erpc', '^ncacn_http$'])
 		self.match_port('tcp', [135, 139, 443, 445, 593])
 
 	async def run(self, service):

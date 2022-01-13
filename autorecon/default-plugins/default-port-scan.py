@@ -1,5 +1,4 @@
 from autorecon.plugins import PortScan
-from autorecon.io import info, error
 from autorecon.config import config
 import os, re
 
@@ -56,7 +55,7 @@ class AllTCPPortScan(PortScan):
 			if line is not None:
 				match = re.search('^Discovered open port ([0-9]+)/tcp', line)
 				if match:
-					info('Discovered open port {bmagenta}tcp/' + match.group(1) + '{rst} on {byellow}' + target.address + '{rst}', verbosity=1)
+					target.info('Discovered open port {bmagenta}tcp/' + match.group(1) + '{rst} on {byellow}' + target.address + '{rst}', verbosity=1)
 				service = target.extract_service(line)
 				if service:
 					services.append(service)
@@ -91,7 +90,7 @@ class Top100UDPPortScan(PortScan):
 				if line is not None:
 					match = re.search('^Discovered open port ([0-9]+)/udp', line)
 					if match:
-						info('Discovered open port {bmagenta}udp/' + match.group(1) + '{rst} on {byellow}' + target.address + '{rst}', verbosity=1)
+						target.info('Discovered open port {bmagenta}udp/' + match.group(1) + '{rst} on {byellow}' + target.address + '{rst}', verbosity=1)
 					service = target.extract_service(line)
 					if service:
 						services.append(service)
@@ -100,4 +99,4 @@ class Top100UDPPortScan(PortScan):
 			await process.wait()
 			return services
 		else:
-			error('UDP scan requires AutoRecon be run with root privileges.')
+			target.error('UDP scan requires AutoRecon be run with root privileges.')
