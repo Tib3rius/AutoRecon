@@ -14,7 +14,7 @@ class NmapHTTP(ServiceScan):
 	def configure(self):
 		self.match_service_name('^http')
 		self.match_service_name('^nacn_http$', negative_match=True)
-		self.add_pattern('Server: ([^\n]+)', description='Identified HTTP Server: {match}')
+		self.add_pattern('Server: ([^\n]+)', description='Identified HTTP Server: {match1}')
 		self.add_pattern('WebDAV is ENABLED', description='WebDAV is enabled')
 
 	async def run(self, service):

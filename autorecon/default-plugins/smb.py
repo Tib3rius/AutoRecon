@@ -53,11 +53,26 @@ class Enum4Linux(ServiceScan):
 		if service.target.ipversion == 'IPv4':
 			await service.execute('enum4linux -a -M -l -d {address} 2>&1', outfile='enum4linux.txt')
 
+class LookupSID(ServiceScan):
+
+	def __init__(self):
+		super().__init__()
+		self.name = 'lookupsid'
+		self.tags = ['default', 'safe', 'active-directory']
+
+	def configure(self):
+		self.match_service('tcp', 445, '^microsoft\-ds')
+
+	def manual(self, service, plugin_was_run):
+		service.add_manual_command('Lookup SIDs', [
+			'lookupsid.py [username]:[password]@{address}'
+		])
+
 class NBTScan(ServiceScan):
 
 	def __init__(self):
 		super().__init__()
-		self.name = "nbtscan"
+		self.name = 'nbtscan'
 		self.tags = ['default', 'safe', 'netbios', 'active-directory']
 
 	def configure(self):
