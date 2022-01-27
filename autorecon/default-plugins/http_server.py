@@ -223,7 +223,7 @@ class VirtualHost(ServiceScan):
 			for wordlist in self.get_option('wordlist'):
 				name = os.path.splitext(os.path.basename(wordlist))[0]
 				for hostname in hostnames:
-					await service.execute('gobuster vhost -u {http_scheme}://' + hostname + ':{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -r -o "{scandir}/{protocol}_{port}_{http_scheme}_' + hostname + '_vhosts_' + name + '.txt"')
+					await service.execute('gobuster vhost -k -u {http_scheme}://' + hostname + ':{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -r -o "{scandir}/{protocol}_{port}_{http_scheme}_' + hostname + '_vhosts_' + name + '.txt"')
 		else:
 			service.info('The target was not a hostname, nor was a hostname provided as an option. Skipping virtual host enumeration.')
 
