@@ -26,6 +26,8 @@ configurable_keys = [
 	'disable_sanity_checks',
 	'disable_keyboard_control',
 	'force_services',
+	'max_plugin_target_instances',
+	'max_plugin_global_instances',
 	'accessible',
 	'verbose'
 ]
@@ -66,6 +68,8 @@ config = {
 	'disable_sanity_checks': False,
 	'disable_keyboard_control': False,
 	'force_services': None,
+	'max_plugin_target_instances': None,
+	'max_plugin_global_instances': None,
 	'accessible': False,
 	'verbose': 0
 }

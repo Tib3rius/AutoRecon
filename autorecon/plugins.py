@@ -123,6 +123,8 @@ class ServiceScan(Plugin):
 		self.ignore_service_names = []
 		self.run_once_boolean = False
 		self.require_ssl_boolean = False
+		self.max_target_instances = 0
+		self.max_global_instances = 0
 
 	@final
 	def match_service(self, protocol, port, name, negative_match=False):

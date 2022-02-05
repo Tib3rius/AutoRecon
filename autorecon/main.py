@@ -270,87 +270,123 @@ async def service_scan(plugin, service):
 	if not config['force_services']:
 		semaphore = await get_semaphore(service.target.autorecon)
 
-	async with semaphore:
-		# Create variables for fformat references.
-		address = service.target.address
-		addressv6 = service.target.address
-		ipaddress = service.target.ip
-		ipaddressv6 = service.target.ip
-		scandir = service.target.scandir
-		protocol = service.protocol
-		port = service.port
-		name = service.name
+	plugin_pending = True
 
-		if not config['no_port_dirs']:
-			scandir = os.path.join(scandir, protocol + str(port))
-			os.makedirs(scandir, exist_ok=True)
-			os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
+	while plugin_pending:
+		global_plugin_count = 0
+		target_plugin_count = 0
 
-		# Special cases for HTTP.
-		http_scheme = 'https' if 'https' in service.name or service.secure is True else 'http'
-
-		nmap_extra = service.target.autorecon.args.nmap
-		if service.target.autorecon.args.nmap_append:
-			nmap_extra += ' ' + service.target.autorecon.args.nmap_append
-
-		if protocol == 'udp':
-			nmap_extra += ' -sU'
-
-		if service.target.ipversion == 'IPv6':
-			nmap_extra += ' -6'
-			if addressv6 == service.target.ip:
-				addressv6 = '[' + addressv6 + ']'
-			ipaddressv6 = '[' + ipaddressv6 + ']'
-
-		if config['proxychains'] and protocol == 'tcp':
-			nmap_extra += ' -sT'
-
-		tag = service.tag() + '/' + plugin.slug
-
-		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} running against {byellow}' + service.target.address + '{rst}', verbosity=1)
-
-		start_time = time.time()
-
-		async with service.target.lock:
-			service.target.running_tasks[tag] = {'plugin': plugin, 'processes': [], 'start': start_time}
-
-		try:
-			result = await plugin.run(service)
-		except Exception as ex:
-			exc_type, exc_value, exc_tb = sys.exc_info()
-			error_text = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb)[-2:])
-			raise Exception(cprint('Error: Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} running against {byellow}' + service.target.address + '{rst} produced an exception:\n\n' + error_text, color=Fore.RED, char='!', printmsg=False))
-
-		for process_dict in service.target.running_tasks[tag]['processes']:
-			if process_dict['process'].returncode is None:
-				warn('A process was left running after service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.', verbosity=2)
-				await process_dict['process'].wait()
-
-			if process_dict['process'].returncode != 0 and not (process_dict['cmd'].startswith('curl') and process_dict['process'].returncode == 22):
-				errors = []
-				while True:
-					line = await process_dict['stderr'].readline()
-					if line is not None:
-						errors.append(line + '\n')
-					else:
+		if plugin.max_global_instances and plugin.max_global_instances > 0:
+			async with service.target.autorecon.lock:
+				# Count currently running plugin instances.
+				for target in service.target.autorecon.scanning_targets:
+					for task in target.running_tasks.values():
+						if plugin == task['plugin']:
+							global_plugin_count += 1
+							if global_plugin_count >= plugin.max_global_instances:
+								break
+					if global_plugin_count >= plugin.max_global_instances:
 						break
-				error('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} ran a command against {byellow}' + service.target.address + '{rst} which returned a non-zero exit code (' + str(process_dict['process'].returncode) + '). Check ' + service.target.scandir + '/_errors.log for more details.', verbosity=2)
-				async with service.target.lock:
-					with open(os.path.join(service.target.scandir, '_errors.log'), 'a') as file:
-						file.writelines('[*] Service scan ' + plugin.name + ' (' + tag + ') ran a command which returned a non-zero exit code (' + str(process_dict['process'].returncode) + ').\n')
-						file.writelines('[-] Command: ' + process_dict['cmd'] + '\n')
-						if errors:
-							file.writelines(['[-] Error Output:\n'] + errors + ['\n'])
+			if global_plugin_count >= plugin.max_global_instances:
+				await asyncio.sleep(1)
+				continue
+
+		if plugin.max_target_instances and plugin.max_target_instances > 0:
+			async with service.target.lock:
+				# Count currently running plugin instances.
+				for task in service.target.running_tasks.values():
+					if plugin == task['plugin']:
+						target_plugin_count += 1
+						if target_plugin_count >= plugin.max_target_instances:
+							break
+			if target_plugin_count >= plugin.max_target_instances:
+				await asyncio.sleep(1)
+				continue
+
+		# If we get here, we can run the plugin.
+		plugin_pending = False
+
+		async with semaphore:
+			# Create variables for fformat references.
+			address = service.target.address
+			addressv6 = service.target.address
+			ipaddress = service.target.ip
+			ipaddressv6 = service.target.ip
+			scandir = service.target.scandir
+			protocol = service.protocol
+			port = service.port
+			name = service.name
+
+			if not config['no_port_dirs']:
+				scandir = os.path.join(scandir, protocol + str(port))
+				os.makedirs(scandir, exist_ok=True)
+				os.makedirs(os.path.join(scandir, 'xml'), exist_ok=True)
+
+			# Special cases for HTTP.
+			http_scheme = 'https' if 'https' in service.name or service.secure is True else 'http'
+
+			nmap_extra = service.target.autorecon.args.nmap
+			if service.target.autorecon.args.nmap_append:
+				nmap_extra += ' ' + service.target.autorecon.args.nmap_append
+
+			if protocol == 'udp':
+				nmap_extra += ' -sU'
+
+			if service.target.ipversion == 'IPv6':
+				nmap_extra += ' -6'
+				if addressv6 == service.target.ip:
+					addressv6 = '[' + addressv6 + ']'
+				ipaddressv6 = '[' + ipaddressv6 + ']'
+
+			if config['proxychains'] and protocol == 'tcp':
+				nmap_extra += ' -sT'
+
+			tag = service.tag() + '/' + plugin.slug
+
+			info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} running against {byellow}' + service.target.address + '{rst}', verbosity=1)
+
+			start_time = time.time()
+
+			async with service.target.lock:
+				service.target.running_tasks[tag] = {'plugin': plugin, 'processes': [], 'start': start_time}
+
+			try:
+				result = await plugin.run(service)
+			except Exception as ex:
+				exc_type, exc_value, exc_tb = sys.exc_info()
+				error_text = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb)[-2:])
+				raise Exception(cprint('Error: Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} running against {byellow}' + service.target.address + '{rst} produced an exception:\n\n' + error_text, color=Fore.RED, char='!', printmsg=False))
+
+			for process_dict in service.target.running_tasks[tag]['processes']:
+				if process_dict['process'].returncode is None:
+					warn('A process was left running after service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished. Please ensure non-blocking processes are awaited before the run coroutine finishes. Awaiting now.', verbosity=2)
+					await process_dict['process'].wait()
+
+				if process_dict['process'].returncode != 0 and not (process_dict['cmd'].startswith('curl') and process_dict['process'].returncode == 22):
+					errors = []
+					while True:
+						line = await process_dict['stderr'].readline()
+						if line is not None:
+							errors.append(line + '\n')
 						else:
-							file.writelines('\n')
+							break
+					error('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} ran a command against {byellow}' + service.target.address + '{rst} which returned a non-zero exit code (' + str(process_dict['process'].returncode) + '). Check ' + service.target.scandir + '/_errors.log for more details.', verbosity=2)
+					async with service.target.lock:
+						with open(os.path.join(service.target.scandir, '_errors.log'), 'a') as file:
+							file.writelines('[*] Service scan ' + plugin.name + ' (' + tag + ') ran a command which returned a non-zero exit code (' + str(process_dict['process'].returncode) + ').\n')
+							file.writelines('[-] Command: ' + process_dict['cmd'] + '\n')
+							if errors:
+								file.writelines(['[-] Error Output:\n'] + errors + ['\n'])
+							else:
+								file.writelines('\n')
 
-		elapsed_time = calculate_elapsed_time(start_time)
+			elapsed_time = calculate_elapsed_time(start_time)
 
-		async with service.target.lock:
-			service.target.running_tasks.pop(tag, None)
+			async with service.target.lock:
+				service.target.running_tasks.pop(tag, None)
 
-		info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished in ' + elapsed_time, verbosity=2)
-		return {'type':'service', 'plugin':plugin, 'result':result}
+			info('Service scan {bblue}' + plugin.name + ' {green}(' + tag + '){rst} against {byellow}' + service.target.address + '{rst} finished in ' + elapsed_time, verbosity=2)
+			return {'type':'service', 'plugin':plugin, 'result':result}
 
 async def generate_report(plugin, targets):
 	semaphore = autorecon.service_scan_semaphore
@@ -803,6 +839,8 @@ async def run():
 	parser.add_argument('--disable-sanity-checks', action='store_true', help='Disable sanity checks that would otherwise prevent the scans from running. Default: %(default)s')
 	parser.add_argument('--disable-keyboard-control', action='store_true', help='Disables keyboard control ([s]tatus, Up, Down) if you are in SSH or Docker.')
 	parser.add_argument('--force-services', action='store', nargs='+', metavar='SERVICE', help='A space separated list of services in the following style: tcp/80/http tcp/443/https/secure')
+	parser.add_argument('-mpti', '--max-plugin-target-instances', action='store', nargs='+', metavar='PLUGIN:NUMBER', help='A space separated list of plugin slugs with the max number of instances (per target) in the following style: nmap-http:2 dirbuster:1. Default: %(default)s')
+	parser.add_argument('-mpgi', '--max-plugin-global-instances', action='store', nargs='+', metavar='PLUGIN:NUMBER', help='A space separated list of plugin slugs with the max number of global instances in the following style: nmap-http:2 dirbuster:1. Default: %(default)s')
 	parser.add_argument('--accessible', action='store_true', help='Attempts to make AutoRecon output more accessible to screenreaders. Default: %(default)s')
 	parser.add_argument('-v', '--verbose', action='count', help='Enable verbose output. Repeat for more verbosity.')
 	parser.add_argument('--version', action='store_true', help='Prints the AutoRecon version and exits.')
@@ -1049,13 +1087,51 @@ async def run():
 		if type in ['plugin', 'plugins', 'service', 'services', 'servicescan', 'servicescans']:
 			for p in autorecon.plugin_types['service']:
 				print('ServiceScan: ' + p.name + ' (' + p.slug + ')' + (' - ' + p.description if p.description else ''))
-		if type in ['plugin', 'plugins', 'report', 'reporting']:
+		if type in ['plugin', 'plugins', 'report', 'reports', 'reporting']:
 			for p in autorecon.plugin_types['report']:
 				print('Report: ' + p.name + ' (' + p.slug + ')' + (' - ' + p.description if p.description else ''))
 
 		sys.exit(0)
 
+	max_plugin_target_instances = {}
+	if config['max_plugin_target_instances']:
+		for plugin_instance in config['max_plugin_target_instances']:
+			plugin_instance = plugin_instance.split(':', 1)
+			if len(plugin_instance) == 2:
+				if plugin_instance[0] not in autorecon.plugins:
+					error('Invalid plugin slug (' + plugin_instance[0] + ':' + plugin_instance[1] + ') provided to --max-plugin-target-instances.')
+					errors = True
+				elif not plugin_instance[1].isdigit() or int(plugin_instance[1]) == 0:
+					error('Invalid number of instances (' + plugin_instance[0] + ':' + plugin_instance[1] + ') provided to --max-plugin-target-instances. Must be a non-zero positive integer.')
+					errors = True
+				else:
+					max_plugin_target_instances[plugin_instance[0]] = int(plugin_instance[1])
+			else:
+				error('Invalid value provided to --max-plugin-target-instances. Values must be in the format PLUGIN:NUMBER.')
+
+	max_plugin_global_instances = {}
+	if config['max_plugin_global_instances']:
+		for plugin_instance in config['max_plugin_global_instances']:
+			plugin_instance = plugin_instance.split(':', 1)
+			if len(plugin_instance) == 2:
+				if plugin_instance[0] not in autorecon.plugins:
+					error('Invalid plugin slug (' + plugin_instance[0] + ':' + plugin_instance[1] + ') provided to --max-plugin-global-instances.')
+					errors = True
+				elif not plugin_instance[1].isdigit() or int(plugin_instance[1]) == 0:
+					error('Invalid number of instances (' + plugin_instance[0] + ':' + plugin_instance[1] + ') provided to --max-plugin-global-instances. Must be a non-zero positive integer.')
+					errors = True
+				else:
+					max_plugin_global_instances[plugin_instance[0]] = int(plugin_instance[1])
+			else:
+				error('Invalid value provided to --max-plugin-global-instances. Values must be in the format PLUGIN:NUMBER.')
+
 	for plugin in autorecon.plugins.values():
+		if hasattr(plugin, 'max_target_instances') and plugin.slug in max_plugin_target_instances:
+			plugin.max_target_instances = max_plugin_target_instances[plugin.slug]
+
+		if hasattr(plugin, 'max_global_instances') and plugin.slug in max_plugin_global_instances:
+			plugin.max_global_instances = max_plugin_global_instances[plugin.slug]
+
 		for member_name, _ in inspect.getmembers(plugin, predicate=inspect.ismethod):
 			if member_name == 'check':
 				plugin.check()
