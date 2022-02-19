@@ -17,7 +17,7 @@ from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, 
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
-VERSION = "2.0.16"
+VERSION = "2.0.17"
 
 if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
@@ -37,7 +37,7 @@ else:
 	if not os.path.exists(os.path.join(config['config_dir'], 'wordlists')):
 		shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'wordlists'), os.path.join(config['config_dir'], 'wordlists'))
 	if not os.path.exists(os.path.join(config['config_dir'], 'VERSION-' + VERSION)):
-		warn('It looks like the config/plugins in ' + config['config_dir'] + ' are outdated. Please remove the directory and re-run AutoRecon to rebuild them.')
+		warn('It looks like the config/plugins in ' + config['config_dir'] + ' are outdated. Please remove the ' + config['config_dir'] + ' directory and re-run AutoRecon to rebuild them.')
 
 # Save current terminal settings so we can restore them.
 terminal_settings = termios.tcgetattr(sys.stdin.fileno())
