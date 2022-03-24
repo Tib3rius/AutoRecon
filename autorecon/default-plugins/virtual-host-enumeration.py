@@ -1,6 +1,6 @@
 from autorecon.plugins import ServiceScan
 from shutil import which
-import os
+import os, random, string
 
 class VirtualHost(ServiceScan):
 
@@ -17,10 +17,6 @@ class VirtualHost(ServiceScan):
 		self.match_service_name('^http')
 		self.match_service_name('^nacn_http$', negative_match=True)
 
-	def check(self):
-		if which('gobuster') is None:
-			self.error('The gobuster program could not be found. Make sure it is installed. (On Kali, run: sudo apt install gobuster)')
-
 	async def run(self, service):
 		hostnames = []
 		if self.get_option('hostname'):
@@ -34,6 +30,10 @@ class VirtualHost(ServiceScan):
 			for wordlist in self.get_option('wordlist'):
 				name = os.path.splitext(os.path.basename(wordlist))[0]
 				for hostname in hostnames:
-					await service.execute('gobuster vhost -k -u {http_scheme}://' + hostname + ':{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -r -o "{scandir}/{protocol}_{port}_{http_scheme}_' + hostname + '_vhosts_' + name + '.txt"')
+					_, stdout, _ = await service.execute('curl -sk -o /dev/null -H "Host: ' + ''.join(random.choice(string.ascii_letters) for i in range(20)) + '.' + hostname + '" {http_scheme}://' + hostname + ':{port}/ -w "%{{size_download}}"')
+
+					size = ''.join(await stdout.readlines())
+
+					await service.execute('ffuf -u {http_scheme}://' + hostname + ':{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -H "Host: FUZZ.' + hostname + '" -fs ' + size + ' -noninteractive -s | tee "{scandir}/{protocol}_{port}_{http_scheme}_' + hostname + '_vhosts_' + name + '.txt"')
 		else:
 			service.info('The target was not a hostname, nor was a hostname provided as an option. Skipping virtual host enumeration.')

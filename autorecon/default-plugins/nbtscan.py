@@ -14,4 +14,4 @@ class NBTScan(ServiceScan):
 
 	async def run(self, service):
 		if service.target.ipversion == 'IPv4':
-			await service.execute('nbtscan -rvh {address} 2>&1', outfile='nbtscan.txt')
+			await service.execute('nbtscan -rvh {ipaddress} 2>&1', outfile='nbtscan.txt')
