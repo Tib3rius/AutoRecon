@@ -15,4 +15,4 @@ class OneSixtyOne(ServiceScan):
 
 	async def run(self, service):
 		if service.target.ipversion == 'IPv4':
-			await service.execute('onesixtyone -c ' + service.get_option('community-strings') + ' -dd {address} 2>&1', outfile='{protocol}_{port}_snmp_onesixtyone.txt')
+			await service.execute('onesixtyone -c ' + self.get_option('community-strings') + ' -dd {address} 2>&1', outfile='{protocol}_{port}_snmp_onesixtyone.txt')
