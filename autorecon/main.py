@@ -911,19 +911,17 @@ async def run():
 		plugins_dirs.append(config['add_plugins_dir'])
 
 	for plugins_dir in plugins_dirs:
-		for plugin_file in os.listdir(plugins_dir):
+		for plugin_file in sorted(os.listdir(plugins_dir)):
 			if not plugin_file.startswith('_') and plugin_file.endswith('.py'):
 
 				dirname, filename = os.path.split(os.path.join(plugins_dir, plugin_file))
 				dirname = os.path.abspath(dirname)
 
-				# Temporarily insert the plugin directory into the sys.path so importing plugins works.
-				sys.path.insert(1, dirname)
-
 				try:
-					plugin = importlib.import_module(filename[:-3])
-					# Remove the plugin directory from the path after import.
-					sys.path.pop(1)
+					spec = importlib.util.spec_from_file_location("autorecon." + filename[:-3], os.path.join(dirname, filename))
+					plugin = importlib.util.module_from_spec(spec)
+					spec.loader.exec_module(plugin)
+
 					clsmembers = inspect.getmembers(plugin, predicate=inspect.isclass)
 					for (_, c) in clsmembers:
 						if c.__module__ in ['autorecon.plugins', 'autorecon.targets']:
