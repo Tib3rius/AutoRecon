@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import argparse, asyncio, importlib, inspect, ipaddress, math, os, re, select, shutil, signal, socket, sys, termios, time, traceback, tty
+import argparse, asyncio, importlib.util, inspect, ipaddress, math, os, re, select, shutil, signal, socket, sys, termios, time, traceback, tty
 from datetime import datetime
 
 try:
