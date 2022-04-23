@@ -13,4 +13,4 @@ class GetArch(ServiceScan):
 		self.add_pattern(' is ((32|64)-bit)', description='Identified Architecture: {match1}')
 
 	async def run(self, service):
-		await service.execute('getArch.py -target {address}', outfile='{protocol}_{port}_rpc_architecture.txt')
+		await service.execute('impacket-getArch -target {address}', outfile='{protocol}_{port}_rpc_architecture.txt')
