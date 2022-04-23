@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import argparse, asyncio, importlib, inspect, ipaddress, math, os, re, select, shutil, signal, socket, sys, termios, time, traceback, tty
+import argparse, asyncio, importlib.util, inspect, ipaddress, math, os, re, select, shutil, signal, socket, sys, termios, time, traceback, tty
 from datetime import datetime
 
 try:
@@ -17,7 +17,7 @@ from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, 
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
-VERSION = "2.0.19"
+VERSION = "2.0.21"
 
 if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
