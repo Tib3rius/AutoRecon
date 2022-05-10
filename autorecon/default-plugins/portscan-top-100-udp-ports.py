@@ -14,7 +14,7 @@ class Top100UDPPortScan(PortScan):
 
 	async def run(self, target):
 		# Only run UDP scan if user is root.
-		if os.getuid() == 0:
+		if os.getuid() == 0 or config['disable_sanity_checks']:
 			if target.ports:
 				if target.ports['udp']:
 					process, stdout, stderr = await target.execute('nmap {nmap_extra} -sU -A --osscan-guess -p ' + target.ports['udp'] + ' -oN "{scandir}/_custom_ports_udp_nmap.txt" -oX "{scandir}/xml/_custom_ports_udp_nmap.xml" {address}', blocking=False)
