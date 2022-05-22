@@ -12,5 +12,5 @@ class LDAPSearch(ServiceScan):
 
 	def manual(self, service, plugin_was_run):
 		service.add_manual_command('ldapsearch command (modify before running):', [
-			'ldapsearch -x -D "<username>" -w "<password>" -p {port} -h {address} -b "dc=example,dc=com" -s sub "(objectclass=*)" 2>&1 | tee > "{scandir}/{protocol}_{port}_ldap_all-entries.txt"'
+			'ldapsearch -x -D "<username>" -w "<password>" -H ldap://{address}:{port} -b "dc=example,dc=com" -s sub "(objectclass=*)" 2>&1 | tee > "{scandir}/{protocol}_{port}_ldap_all-entries.txt"'
 		])
