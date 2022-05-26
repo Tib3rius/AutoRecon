@@ -1052,7 +1052,22 @@ async def run():
 						autorecon.argparse.set_defaults(**{'global.' + slugify(gkey).replace('-', '_'): gval})
 		elif isinstance(val, dict): # Process potential plugin arguments.
 			for pkey, pval in config_toml[key].items():
-				if autorecon.argparse.get_default(slugify(key).replace('-', '_') + '.' + slugify(pkey).replace('-', '_')):
+				if autorecon.argparse.get_default(slugify(key).replace('-', '_') + '.' + slugify(pkey).replace('-', '_')) is not None:
+					for action in autorecon.argparse._actions:
+						if action.dest == slugify(key).replace('-', '_') + '.' + slugify(pkey).replace('-', '_'):
+							if action.const and pval != action.const:
+								if action.const in [True, False]:
+									error('Config option [' + slugify(key) + '] ' + slugify(pkey) + ': invalid value: \'' + pval + '\' (should be ' + str(action.const).lower() + ' {no quotes})')
+								else:
+									error('Config option [' + slugify(key) + '] ' + slugify(pkey) + ': invalid value: \'' + pval + '\' (should be ' + str(action.const) + ')')
+								errors = True
+							elif action.choices and pval not in action.choices:
+								error('Config option [' + slugify(key) + '] ' + slugify(pkey) + ': invalid choice: \'' + pval + '\' (choose from \'' + '\', \''.join(action.choices) + '\')')
+								errors = True
+							elif isinstance(action.default, list) and not isinstance(pval, list):
+								error('Config option [' + slugify(key) + '] ' + slugify(pkey) + ': invalid value: \'' + pval + '\' (should be a list e.g. [\'' + pval + '\'])')
+								errors = True
+							break
 					autorecon.argparse.set_defaults(**{slugify(key).replace('-', '_') + '.' + slugify(pkey).replace('-', '_'): pval})
 		else: # Process potential other options.
 			key = key.replace('-', '_')
