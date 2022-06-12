@@ -49,13 +49,21 @@ class Plugin(object):
 		self.autorecon.add_argument(self, name, choices=choices, default=default, help=help)
 
 	@final
-	def get_option(self, name):
+	def get_option(self, name, default=None):
 		# TODO: make sure name is simple.
 		name = self.slug.replace('-', '_') + '.' + slugify(name).replace('-', '_')
 
 		if name in vars(self.autorecon.args):
-			return vars(self.autorecon.args)[name]
+			if vars(self.autorecon.args)[name] is None:
+				if default:
+					return default
+				else:
+					return None
+			else:
+				return vars(self.autorecon.args)[name]
 		else:
+			if default:
+				return default
 			return None
 
 	@final
