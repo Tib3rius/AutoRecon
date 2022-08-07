@@ -1,4 +1,6 @@
 appdirs
 colorama
+impacket
+requests
 toml
 unidecode

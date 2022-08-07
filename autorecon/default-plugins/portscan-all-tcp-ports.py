@@ -1,6 +1,6 @@
 from autorecon.plugins import PortScan
 from autorecon.config import config
-import re
+import re, requests
 
 class AllTCPPortScan(PortScan):
 
@@ -33,7 +33,18 @@ class AllTCPPortScan(PortScan):
 				if match:
 					target.info('Discovered open port {bmagenta}tcp/' + match.group(1) + '{rst} on {byellow}' + target.address + '{rst}', verbosity=1)
 				service = target.extract_service(line)
+
 				if service:
+					# Check if HTTP service appears to be WinRM. If so, override service name as wsman.
+					if service.name == 'http' and service.port in [5985, 5986]:
+						wsman = requests.get(('https' if service.secure else 'http') + '://' + target.address + ':' + str(service.port) + '/wsman', verify=False)
+						if wsman.status_code == 405:
+							service.name = 'wsman'
+							wsman = requests.post(('https' if service.secure else 'http') + '://' + target.address + ':' + str(service.port) + '/wsman', verify=False)
+						else:
+							if wsman.status_code == 401:
+								service.name = 'wsman'
+
 					services.append(service)
 			else:
 				break
