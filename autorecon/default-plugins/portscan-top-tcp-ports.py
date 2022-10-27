@@ -1,5 +1,6 @@
 from autorecon.plugins import PortScan
 from autorecon.config import config
+import requests
 
 class QuickTCPPortScan(PortScan):
 
