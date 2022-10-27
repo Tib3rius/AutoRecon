@@ -7,8 +7,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
       - run: pip install --upgrade pip poetry
-      - run: pip install bandit black codespell flake8 flake8-bugbear
-                         flake8-comprehensions isort mypy pytest pyupgrade safety
+      - run: pip install bandit black codespell flake8 flake8-bugbear flake8-comprehensions isort mypy pytest pyupgrade safety requests
       - run: bandit --recursive --skip B101 . || true  # B101 is assert statements
       - run: black --check . || true
       - run: codespell --skip="./autorecon/wordlists" # --ignore-words-list="" --skip="*.css,*.js,*.lock"
