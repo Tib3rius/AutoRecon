@@ -17,7 +17,7 @@ from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, 
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
-VERSION = "2.0.26"
+VERSION = "2.0.27"
 
 if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
@@ -809,7 +809,7 @@ async def run():
 	else:
 		config['plugins_dir'] = None
 
-	parser = argparse.ArgumentParser(add_help=False, description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
+	parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False, description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
 	parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs='*')
 	parser.add_argument('-t', '--target-file', action='store', type=str, default='', help='Read targets from file.')
 	parser.add_argument('-p', '--ports', action='store', type=str, help='Comma separated list of ports / port ranges to scan. Specify TCP/UDP ports by prepending list with T:/U: To scan both TCP/UDP, put port(s) at start or specify B: e.g. 53,T:21-25,80,U:123,B:123. Default: %(default)s')
@@ -1081,6 +1081,7 @@ async def run():
 			autorecon.argparse.set_defaults(**{key: val})
 
 	parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='Show this help message and exit.')
+	parser.error = lambda s: fail(s[0].upper() + s[1:])
 	args = parser.parse_args()
 
 	args_dict = vars(args)
@@ -1138,7 +1139,7 @@ async def run():
 			else:
 				error('Invalid value provided to --max-plugin-global-instances. Values must be in the format PLUGIN:NUMBER.')
 
-	for plugin in autorecon.plugins.values():
+	for slug, plugin in autorecon.plugins.items():
 		if hasattr(plugin, 'max_target_instances') and plugin.slug in max_plugin_target_instances:
 			plugin.max_target_instances = max_plugin_target_instances[plugin.slug]
 
@@ -1147,7 +1148,9 @@ async def run():
 
 		for member_name, _ in inspect.getmembers(plugin, predicate=inspect.ismethod):
 			if member_name == 'check':
-				plugin.check()
+				if plugin.check() == False:
+					autorecon.plugins.pop(slug)
+					continue
 				continue
 
 	if config['ports']:

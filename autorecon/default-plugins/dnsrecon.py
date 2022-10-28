@@ -16,6 +16,7 @@ class DnsRecon(ServiceScan):
 	def check(self):
 		if which('dnsrecon') is None:
 			self.error('The program dnsrecon could not be found. Make sure it is installed. (On Kali, run: sudo apt install dnsrecon)')
+			return False
 
 	def manual(self, service, plugin_was_run):
 		service.add_manual_command('Use dnsrecon to automatically query data from the DNS server. You must specify the target domain name.', [

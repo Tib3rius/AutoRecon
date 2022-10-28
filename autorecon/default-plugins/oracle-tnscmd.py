@@ -14,6 +14,7 @@ class OracleTNScmd(ServiceScan):
 	def check(self):
 		if which('tnscmd10g') is None:
 			self.error('The tnscmd10g program could not be found. Make sure it is installed. (On Kali, run: sudo apt install tnscmd10g)')
+			return False
 
 	async def run(self, service):
 		if service.target.ipversion == 'IPv4':
