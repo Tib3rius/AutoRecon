@@ -26,8 +26,9 @@ class Enum4Linux(ServiceScan):
 
 	async def run(self, service):
 		if service.target.ipversion == 'IPv4':
-			if self.tool is not None:
-				if self.tool == 'enum4linux':
+			tool = self.get_option('tool')
+			if tool is not None:
+				if tool == 'enum4linux':
 					await service.execute('enum4linux -a -M -l -d {address} 2>&1', outfile='enum4linux.txt')
-				elif self.tool == 'enum4linux-ng':
+				elif tool == 'enum4linux-ng':
 					await service.execute('enum4linux-ng -A -d -v {address} 2>&1', outfile='enum4linux-ng.txt')
