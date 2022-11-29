@@ -4,7 +4,7 @@ import argparse, asyncio, importlib.util, inspect, ipaddress, math, os, re, sele
 from datetime import datetime
 
 try:
-	import appdirs, colorama, toml, unidecode
+	import appdirs, colorama, impacket, requests, toml, unidecode
 	from colorama import Fore, Style
 except ModuleNotFoundError:
 	print('One or more required modules was not installed. Please run or re-run: ' + ('sudo ' if os.getuid() == 0 else '') + 'python3 -m pip install -r requirements.txt')
@@ -17,7 +17,7 @@ from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, 
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
-VERSION = "2.0.28"
+VERSION = "2.0.29"
 
 if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
@@ -1318,6 +1318,7 @@ async def run():
 			error('The target file ' + args.target_file + ' could not be read.')
 			sys.exit(1)
 
+	unresolvable_targets = False
 	for target in raw_targets:
 		try:
 			ip = ipaddress.ip_address(target)
@@ -1397,8 +1398,12 @@ async def run():
 
 						autorecon.pending_targets.append(Target(target, ip, 'IPv6', 'hostname', autorecon))
 					except socket.gaierror:
+						unresolvable_targets = True
 						error(target + ' does not appear to be a valid IP address, IP range, or resolvable hostname.')
-						errors = True
+
+	if not args.disable_sanity_checks and unresolvable_targets == True:
+		error('AutoRecon will not run if any targets are invalid / unresolvable. To override this, re-run with the --disable-sanity-checks option.')
+		errors = True
 
 	if len(autorecon.pending_targets) == 0:
 		error('You must specify at least one target to scan!')

@@ -43,7 +43,7 @@ configurable_boolean_keys = [
 
 config = {
 	'protected_classes': ['autorecon', 'target', 'service', 'commandstreamreader', 'plugin', 'portscan', 'report', 'servicescan', 'global', 'pattern'],
-	'service_exceptions': ['mc-nmf', 'ncacn_http', 'smux', 'status', 'tcpwrapped', 'unknown'],
+	'service_exceptions': ['infocrypt', 'mc-nmf', 'ncacn_http', 'smux', 'status', 'tcpwrapped', 'unknown'],
 	'config_dir': config_dir,
 	'global_file': None,
 	'ports': None,
