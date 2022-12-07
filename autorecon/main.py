@@ -17,7 +17,7 @@ from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, 
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
-VERSION = "2.0.29"
+VERSION = "2.0.30"
 
 if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
@@ -25,19 +25,29 @@ if not os.path.exists(config['config_dir']):
 	open(os.path.join(config['config_dir'], 'VERSION-' + VERSION), 'a').close()
 	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.toml'), os.path.join(config['config_dir'], 'config.toml'))
 	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'global.toml'), os.path.join(config['config_dir'], 'global.toml'))
-	shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default-plugins'), os.path.join(config['config_dir'], 'plugins'))
-	shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'wordlists'), os.path.join(config['config_dir'], 'wordlists'))
 else:
 	if not os.path.exists(os.path.join(config['config_dir'], 'config.toml')):
 		shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.toml'), os.path.join(config['config_dir'], 'config.toml'))
 	if not os.path.exists(os.path.join(config['config_dir'], 'global.toml')):
 		shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'global.toml'), os.path.join(config['config_dir'], 'global.toml'))
-	if not os.path.exists(os.path.join(config['config_dir'], 'plugins')):
-		shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default-plugins'), os.path.join(config['config_dir'], 'plugins'))
-	if not os.path.exists(os.path.join(config['config_dir'], 'wordlists')):
-		shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'wordlists'), os.path.join(config['config_dir'], 'wordlists'))
 	if not os.path.exists(os.path.join(config['config_dir'], 'VERSION-' + VERSION)):
-		warn('It looks like the config/plugins in ' + config['config_dir'] + ' are outdated. Please remove the ' + config['config_dir'] + ' directory and re-run AutoRecon to rebuild them.')
+		warn('It looks like the config in ' + config['config_dir'] + ' is outdated. Please remove the ' + config['config_dir'] + ' directory and re-run AutoRecon to rebuild it.')
+
+
+if not os.path.exists(config['data_dir']):
+	shutil.rmtree(config['data_dir'], ignore_errors=True, onerror=None)
+	os.makedirs(config['data_dir'], exist_ok=True)
+	open(os.path.join(config['data_dir'], 'VERSION-' + VERSION), 'a').close()
+	shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default-plugins'), os.path.join(config['data_dir'], 'plugins'))
+	shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'wordlists'), os.path.join(config['data_dir'], 'wordlists'))
+else:
+	if not os.path.exists(os.path.join(config['data_dir'], 'plugins')):
+		shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default-plugins'), os.path.join(config['data_dir'], 'plugins'))
+	if not os.path.exists(os.path.join(config['data_dir'], 'wordlists')):
+		shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'wordlists'), os.path.join(config['data_dir'], 'wordlists'))
+	if not os.path.exists(os.path.join(config['data_dir'], 'VERSION-' + VERSION)):
+		warn('It looks like the plugins in ' + config['data_dir'] + ' are outdated. Please remove the ' + config['data_dir'] + ' directory and re-run AutoRecon to rebuild them.')
+
 
 # Save current terminal settings so we can restore them.
 terminal_settings = termios.tcgetattr(sys.stdin.fileno())
@@ -786,26 +796,20 @@ async def scan_target(target):
 
 async def run():
 	# Find config file.
-	if os.path.isfile(os.path.join(os.getcwd(), 'config.toml')):
-		config_file = os.path.join(os.getcwd(), 'config.toml')
-	elif os.path.isfile(os.path.join(config['config_dir'], 'config.toml')):
+	if os.path.isfile(os.path.join(config['config_dir'], 'config.toml')):
 		config_file = os.path.join(config['config_dir'], 'config.toml')
 	else:
 		config_file = None
 
 	# Find global file.
-	if os.path.isfile(os.path.join(os.getcwd(), 'global.toml')):
-		config['global_file'] = os.path.join(os.getcwd(), 'global.toml')
-	elif os.path.isfile(os.path.join(config['config_dir'], 'global.toml')):
+	if os.path.isfile(os.path.join(config['config_dir'], 'global.toml')):
 		config['global_file'] = os.path.join(config['config_dir'], 'global.toml')
 	else:
 		config['global_file'] = None
 
 	# Find plugins.
-	if os.path.isdir(os.path.join(os.getcwd(), 'plugins')):
-		config['plugins_dir'] = os.path.join(os.getcwd(), 'plugins')
-	elif os.path.isdir(os.path.join(config['config_dir'], 'plugins')):
-		config['plugins_dir'] = os.path.join(config['config_dir'], 'plugins')
+	if os.path.isdir(os.path.join(config['data_dir'], 'plugins')):
+		config['plugins_dir'] = os.path.join(config['data_dir'], 'plugins')
 	else:
 		config['plugins_dir'] = None
 
@@ -1515,19 +1519,23 @@ async def run():
 	# If there's only one target we don't need a combined report
 	if len(autorecon.completed_targets) > 1:
 		for plugin in autorecon.plugin_types['report']:
-			plugin_tag_set = set(plugin.tags)
+			if config['reports'] and plugin.slug in config['reports']:
+				matching_tags = True
+				excluded_tags = False
+			else:
+				plugin_tag_set = set(plugin.tags)
 
-			matching_tags = False
-			for tag_group in autorecon.tags:
-				if set(tag_group).issubset(plugin_tag_set):
-					matching_tags = True
-					break
+				matching_tags = False
+				for tag_group in autorecon.tags:
+					if set(tag_group).issubset(plugin_tag_set):
+						matching_tags = True
+						break
 
-			excluded_tags = False
-			for tag_group in autorecon.excluded_tags:
-				if set(tag_group).issubset(plugin_tag_set):
-					excluded_tags = True
-					break
+				excluded_tags = False
+				for tag_group in autorecon.excluded_tags:
+					if set(tag_group).issubset(plugin_tag_set):
+						excluded_tags = True
+						break
 
 			if matching_tags and not excluded_tags:
 				pending.add(asyncio.create_task(generate_report(plugin, autorecon.completed_targets)))

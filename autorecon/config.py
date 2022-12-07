@@ -1,6 +1,7 @@
 import appdirs, os
 
 config_dir = appdirs.user_config_dir('AutoRecon')
+data_dir = appdirs.user_data_dir('AutoRecon')
 
 configurable_keys = [
 	'ports',
@@ -45,6 +46,7 @@ config = {
 	'protected_classes': ['autorecon', 'target', 'service', 'commandstreamreader', 'plugin', 'portscan', 'report', 'servicescan', 'global', 'pattern'],
 	'service_exceptions': ['infocrypt', 'mc-nmf', 'ncacn_http', 'smux', 'status', 'tcpwrapped', 'unknown'],
 	'config_dir': config_dir,
+	'data_dir': data_dir,
 	'global_file': None,
 	'ports': None,
 	'max_scans': 50,
