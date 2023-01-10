@@ -4,7 +4,7 @@ import argparse, asyncio, importlib.util, inspect, ipaddress, math, os, re, sele
 from datetime import datetime
 
 try:
-	import appdirs, colorama, impacket, requests, toml, unidecode
+	import appdirs, colorama, impacket, psutil, requests, toml, unidecode
 	from colorama import Fore, Style
 except ModuleNotFoundError:
 	print('One or more required modules was not installed. Please run or re-run: ' + ('sudo ' if os.getuid() == 0 else '') + 'python3 -m pip install -r requirements.txt')
@@ -17,7 +17,7 @@ from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, 
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
-VERSION = "2.0.30"
+VERSION = "2.0.31"
 
 if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
@@ -92,17 +92,35 @@ def calculate_elapsed_time(start_time, short=False):
 	else:
 		return ', '.join(elapsed_time)
 
-def cancel_all_tasks(signal, frame):
+# sig and frame args are only present so the function
+# works with signal.signal() and handles Ctrl-C.
+# They are not used for any other purpose.
+def cancel_all_tasks(sig, frame):
 	for task in asyncio.all_tasks():
 		task.cancel()
+
+	processes = []
 
 	for target in autorecon.scanning_targets:
 		for process_list in target.running_tasks.values():
 			for process_dict in process_list['processes']:
 				try:
-					process_dict['process'].kill()
-				except ProcessLookupError: # Will get raised if the process finishes before we get to killing it.
+					parent = psutil.Process(process_dict['process'].pid)
+					processes.extend(parent.children(recursive=True))
+					processes.append(parent)
+				except psutil.NoSuchProcess:
 					pass
+	
+	for process in processes:
+		try:
+			process.send_signal(signal.SIGKILL)
+		except psutil.NoSuchProcess: # Will get raised if the process finishes before we get to killing it.
+			pass
+					
+	_, alive = psutil.wait_procs(processes, timeout=10)
+	if len(alive) > 0:
+		error('The following process IDs could not be killed: ' + ', '.join([str(x.pid) for x in sorted(alive, key=lambda x: x.pid)]))
+				
 
 	if not config['disable_keyboard_control']:
 		# Restore original terminal settings.
@@ -114,9 +132,28 @@ async def start_heartbeat(target, period=60):
 		async with target.lock:
 			count = len(target.running_tasks)
 
-			tasks_list = ''
+			tasks_list = []
 			if config['verbose'] >= 1:
-				tasks_list = ': {bblue}' + ', '.join(target.running_tasks.keys()) + '{rst}'
+				for tag, task in target.running_tasks.items():
+					task_str = tag
+
+					if config['verbose'] >= 2:
+						processes = []
+						for process_dict in task['processes']:
+							if process_dict['process'].returncode is None:
+								processes.append(str(process_dict['process'].pid))
+								try:
+									for child in psutil.Process(process_dict['process'].pid).children(recursive=True):
+										processes.append(str(child.pid))
+								except psutil.NoSuchProcess:
+									pass
+						
+						if processes:
+							task_str += ' (PID' + ('s' if len(processes) > 1 else '') + ': ' + ', '.join(processes) + ')'
+						
+					tasks_list.append(task_str)
+
+				tasks_list = ': {bblue}' + ', '.join(tasks_list) + '{rst}'
 
 			current_time = datetime.now().strftime('%H:%M:%S')
 
@@ -153,24 +190,42 @@ async def keyboard():
 				if len(input) > 0 and input[0] == 's':
 					input = input[1:]
 					for target in autorecon.scanning_targets:
-						count = len(target.running_tasks)
+						async with target.lock:
+							count = len(target.running_tasks)
 
-						tasks_list = []
-						if config['verbose'] >= 1:
-							for key, value in target.running_tasks.items():
-								elapsed_time = calculate_elapsed_time(value['start'], short=True)
-								tasks_list.append('{bblue}' + key + '{rst}' + ' (elapsed: ' + elapsed_time + ')')
+							tasks_list = []
+							if config['verbose'] >= 1:
+								for tag, task in target.running_tasks.items():
+									elapsed_time = calculate_elapsed_time(task['start'], short=True)
 
-							tasks_list = ':\n    ' + '\n    '.join(tasks_list)
-						else:
-							tasks_list = ''
+									task_str = '{bblue}' + tag + '{rst}' + ' (elapsed: ' + elapsed_time + ')'
 
-						current_time = datetime.now().strftime('%H:%M:%S')
+									if config['verbose'] >= 2:
+										processes = []
+										for process_dict in task['processes']:
+											if process_dict['process'].returncode is None:
+												processes.append(str(process_dict['process'].pid))
+												try:
+													for child in psutil.Process(process_dict['process'].pid).children(recursive=True):
+														processes.append(str(child.pid))
+												except psutil.NoSuchProcess:
+													pass
+										
+										if processes:
+											task_str += ' (PID' + ('s' if len(processes) > 1 else '') + ': ' + ', '.join(processes) + ')'
+									
+									tasks_list.append(task_str)
 
-						if count > 1:
-							info('{bgreen}' + current_time + '{rst} - There are {byellow}' + str(count) + '{rst} scans still running against {byellow}' + target.address + '{rst}' + tasks_list)
-						elif count == 1:
-							info('{bgreen}' + current_time + '{rst} - There is {byellow}1{rst} scan still running against {byellow}' + target.address + '{rst}' + tasks_list)
+								tasks_list = ':\n    ' + '\n    '.join(tasks_list)
+							else:
+								tasks_list = ''
+
+							current_time = datetime.now().strftime('%H:%M:%S')
+
+							if count > 1:
+								info('{bgreen}' + current_time + '{rst} - There are {byellow}' + str(count) + '{rst} scans still running against {byellow}' + target.address + '{rst}' + tasks_list)
+							elif count == 1:
+								info('{bgreen}' + current_time + '{rst} - There is {byellow}1{rst} scan still running against {byellow}' + target.address + '{rst}' + tasks_list)
 				else:
 					input = input[1:]
 		await asyncio.sleep(0.1)

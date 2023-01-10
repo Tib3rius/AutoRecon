@@ -1,6 +1,7 @@
 appdirs
 colorama
 impacket
+psutil
 requests
 toml
 unidecode
