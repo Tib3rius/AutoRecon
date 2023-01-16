@@ -49,8 +49,8 @@ else:
 		warn('It looks like the plugins in ' + config['data_dir'] + ' are outdated. Please remove the ' + config['data_dir'] + ' directory and re-run AutoRecon to rebuild them.')
 
 
-# Save current terminal settings so we can restore them.
-terminal_settings = termios.tcgetattr(sys.stdin.fileno())
+# Saves current terminal settings so we can restore them.
+terminal_settings = None
 
 autorecon = AutoRecon()
 
@@ -120,11 +120,11 @@ def cancel_all_tasks(sig, frame):
 	_, alive = psutil.wait_procs(processes, timeout=10)
 	if len(alive) > 0:
 		error('The following process IDs could not be killed: ' + ', '.join([str(x.pid) for x in sorted(alive, key=lambda x: x.pid)]))
-				
-
+	
 	if not config['disable_keyboard_control']:
 		# Restore original terminal settings.
-		termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, terminal_settings)
+		if terminal_settings is not None:
+			termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, terminal_settings)
 
 async def start_heartbeat(target, period=60):
 	while True:
@@ -1513,6 +1513,9 @@ async def run():
 
 	start_time = time.time()
 
+	if not config['disable_keyboard_control']:
+		terminal_settings = termios.tcgetattr(sys.stdin.fileno())
+
 	pending = []
 	i = 0
 	while autorecon.pending_targets:
@@ -1616,7 +1619,8 @@ async def run():
 
 	if not config['disable_keyboard_control']:
 		# Restore original terminal settings.
-		termios.tcsetattr(sys.stdin, termios.TCSADRAIN, terminal_settings)
+		if terminal_settings is not None:
+			termios.tcsetattr(sys.stdin, termios.TCSADRAIN, terminal_settings)
 
 def main():
 	# Capture Ctrl+C and cancel everything.
