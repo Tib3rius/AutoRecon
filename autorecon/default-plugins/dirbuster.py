@@ -11,8 +11,8 @@ class DirBuster(ServiceScan):
 		self.slug = 'dirbuster'
 		self.priority = 0
 		self.tags = ['default', 'safe', 'long', 'http']
-		print('asdfasdf')
-		exit()
+		# print('asdfasdf')
+		# exit()
 
 	def configure(self):
 		self.add_choice_option('tool', default='feroxbuster', choices=['feroxbuster', 'gobuster', 'dirsearch', 'ffuf', 'dirb', 'none'], help='The tool to use for directory busting. set to "none" to disable dirbusting. Default: %(default)s')
@@ -25,6 +25,7 @@ class DirBuster(ServiceScan):
 		self.match_service_name('^nacn_http$', negative_match=True)
 
 	def check(self):
+		print('asdfasdfasdf')
 		tool = self.get_option('tool')
 		if tool == 'none':
 			self.info('dirbuster disabled via "--dirbuster.tool none"')

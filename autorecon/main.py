@@ -1111,6 +1111,7 @@ async def run():
 						autorecon.argparse.set_defaults(**{'global.' + slugify(gkey).replace('-', '_'): gval})
 		elif isinstance(val, dict): # Process potential plugin arguments.
 			for pkey, pval in config_toml[key].items():
+				print(pkey, pval)
 				if autorecon.argparse.get_default(slugify(key).replace('-', '_') + '.' + slugify(pkey).replace('-', '_')) is not None:
 					for action in autorecon.argparse._actions:
 						if action.dest == slugify(key).replace('-', '_') + '.' + slugify(pkey).replace('-', '_'):
