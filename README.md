@@ -43,7 +43,7 @@ sudo apt update
 
 ### Python 3
 
-AutoRecon requires the usage of Python 3.7+ and pip, which can be installed on Kali Linux using the following commands:
+AutoRecon requires the usage of Python 3.8+ and pip, which can be installed on Kali Linux using the following commands:
 
 ```bash
 sudo apt install python3
@@ -174,9 +174,7 @@ Assuming you did not modify any of the content in the AutoRecon directory, this 
 
 ### Plugins
 
-A plugin update process is in the works. Until then, after upgrading, remove the ~/.config/AutoRecon directory and run AutoRecon with any argument to repopulate with the latest files.
-
-If you depend on the ~/.config/AutoRecon/config.toml file (i.e. you have made modifications to it) then simply remove everything in the ~/.config/AutoRecon apart from the config.toml file (including the VERSION-x.x.x file).
+A plugin update process is in the works. Until then, after upgrading, remove the ~/.local/share/AutoRecon directory and run AutoRecon with any argument to repopulate with the latest files.
 
 ## Usage
 
@@ -224,7 +222,7 @@ optional arguments:
                         Override --tags / --exclude-tags for the listed ServiceScan plugins (comma separated). Default: None
   --reports PLUGINS     Override --tags / --exclude-tags for the listed Report plugins (comma separated). Default: None
   --plugins-dir PLUGINS_DIR
-                        The location of the plugins directory. Default: ~/.config/AutoRecon/plugins
+                        The location of the plugins directory. Default: ~/.local/share/AutoRecon/plugins
   --add-plugins-dir PLUGINS_DIR
                         The location of an additional plugins directory to add to the main one. Default: None
   -l [TYPE], --list [TYPE]
@@ -266,7 +264,7 @@ plugin arguments:
                         The tool to use for directory busting. Default: feroxbuster
   --dirbuster.wordlist VALUE [VALUE ...]
                         The wordlist(s) to use when directory busting. Separate multiple wordlists with spaces. Default:
-                        ['~/.config/AutoRecon/wordlists/dirbuster.txt']
+                        ['~/.local/share/AutoRecon/wordlists/dirbuster.txt']
   --dirbuster.threads VALUE
                         The number of threads to use when directory busting. Default: 10
   --dirbuster.ext VALUE
