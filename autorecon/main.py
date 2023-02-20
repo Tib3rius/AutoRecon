@@ -862,7 +862,7 @@ async def run():
 	else:
 		config['global_file'] = None
 
-	# Find plugins. # need to `rm -rf ~/.local/share/AutoRecon && poetry install` before testing changes to plugins... 
+	# Find plugins.
 	if os.path.isdir(os.path.join(config['data_dir'], 'plugins')):
 		config['plugins_dir'] = os.path.join(config['data_dir'], 'plugins')
 	else:
@@ -908,7 +908,6 @@ async def run():
 	errors = False
 
 	autorecon.argparse = parser
-	
 
 	if args.version:
 		print('AutoRecon v' + VERSION)
@@ -1121,7 +1120,6 @@ async def run():
 									error('Config option [' + slugify(key) + '] ' + slugify(pkey) + ': invalid value: \'' + pval + '\' (should be ' + str(action.const) + ')')
 								errors = True
 							elif action.choices and pval not in action.choices:
-								print('line 1130', pval, action.choices)
 								error('Config option [' + slugify(key) + '] ' + slugify(pkey) + ': invalid choice: \'' + pval + '\' (choose from \'' + '\', \''.join(action.choices) + '\')')
 								errors = True
 							elif isinstance(action.default, list) and not isinstance(pval, list):
@@ -1139,9 +1137,9 @@ async def run():
 	for key, val in config.items():
 		if key not in other_options:
 			autorecon.argparse.set_defaults(**{key: val})
-	parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='Show this help message and exit.') # isn't this addressed around line 920? -shyft
+	parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='Show this help message and exit.')
 	parser.error = lambda s: fail(s[0].upper() + s[1:])
-	args = parser.parse_args() # this is where bogus /unknown args are killed -shyft
+	args = parser.parse_args()
 	args_dict = vars(args)
 	for key in args_dict:
 		if key in configurable_keys and args_dict[key] is not None:
