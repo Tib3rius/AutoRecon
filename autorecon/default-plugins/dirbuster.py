@@ -11,11 +11,13 @@ class DirBuster(ServiceScan):
 		self.slug = 'dirbuster'
 		self.priority = 0
 		self.tags = ['default', 'safe', 'long', 'http']
-		# print('asdfasdf')
-		# exit()
+		self.tool_choices =['feroxbuster', 'gobuster', 'dirsearch', 'ffuf', 'dirb', 'none',]
+
+	# key='plugins_dir' val='/home/user/.local/share/AutoRecon/plugins' # this is where dirbuster.py is being loaded from... not the current directory... I was missing the "install" step via poetry? 
+
 
 	def configure(self):
-		self.add_choice_option('tool', default='feroxbuster', choices=['feroxbuster', 'gobuster', 'dirsearch', 'ffuf', 'dirb', 'none'], help='The tool to use for directory busting. set to "none" to disable dirbusting. Default: %(default)s')
+		self.add_choice_option('tool', default='feroxbuster', choices=self.tool_choices, help='The tool to use for directory busting. set to "none" to disable dirbusting. Default: %(default)s')
 		self.add_list_option('wordlist', default=[os.path.join(config['data_dir'], 'wordlists', 'dirbuster.txt')], help='The wordlist(s) to use when directory busting. Separate multiple wordlists with spaces. Default: %(default)s')
 		self.add_option('threads', default=10, help='The number of threads to use when directory busting. Default: %(default)s')
 		self.add_option('ext', default='txt,html,php,asp,aspx,jsp', help='The extensions you wish to fuzz (no dot, comma separated). Default: %(default)s')
@@ -25,11 +27,10 @@ class DirBuster(ServiceScan):
 		self.match_service_name('^nacn_http$', negative_match=True)
 
 	def check(self):
-		print('asdfasdfasdf')
 		tool = self.get_option('tool')
 		if tool == 'none':
 			self.info('dirbuster disabled via "--dirbuster.tool none"')
-			return False
+			return True
 		elif tool == 'feroxbuster' and which('feroxbuster') is None:
 			self.error('The feroxbuster program could not be found. Make sure it is installed. (On Kali, run: sudo apt install feroxbuster)s')
 			return False
