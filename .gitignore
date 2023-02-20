@@ -1,7 +1,3 @@
 __pycache__
 *.pyc
 results/
-<<<<<<< HEAD
-=======
-poetry.*
->>>>>>> a9608d663df07d61c5098241d97d1ed35609fc3b
