@@ -13,8 +13,6 @@ class DirBuster(ServiceScan):
 		self.tags = ['default', 'safe', 'long', 'http']
 		self.tool_choices =['feroxbuster', 'gobuster', 'dirsearch', 'ffuf', 'dirb', 'none',]
 
-	# key='plugins_dir' val='/home/user/.local/share/AutoRecon/plugins' # this is where dirbuster.py is being loaded from... not the current directory... I was missing the "install" step via poetry? 
-
 
 	def configure(self):
 		self.add_choice_option('tool', default='feroxbuster', choices=self.tool_choices, help='The tool to use for directory busting. set to "none" to disable dirbusting. Default: %(default)s')
