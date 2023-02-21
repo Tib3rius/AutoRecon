@@ -1,6 +1,7 @@
 from autorecon.plugins import ServiceScan
 from shutil import which
-import os, random, string
+import os, requests, random, string, urllib3
+urllib3.disable_warnings()
 
 class VirtualHost(ServiceScan):
 
@@ -30,10 +31,9 @@ class VirtualHost(ServiceScan):
 			for wordlist in self.get_option('wordlist'):
 				name = os.path.splitext(os.path.basename(wordlist))[0]
 				for hostname in hostnames:
-					_, stdout, _ = await service.execute('curl -sk -o /dev/null -H "Host: ' + ''.join(random.choice(string.ascii_letters) for i in range(20)) + '.' + hostname + '" {http_scheme}://' + hostname + ':{port}/ -w "%{{size_download}}"')
+					wildcard = requests.get(('https' if service.secure else 'http') + '://' + service.target.address + ':' + str(service.port) + '/', headers={'Host':''.join(random.choice(string.ascii_letters) for i in range(20)) + '.' + hostname}, verify=False)
 
-					size = ''.join(await stdout.readlines())
-
-					await service.execute('ffuf -u {http_scheme}://' + hostname + ':{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -H "Host: FUZZ.' + hostname + '" -fs ' + size + ' -noninteractive -s | tee "{scandir}/{protocol}_{port}_{http_scheme}_' + hostname + '_vhosts_' + name + '.txt"')
+					size = str(len(wildcard.content))
+					await service.execute('ffuf -u {http_scheme}://' + hostname + ':{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -H "Host: FUZZ.' + hostname + '" -fs ' + size + ' -r -noninteractive -s | tee "{scandir}/{protocol}_{port}_{http_scheme}_' + hostname + '_vhosts_' + name + '.txt"')
 		else:
 			service.info('The target was not a hostname, nor was a hostname provided as an option. Skipping virtual host enumeration.')

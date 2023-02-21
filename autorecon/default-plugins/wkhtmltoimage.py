@@ -15,6 +15,7 @@ class WkHTMLToImage(ServiceScan):
 	def check(self):
 		if which('wkhtmltoimage') is None:
 			self.error('The wkhtmltoimage program could not be found. Make sure it is installed. (On Kali, run: sudo apt install wkhtmltopdf)')
+			return False
 
 	async def run(self, service):
 		if which('wkhtmltoimage') is not None:

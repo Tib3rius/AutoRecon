@@ -12,5 +12,5 @@ class LookupSID(ServiceScan):
 
 	def manual(self, service, plugin_was_run):
 		service.add_manual_command('Lookup SIDs', [
-			'lookupsid.py [username]:[password]@{address}'
+			'impacket-lookupsid \'[username]:[password]@{address}\''
 		])

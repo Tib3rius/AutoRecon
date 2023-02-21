@@ -16,6 +16,7 @@ class DnsReconSubdomainBruteforce(ServiceScan):
 	def check(self):
 		if which('dnsrecon') is None:
 			self.error('The program dnsrecon could not be found. Make sure it is installed. (On Kali, run: sudo apt install dnsrecon)')
+			return False
 
 	def manual(self, service, plugin_was_run):
 		domain_name = '<DOMAIN-NAME>'

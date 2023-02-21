@@ -14,6 +14,7 @@ class RedisCli(ServiceScan):
 	def check(self):
 		if which('redis-cli') is None:
 			self.error('The redis-cli program could not be found. Make sure it is installed. (On Kali, run: sudo apt install redis-tools)')
+			return False
 
 	async def run(self, service):
 		if which('redis-cli') is not None:
