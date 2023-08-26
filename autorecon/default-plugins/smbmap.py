@@ -14,7 +14,7 @@ class SMBMap(ServiceScan):
 		if service.target.ipversion == 'IPv4':
 			await service.execute('smbmap -H {address} -P {port} 2>&1', outfile='smbmap-share-permissions.txt')
 			await service.execute('smbmap -u null -p "" -H {address} -P {port} 2>&1', outfile='smbmap-share-permissions.txt')
-			await service.execute('smbmap -H {address} -P {port} -R 2>&1', outfile='smbmap-list-contents.txt')
-			await service.execute('smbmap -u null -p "" -H {address} -P {port} -R 2>&1', outfile='smbmap-list-contents.txt')
+			await service.execute('smbmap -H {address} -P {port} -r 2>&1', outfile='smbmap-list-contents.txt')
+			await service.execute('smbmap -u null -p "" -H {address} -P {port} -r 2>&1', outfile='smbmap-list-contents.txt')
 			await service.execute('smbmap -H {address} -P {port} -x "ipconfig /all" 2>&1', outfile='smbmap-execute-command.txt')
 			await service.execute('smbmap -u null -p "" -H {address} -P {port} -x "ipconfig /all" 2>&1', outfile='smbmap-execute-command.txt')
