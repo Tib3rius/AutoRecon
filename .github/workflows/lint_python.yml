@@ -16,7 +16,7 @@ jobs:
       - run: pip install bandit black codespell flake8 flake8-bugbear flake8-comprehensions isort mypy pytest pyupgrade safety requests
       - run: bandit --recursive --skip B101 . || true  # B101 is assert statements
       - run: black --check . || true
-      - run: codespell --skip="./autorecon/wordlists" # --ignore-words-list="" --skip="*.css,*.js,*.lock"
+      - run: codespell --skip="./autorecon/wordlists" --ignore-regex="\bCouldn\b" # --ignore-words-list="" --skip="*.css,*.js,*.lock"
       - run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
       - run: flake8 . --count --exit-zero --max-complexity=10 --max-line-length=88
                       --show-source --statistics
