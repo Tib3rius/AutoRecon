@@ -23,7 +23,7 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 * Customizable service scanning plugins for further enumeration.
 * Suggested manual follow-up commands for when automation makes little sense.
 * Ability to limit port scanning to a combination of TCP/UDP ports.
-* Ability to skip port scanning phase by suppling information about services which should be open.
+* Ability to skip port scanning phase by supplying information about services which should be open.
 * Global and per-scan pattern matching which highlights and extracts important information from the noise.
 * An intuitive directory structure for results gathering.
 * Full logging of commands that were run, along with errors if they fail.
