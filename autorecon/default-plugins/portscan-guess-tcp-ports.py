@@ -31,18 +31,16 @@ class GuessPortScan(PortScan):
 		services = []
 		while True:
 			line = await stdout.readline()
-			if line is not None:
-				match = re.match('^Discovered open port ([0-9]+)/tcp', line)
-				if match:
-					if match.group(1) in insecure_ports.keys():
-						await target.add_service(Service('tcp', match.group(1), insecure_ports[match.group(1)]))
-					elif match.group(1) in secure_ports.keys():
-						await target.add_service(Service('tcp', match.group(1), secure_ports[match.group(1)], True))
-				service = target.extract_service(line)
-				if service is not None:
-					services.append(service)
-			else:
+			if line is None:
 				break
 
+			if match := re.match('^Discovered open port ([0-9]+)/tcp', line):
+				if match.group(1) in insecure_ports:
+					await target.add_service(Service('tcp', match.group(1), insecure_ports[match.group(1)]))
+				elif match.group(1) in secure_ports:
+					await target.add_service(Service('tcp', match.group(1), secure_ports[match.group(1)], True))
+			service = target.extract_service(line)
+			if service is not None:
+				services.append(service)
 		await process.wait()
 		return services

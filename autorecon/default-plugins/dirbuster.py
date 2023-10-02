@@ -41,7 +41,7 @@ class DirBuster(ServiceScan):
 			return False
 
 	async def run(self, service):
-		dot_extensions = ','.join(['.' + x for x in self.get_option('ext').split(',')])
+		dot_extensions = ','.join([f'.{x}' for x in self.get_option('ext').split(',')])
 		for wordlist in self.get_option('wordlist'):
 			name = os.path.splitext(os.path.basename(wordlist))[0]
 			if self.get_option('tool') == 'feroxbuster':
@@ -63,7 +63,7 @@ class DirBuster(ServiceScan):
 				await service.execute('dirb {http_scheme}://{addressv6}:{port}/ ' + wordlist + ' -l ' + ('' if self.get_option('recursive') else '-r ')  + '-S -X ",' + dot_extensions + '" -f -o "{scandir}/{protocol}_{port}_{http_scheme}_dirb_' + name + '.txt"' + (' ' + self.get_option('extras') if self.get_option('extras') else ''))
 
 	def manual(self, service, plugin_was_run):
-		dot_extensions = ','.join(['.' + x for x in self.get_option('ext').split(',')])
+		dot_extensions = ','.join([f'.{x}' for x in self.get_option('ext').split(',')])
 		if self.get_option('tool') == 'feroxbuster':
 			service.add_manual_command('(feroxbuster) Multi-threaded recursive directory/file enumeration for web servers using various wordlists:', [
 				'feroxbuster -u {http_scheme}://{addressv6}:{port} -t ' + str(self.get_option('threads')) + ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x "' + self.get_option('ext') + '" -v -k ' + ('' if self.get_option('recursive') else '-n ')  + '-e -r -o {scandir}/{protocol}_{port}_{http_scheme}_feroxbuster_dirbuster.txt' + (' ' + self.get_option('extras') if self.get_option('extras') else '')

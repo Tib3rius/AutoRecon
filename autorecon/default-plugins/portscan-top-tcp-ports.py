@@ -16,11 +16,7 @@ class QuickTCPPortScan(PortScan):
 		if target.ports: # Don't run this plugin if there are custom ports.
 			return []
 
-		if config['proxychains']:
-			traceroute_os = ''
-		else:
-			traceroute_os = ' -A --osscan-guess'
-
+		traceroute_os = '' if config['proxychains'] else ' -A --osscan-guess'
 		process, stdout, stderr = await target.execute('nmap {nmap_extra} -sV -sC --version-all' + traceroute_os + ' -oN "{scandir}/_quick_tcp_nmap.txt" -oX "{scandir}/xml/_quick_tcp_nmap.xml" {address}', blocking=False)
 		services = await target.extract_services(stdout)
 
@@ -31,9 +27,8 @@ class QuickTCPPortScan(PortScan):
 				if wsman.status_code == 405:
 					service.name = 'wsman'
 					wsman = requests.post(('https' if service.secure else 'http') + '://' + target.address + ':' + str(service.port) + '/wsman', verify=False)
-				else:
-					if wsman.status_code == 401:
-						service.name = 'wsman'
+				elif wsman.status_code == 401:
+					service.name = 'wsman'
 
 		await process.wait()
 		return services
