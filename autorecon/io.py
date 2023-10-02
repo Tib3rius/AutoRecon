@@ -52,12 +52,12 @@ def cprint(*args, color=Fore.RESET, char='*', sep=' ', end='\n', frame_index=1, 
 
 	unfmt = ''
 	if char is not None and not config['accessible']:
-		unfmt += color + '[' + Style.BRIGHT + char + Style.NORMAL + ']' + Fore.RESET + sep
+		unfmt += f'{color}[{Style.BRIGHT}{char}{Style.NORMAL}]{Fore.RESET}{sep}'
 	unfmt += sep.join(args)
 
 	fmted = unfmt
 
-	for attempt in range(10):
+	for _ in range(10):
 		try:
 			fmted = string.Formatter().vformat(unfmt, args, vals)
 			break
@@ -128,9 +128,7 @@ class CommandStreamReader(object):
 			for p in self.patterns:
 				description = ''
 
-				# Match and replace entire pattern.
-				match = p.pattern.search(line)
-				if match:
+				if match := p.pattern.search(line):
 					if p.description:
 						description = p.description.replace('{match}', line[match.start():match.end()])
 
@@ -139,12 +137,9 @@ class CommandStreamReader(object):
 						if len(matches) > 0 and isinstance(matches[0], tuple):
 							matches = list(matches[0])
 
-						match_count = 1
-						for match in matches:
+						for match_count, match in enumerate(matches, start=1):
 							if p.description:
 								description = description.replace('{match' + str(match_count) + '}', match)
-							match_count += 1
-
 						async with self.target.lock:
 							with open(os.path.join(self.target.scandir, '_patterns.log'), 'a') as file:
 								info('{bright}[{yellow}' + self.target.address + '{crst}/{bgreen}' + self.tag + '{crst}]{rst} {bmagenta}' + description + '{rst}', verbosity=2)
@@ -153,7 +148,7 @@ class CommandStreamReader(object):
 						info('{bright}[{yellow}' + self.target.address + '{crst}/{bgreen}' + self.tag + '{crst}]{rst} {bmagenta}Matched Pattern: ' + line[match.start():match.end()] + '{rst}', verbosity=2)
 						async with self.target.lock:
 							with open(os.path.join(self.target.scandir, '_patterns.log'), 'a') as file:
-								file.writelines('Matched Pattern: ' + line[match.start():match.end()] + '\n\n')
+								file.writelines(f'Matched Pattern: {line[match.start():match.end()]}' + '\n\n')
 
 			if self.outfile is not None:
 				with open(self.outfile, 'a') as writer:

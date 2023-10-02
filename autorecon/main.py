@@ -22,7 +22,7 @@ VERSION = "2.0.34"
 if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
 	os.makedirs(config['config_dir'], exist_ok=True)
-	open(os.path.join(config['config_dir'], 'VERSION-' + VERSION), 'a').close()
+	open(os.path.join(config['config_dir'], f'VERSION-{VERSION}'), 'a').close()
 	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.toml'), os.path.join(config['config_dir'], 'config.toml'))
 	shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'global.toml'), os.path.join(config['config_dir'], 'global.toml'))
 else:
@@ -30,14 +30,16 @@ else:
 		shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.toml'), os.path.join(config['config_dir'], 'config.toml'))
 	if not os.path.exists(os.path.join(config['config_dir'], 'global.toml')):
 		shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'global.toml'), os.path.join(config['config_dir'], 'global.toml'))
-	if not os.path.exists(os.path.join(config['config_dir'], 'VERSION-' + VERSION)):
+	if not os.path.exists(
+		os.path.join(config['config_dir'], f'VERSION-{VERSION}')
+	):
 		warn('It looks like the config in ' + config['config_dir'] + ' is outdated. Please remove the ' + config['config_dir'] + ' directory and re-run AutoRecon to rebuild it.')
 
 
 if not os.path.exists(config['data_dir']):
 	shutil.rmtree(config['data_dir'], ignore_errors=True, onerror=None)
 	os.makedirs(config['data_dir'], exist_ok=True)
-	open(os.path.join(config['data_dir'], 'VERSION-' + VERSION), 'a').close()
+	open(os.path.join(config['data_dir'], f'VERSION-{VERSION}'), 'a').close()
 	shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default-plugins'), os.path.join(config['data_dir'], 'plugins'))
 	shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'wordlists'), os.path.join(config['data_dir'], 'wordlists'))
 else:
@@ -45,7 +47,7 @@ else:
 		shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default-plugins'), os.path.join(config['data_dir'], 'plugins'))
 	if not os.path.exists(os.path.join(config['data_dir'], 'wordlists')):
 		shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'wordlists'), os.path.join(config['data_dir'], 'wordlists'))
-	if not os.path.exists(os.path.join(config['data_dir'], 'VERSION-' + VERSION)):
+	if not os.path.exists(os.path.join(config['data_dir'], f'VERSION-{VERSION}')):
 		warn('It looks like the plugins in ' + config['data_dir'] + ' are outdated. Please remove the ' + config['data_dir'] + ' directory and re-run AutoRecon to rebuild them.')
 
 
@@ -63,34 +65,28 @@ def calculate_elapsed_time(start_time, short=False):
 	elapsed_time = []
 	if short:
 		elapsed_time.append(str(h).zfill(2))
-	else:
-		if h == 1:
-			elapsed_time.append(str(h) + ' hour')
-		elif h > 1:
-			elapsed_time.append(str(h) + ' hours')
+	elif h == 1:
+		elapsed_time.append(f'{str(h)} hour')
+	elif h > 1:
+		elapsed_time.append(f'{str(h)} hours')
 
 	if short:
 		elapsed_time.append(str(m).zfill(2))
-	else:
-		if m == 1:
-			elapsed_time.append(str(m) + ' minute')
-		elif m > 1:
-			elapsed_time.append(str(m) + ' minutes')
+	elif m == 1:
+		elapsed_time.append(f'{str(m)} minute')
+	elif m > 1:
+		elapsed_time.append(f'{str(m)} minutes')
 
 	if short:
 		elapsed_time.append(str(s).zfill(2))
+	elif s == 1:
+		elapsed_time.append(f'{str(s)} second')
+	elif s > 1:
+		elapsed_time.append(f'{str(s)} seconds')
 	else:
-		if s == 1:
-			elapsed_time.append(str(s) + ' second')
-		elif s > 1:
-			elapsed_time.append(str(s) + ' seconds')
-		else:
-			elapsed_time.append('less than a second')
+		elapsed_time.append('less than a second')
 
-	if short:
-		return ':'.join(elapsed_time)
-	else:
-		return ', '.join(elapsed_time)
+	return ':'.join(elapsed_time) if short else ', '.join(elapsed_time)
 
 # sig and frame args are only present so the function
 # works with signal.signal() and handles Ctrl-C.
@@ -143,14 +139,18 @@ async def start_heartbeat(target, period=60):
 							if process_dict['process'].returncode is None:
 								processes.append(str(process_dict['process'].pid))
 								try:
-									for child in psutil.Process(process_dict['process'].pid).children(recursive=True):
-										processes.append(str(child.pid))
+									processes.extend(
+										str(child.pid)
+										for child in psutil.Process(process_dict['process'].pid).children(
+											recursive=True
+										)
+									)
 								except psutil.NoSuchProcess:
 									pass
-						
+
 						if processes:
 							task_str += ' (PID' + ('s' if len(processes) > 1 else '') + ': ' + ', '.join(processes) + ')'
-						
+
 					tasks_list.append(task_str)
 
 				tasks_list = ': {bblue}' + ', '.join(tasks_list) + '{rst}'
@@ -183,9 +183,8 @@ async def keyboard():
 						else:
 							config['verbose'] -= 1
 							info('Verbosity decreased to ' + str(config['verbose']))
-					else:
-						if input[0] != 's':
-							input = input[1:]
+					elif input[0] != 's':
+						input = input[1:]
 
 				if len(input) > 0 and input[0] == 's':
 					input = input[1:]
@@ -206,14 +205,18 @@ async def keyboard():
 											if process_dict['process'].returncode is None:
 												processes.append(str(process_dict['process'].pid))
 												try:
-													for child in psutil.Process(process_dict['process'].pid).children(recursive=True):
-														processes.append(str(child.pid))
+													processes.extend(
+														str(child.pid)
+														for child in psutil.Process(
+															process_dict['process'].pid
+														).children(recursive=True)
+													)
 												except psutil.NoSuchProcess:
 													pass
-										
+
 										if processes:
 											task_str += ' (PID' + ('s' if len(processes) > 1 else '') + ': ' + ', '.join(processes) + ')'
-									
+
 									tasks_list.append(task_str)
 
 								tasks_list = ':\n    ' + '\n    '.join(tasks_list)
@@ -233,35 +236,31 @@ async def keyboard():
 async def get_semaphore(autorecon):
 	semaphore = autorecon.service_scan_semaphore
 	while True:
-		# If service scan semaphore is locked, see if we can use port scan semaphore.
-		if semaphore.locked():
-			if semaphore != autorecon.port_scan_semaphore: # This will be true unless user sets max_scans == max_port_scans
-
-				port_scan_task_count = 0
-				for target in autorecon.scanning_targets:
-					for process_list in target.running_tasks.values():
-						if issubclass(process_list['plugin'].__class__, PortScan):
-							port_scan_task_count += 1
-
-				if not autorecon.pending_targets and (config['max_port_scans'] - port_scan_task_count) >= 1: # If no more targets, and we have room, use port scan semaphore.
-					if autorecon.port_scan_semaphore.locked():
-						await asyncio.sleep(1)
-						continue
-					semaphore = autorecon.port_scan_semaphore
-					break
-				else: # Do some math to see if we can use the port scan semaphore.
-					if (config['max_port_scans'] - (port_scan_task_count + (len(autorecon.pending_targets) * config['port_scan_plugin_count']))) >= 1:
-						if autorecon.port_scan_semaphore.locked():
-							await asyncio.sleep(1)
-							continue
-						semaphore = autorecon.port_scan_semaphore
-						break
-					else:
-						await asyncio.sleep(1)
-			else:
-				break
-		else:
+		if not semaphore.locked():
 			break
+		if semaphore == autorecon.port_scan_semaphore:
+			break
+		port_scan_task_count = 0
+		for target in autorecon.scanning_targets:
+			for process_list in target.running_tasks.values():
+				if issubclass(process_list['plugin'].__class__, PortScan):
+					port_scan_task_count += 1
+
+		if not autorecon.pending_targets and (config['max_port_scans'] - port_scan_task_count) >= 1: # If no more targets, and we have room, use port scan semaphore.
+			if autorecon.port_scan_semaphore.locked():
+				await asyncio.sleep(1)
+				continue
+			semaphore = autorecon.port_scan_semaphore
+			break
+		else: # Do some math to see if we can use the port scan semaphore.
+			if (config['max_port_scans'] - (port_scan_task_count + (len(autorecon.pending_targets) * config['port_scan_plugin_count']))) >= 1:
+				if autorecon.port_scan_semaphore.locked():
+					await asyncio.sleep(1)
+					continue
+				semaphore = autorecon.port_scan_semaphore
+				break
+			else:
+				await asyncio.sleep(1)
 	return semaphore
 
 async def port_scan(plugin, target):
@@ -314,7 +313,11 @@ async def port_scan(plugin, target):
 				error('Port scan {bblue}' + plugin.name + ' {green}(' + plugin.slug + '){rst} ran a command against {byellow}' + target.address + '{rst} which returned a non-zero exit code (' + str(process_dict['process'].returncode) + '). Check ' + target.scandir + '/_errors.log for more details.', verbosity=2)
 				async with target.lock:
 					with open(os.path.join(target.scandir, '_errors.log'), 'a') as file:
-						file.writelines('[*] Port scan ' + plugin.name + ' (' + plugin.slug + ') ran a command which returned a non-zero exit code (' + str(process_dict['process'].returncode) + ').\n')
+						file.writelines(
+							f'[*] Port scan {plugin.name} ({plugin.slug}) ran a command which returned a non-zero exit code ('
+							+ str(process_dict['process'].returncode)
+							+ ').\n'
+						)
 						file.writelines('[-] Command: ' + process_dict['cmd'] + '\n')
 						if errors:
 							file.writelines(['[-] Error Output:\n'] + errors + ['\n'])

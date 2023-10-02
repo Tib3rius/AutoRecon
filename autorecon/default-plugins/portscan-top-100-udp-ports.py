@@ -25,15 +25,12 @@ class Top100UDPPortScan(PortScan):
 			services = []
 			while True:
 				line = await stdout.readline()
-				if line is not None:
-					match = re.search('^Discovered open port ([0-9]+)/udp', line)
-					if match:
-						target.info('Discovered open port {bmagenta}udp/' + match.group(1) + '{rst} on {byellow}' + target.address + '{rst}', verbosity=1)
-					service = target.extract_service(line)
-					if service:
-						services.append(service)
-				else:
+				if line is None:
 					break
+				if match := re.search('^Discovered open port ([0-9]+)/udp', line):
+					target.info('Discovered open port {bmagenta}udp/' + match.group(1) + '{rst} on {byellow}' + target.address + '{rst}', verbosity=1)
+				if service := target.extract_service(line):
+					services.append(service)
 			await process.wait()
 			return services
 		else:

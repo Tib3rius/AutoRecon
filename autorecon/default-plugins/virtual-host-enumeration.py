@@ -27,11 +27,26 @@ class VirtualHost(ServiceScan):
 		if self.get_global('domain') and self.get_global('domain') not in hostnames:
 			hostnames.append(self.get_global('domain'))
 
-		if len(hostnames) > 0:
+		if hostnames:
 			for wordlist in self.get_option('wordlist'):
 				name = os.path.splitext(os.path.basename(wordlist))[0]
 				for hostname in hostnames:
-					wildcard = requests.get(('https' if service.secure else 'http') + '://' + service.target.address + ':' + str(service.port) + '/', headers={'Host':''.join(random.choice(string.ascii_letters) for i in range(20)) + '.' + hostname}, verify=False)
+					wildcard = requests.get(
+						('https' if service.secure else 'http')
+						+ '://'
+						+ service.target.address
+						+ ':'
+						+ str(service.port)
+						+ '/',
+						headers={
+							'Host': ''.join(
+								random.choice(string.ascii_letters) for _ in range(20)
+							)
+							+ '.'
+							+ hostname
+						},
+						verify=False,
+					)
 
 					size = str(len(wildcard.content))
 					await service.execute('ffuf -u {http_scheme}://' + hostname + ':{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -H "Host: FUZZ.' + hostname + '" -mc all -fs ' + size + ' -r -noninteractive -s | tee "{scandir}/{protocol}_{port}_{http_scheme}_' + hostname + '_vhosts_' + name + '.txt"')
