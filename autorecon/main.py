@@ -17,7 +17,7 @@ from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, 
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
-VERSION = "2.0.34"
+VERSION = "2.0.35"
 
 if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
@@ -132,8 +132,8 @@ async def start_heartbeat(target, period=60):
 		async with target.lock:
 			count = len(target.running_tasks)
 
-			tasks_list = []
 			if config['verbose'] >= 1:
+				tasks_list = []
 				for tag, task in target.running_tasks.items():
 					task_str = tag
 
@@ -154,6 +154,8 @@ async def start_heartbeat(target, period=60):
 					tasks_list.append(task_str)
 
 				tasks_list = ': {bblue}' + ', '.join(tasks_list) + '{rst}'
+			else:
+				tasks_list = ''
 
 			current_time = datetime.now().strftime('%H:%M:%S')
 
