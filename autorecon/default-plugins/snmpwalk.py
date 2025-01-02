@@ -14,6 +14,7 @@ class SNMPWalk(ServiceScan):
 
 	async def run(self, service):
 		await service.execute('snmpwalk -c public -v 1 {address} 2>&1', outfile='{protocol}_{port}_snmp_snmpwalk.txt')
+		await service.execute('snmpwalk -c public -v 1 {address} NET-SNMP-EXTEND-MIB::nsExtendObjects 2>&1', outfile='{protocol}_{port}_snmp_snmpwalk.txt')
 		await service.execute('snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.25.1.6.0 2>&1', outfile='{protocol}_{port}_snmp_snmpwalk_system_processes.txt')
 		await service.execute('snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.25.4.2.1.2 2>&1', outfile='{scandir}/{protocol}_{port}_snmp_snmpwalk_running_processes.txt')
 		await service.execute('snmpwalk -c public -v 1 {address} 1.3.6.1.2.1.25.4.2.1.4 2>&1', outfile='{protocol}_{port}_snmp_snmpwalk_process_paths.txt')
