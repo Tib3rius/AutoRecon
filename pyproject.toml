@@ -11,7 +11,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-appdirs = "^1.4.4"
+platformdirs = "^4.3.6"
 colorama = "^0.4.5"
 impacket = "^0.10.0"
 psutil = "^5.9.4"

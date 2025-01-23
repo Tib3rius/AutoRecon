@@ -1,6 +1,6 @@
-appdirs>=1.4.4
 colorama>=0.4.5
 impacket>=0.10.0
+platformdirs>=4.3.6
 psutil>=5.9.4
 requests>=2.28.1
 toml>=0.10.2
