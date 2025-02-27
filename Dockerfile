@@ -1,4 +1,4 @@
-FROM debian:bookworm-20241111
+FROM debian:12.9
 
 RUN apt-get update
 RUN apt-get install -y ca-certificates gnupg wget
