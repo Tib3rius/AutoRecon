@@ -17,7 +17,7 @@ from autorecon.io import slugify, e, fformat, cprint, debug, info, warn, error, 
 from autorecon.plugins import Pattern, PortScan, ServiceScan, Report, AutoRecon
 from autorecon.targets import Target, Service
 
-VERSION = "2.0.35"
+VERSION = "2.0.36"
 
 if not os.path.exists(config['config_dir']):
 	shutil.rmtree(config['config_dir'], ignore_errors=True, onerror=None)
@@ -899,6 +899,7 @@ async def run():
 	parser.add_argument('--proxychains', action='store_true', help='Use if you are running AutoRecon via proxychains. Default: %(default)s')
 	parser.add_argument('--disable-sanity-checks', action='store_true', help='Disable sanity checks that would otherwise prevent the scans from running. Default: %(default)s')
 	parser.add_argument('--disable-keyboard-control', action='store_true', help='Disables keyboard control ([s]tatus, Up, Down) if you are in SSH or Docker.')
+	parser.add_argument('--ignore-plugin-checks', action='store_true', help='Ignores errors from plugin check functions that would otherwise prevent AutoRecon from running. Default: %(default)s')
 	parser.add_argument('--force-services', action='store', nargs='+', metavar='SERVICE', help='A space separated list of services in the following style: tcp/80/http tcp/443/https/secure')
 	parser.add_argument('-mpti', '--max-plugin-target-instances', action='store', nargs='+', metavar='PLUGIN:NUMBER', help='A space separated list of plugin slugs with the max number of instances (per target) in the following style: nmap-http:2 dirbuster:1. Default: %(default)s')
 	parser.add_argument('-mpgi', '--max-plugin-global-instances', action='store', nargs='+', metavar='PLUGIN:NUMBER', help='A space separated list of plugin slugs with the max number of global instances in the following style: nmap-http:2 dirbuster:1. Default: %(default)s')
@@ -1200,6 +1201,7 @@ async def run():
 			else:
 				error('Invalid value provided to --max-plugin-global-instances. Values must be in the format PLUGIN:NUMBER.')
 
+	failed_check_plugin_slugs = []
 	for slug, plugin in autorecon.plugins.items():
 		if hasattr(plugin, 'max_target_instances') and plugin.slug in max_plugin_target_instances:
 			plugin.max_target_instances = max_plugin_target_instances[plugin.slug]
@@ -1210,9 +1212,22 @@ async def run():
 		for member_name, _ in inspect.getmembers(plugin, predicate=inspect.ismethod):
 			if member_name == 'check':
 				if plugin.check() == False:
-					autorecon.plugins.pop(slug)
+					failed_check_plugin_slugs.append(slug)
 					continue
 				continue
+	
+	# Check for any failed plugin checks.
+	for slug in failed_check_plugin_slugs:
+		# If plugin checks should be ignored, remove the affected plugins at runtime.
+		if config['ignore_plugin_checks']:
+			autorecon.plugins.pop(slug)
+		else:
+			print()
+			error('The following plugins failed checks that prevent AutoRecon from running: ' + ','.join(failed_check_plugin_slugs))
+			error('Check above output to fix these issues, disable relevant plugins, or run AutoRecon with --ignore-plugin-checks to disable failed plugins at runtime.')
+			print()
+			errors = True
+			break
 
 	if config['ports']:
 		ports_to_scan = {'tcp':[], 'udp':[]}

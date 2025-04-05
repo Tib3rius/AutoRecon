@@ -26,6 +26,7 @@ configurable_keys = [
 	'proxychains',
 	'disable_sanity_checks',
 	'disable_keyboard_control',
+	'ignore_plugin_checks',
 	'force_services',
 	'max_plugin_target_instances',
 	'max_plugin_global_instances',
@@ -39,6 +40,7 @@ configurable_boolean_keys = [
 	'no_port_dirs',
 	'proxychains',
 	'disable_sanity_checks',
+	'ignore_plugin_checks',
 	'accessible'
 ]
 
@@ -70,6 +72,7 @@ config = {
 	'proxychains': False,
 	'disable_sanity_checks': False,
 	'disable_keyboard_control': False,
+	'ignore_plugin_checks': False,
 	'force_services': None,
 	'max_plugin_target_instances': None,
 	'max_plugin_global_instances': None,
