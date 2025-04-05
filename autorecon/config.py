@@ -1,7 +1,7 @@
-import appdirs, os
+import platformdirs, os
 
-config_dir = appdirs.user_config_dir('AutoRecon')
-data_dir = appdirs.user_data_dir('AutoRecon')
+config_dir = platformdirs.user_config_dir('AutoRecon')
+data_dir = platformdirs.user_data_dir('AutoRecon')
 
 configurable_keys = [
 	'ports',
