@@ -4,7 +4,7 @@ import argparse, asyncio, importlib.util, inspect, ipaddress, math, os, re, sele
 from datetime import datetime
 
 try:
-	import appdirs, colorama, impacket, psutil, requests, toml, unidecode
+	import colorama, impacket, platformdirs, psutil, requests, toml, unidecode
 	from colorama import Fore, Style
 except ModuleNotFoundError:
 	print('One or more required modules was not installed. Please run or re-run: ' + ('sudo ' if os.getuid() == 0 else '') + 'python3 -m pip install -r requirements.txt')
