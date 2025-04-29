@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "autorecon"
-version = "2.0.34"
+version = "2.0.36"
 description = "A multi-threaded network reconnaissance tool which performs automated enumeration of services."
 authors = ["Tib3rius"]
 license = "GNU GPL v3"
@@ -11,7 +11,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-appdirs = "^1.4.4"
+platformdirs = "^4.3.6"
 colorama = "^0.4.5"
 impacket = "^0.10.0"
 psutil = "^5.9.4"
