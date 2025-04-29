@@ -45,7 +45,12 @@ class Plugin(object):
 	@final
 	def add_choice_option(self, name, choices, default=None, help=None):
 		if not isinstance(choices, list):
-			fail('The choices argument for ' + self.name + '\'s ' + name + ' choice option should be a list.')
+			fail(
+				f'The choices argument for {self.name}'
+				+ '\'s '
+				+ name
+				+ ' choice option should be a list.'
+			)
 		self.autorecon.add_argument(self, name, choices=choices, default=default, help=help)
 
 	@final
@@ -53,35 +58,23 @@ class Plugin(object):
 		# TODO: make sure name is simple.
 		name = self.slug.replace('-', '_') + '.' + slugify(name).replace('-', '_')
 
-		if name in vars(self.autorecon.args):
-			if vars(self.autorecon.args)[name] is None:
-				if default:
-					return default
-				else:
-					return None
-			else:
-				return vars(self.autorecon.args)[name]
+		if name not in vars(self.autorecon.args):
+			return default if default else None
+		if vars(self.autorecon.args)[name] is None:
+			return default if default else None
 		else:
-			if default:
-				return default
-			return None
+			return vars(self.autorecon.args)[name]
 
 	@final
 	def get_global_option(self, name, default=None):
 		name = 'global.' + slugify(name).replace('-', '_')
 
-		if name in vars(self.autorecon.args):
-			if vars(self.autorecon.args)[name] is None:
-				if default:
-					return default
-				else:
-					return None
-			else:
-				return vars(self.autorecon.args)[name]
+		if name not in vars(self.autorecon.args):
+			return default if default else None
+		if vars(self.autorecon.args)[name] is None:
+			return default if default else None
 		else:
-			if default:
-				return default
-			return None
+			return vars(self.autorecon.args)[name]
 
 	@final
 	def get_global(self, name, default=None):
@@ -96,7 +89,9 @@ class Plugin(object):
 			else:
 				self.patterns.append(Pattern(compiled))
 		except re.error:
-			fail('Error: The pattern "' + pattern + '" in the plugin "' + self.name + '" is invalid regex.')
+			fail(
+				f'Error: The pattern "{pattern}" in the plugin "{self.name}" is invalid regex.'
+			)
 
 	@final
 	def info(self, msg, verbosity=0):
@@ -154,7 +149,7 @@ class ServiceScan(Plugin):
 			try:
 				re.compile(r)
 			except re.error:
-				print('Invalid regex: ' + r)
+				print(f'Invalid regex: {r}')
 				valid_regex = False
 
 		if not valid_regex:
@@ -190,7 +185,7 @@ class ServiceScan(Plugin):
 			try:
 				re.compile(r)
 			except re.error:
-				print('Invalid regex: ' + r)
+				print(f'Invalid regex: {r}')
 				valid_regex = False
 
 		if valid_regex:
@@ -246,7 +241,7 @@ class AutoRecon(object):
 
 	def add_argument(self, plugin, name, **kwargs):
 		# TODO: make sure name is simple.
-		name = '--' + plugin.slug + '.' + slugify(name)
+		name = f'--{plugin.slug}.{slugify(name)}'
 
 		if self.argparse_group is None:
 			self.argparse_group = self.argparse.add_argument_group('plugin arguments', description='These are optional arguments for certain plugins.')
@@ -255,19 +250,17 @@ class AutoRecon(object):
 	def extract_service(self, line, regex):
 		if regex is None:
 			regex = '^(?P<port>\d+)\/(?P<protocol>(tcp|udp))(.*)open(\s*)(?P<service>[\w\-\/]+)(\s*)(.*)$'
-		match = re.search(regex, line)
-		if match:
-			protocol = match.group('protocol').lower()
-			port = int(match.group('port'))
-			service = match.group('service')
-			secure = True if 'ssl' in service or 'tls' in service else False
-
-			if service.startswith('ssl/') or service.startswith('tls/'):
-				service = service[4:]
-
-			return Service(protocol, port, service, secure)
-		else:
+		if not (match := re.search(regex, line)):
 			return None
+		protocol = match.group('protocol').lower()
+		port = int(match.group('port'))
+		service = match.group('service')
+		secure = 'ssl' in service or 'tls' in service
+
+		if service.startswith('ssl/') or service.startswith('tls/'):
+			service = service[4:]
+
+		return Service(protocol, port, service, secure)
 
 	async def extract_services(self, stream, regex):
 		if not isinstance(stream, CommandStreamReader):
@@ -278,8 +271,7 @@ class AutoRecon(object):
 		while True:
 			line = await stream.readline()
 			if line is not None:
-				service = self.extract_service(line, regex)
-				if service:
+				if service := self.extract_service(line, regex):
 					services.append(service)
 			else:
 				break
@@ -290,25 +282,38 @@ class AutoRecon(object):
 			return
 
 		if plugin.name is None:
-			fail('Error: Plugin with class name "' + plugin.__class__.__name__ + '" in ' + filename + ' does not have a name.')
+			fail(
+				f'Error: Plugin with class name "{plugin.__class__.__name__}" in {filename} does not have a name.'
+			)
 
 		for _, loaded_plugin in self.plugins.items():
 			if plugin.name == loaded_plugin.name:
-				fail('Error: Duplicate plugin name "' + plugin.name + '" detected in ' + filename + '.', file=sys.stderr)
+				fail(
+					f'Error: Duplicate plugin name "{plugin.name}" detected in {filename}.',
+					file=sys.stderr,
+				)
 
 		if plugin.slug is None:
 			plugin.slug = slugify(plugin.name)
 		elif not self.__slug_regex.match(plugin.slug):
-			fail('Error: provided slug "' + plugin.slug + '" in ' + filename + ' is not valid (must only contain lowercase letters, numbers, and hyphens).', file=sys.stderr)
+			fail(
+				f'Error: provided slug "{plugin.slug}" in {filename} is not valid (must only contain lowercase letters, numbers, and hyphens).',
+				file=sys.stderr,
+			)
 
 		if plugin.slug in config['protected_classes']:
-			fail('Error: plugin slug "' + plugin.slug + '" in ' + filename + ' is a protected string. Please change.')
+			fail(
+				f'Error: plugin slug "{plugin.slug}" in {filename} is a protected string. Please change.'
+			)
 
 		if plugin.slug not in self.plugins:
 
 			for _, loaded_plugin in self.plugins.items():
 				if plugin is loaded_plugin:
-					fail('Error: plugin "' + plugin.name + '" in ' + filename + ' already loaded as "' + loaded_plugin.name + '" (' + str(loaded_plugin) + ')', file=sys.stderr)
+					fail(
+						f'Error: plugin "{plugin.name}" in {filename} already loaded as "{loaded_plugin.name}" ({str(loaded_plugin)})',
+						file=sys.stderr,
+					)
 
 			configure_function_found = False
 			run_coroutine_found = False
@@ -319,30 +324,46 @@ class AutoRecon(object):
 					configure_function_found = True
 				elif member_name == 'run' and inspect.iscoroutinefunction(member_value):
 					if len(inspect.getfullargspec(member_value).args) != 2:
-						fail('Error: the "run" coroutine in the plugin "' + plugin.name + '" in ' + filename + ' should have two arguments.', file=sys.stderr)
+						fail(
+							f'Error: the "run" coroutine in the plugin "{plugin.name}" in {filename} should have two arguments.',
+							file=sys.stderr,
+						)
 					run_coroutine_found = True
 				elif member_name == 'manual':
 					if len(inspect.getfullargspec(member_value).args) != 3:
-						fail('Error: the "manual" function in the plugin "' + plugin.name + '" in ' + filename + ' should have three arguments.', file=sys.stderr)
+						fail(
+							f'Error: the "manual" function in the plugin "{plugin.name}" in {filename} should have three arguments.',
+							file=sys.stderr,
+						)
 					manual_function_found = True
 
 			if not run_coroutine_found and not manual_function_found:
-				fail('Error: the plugin "' + plugin.name + '" in ' + filename + ' needs either a "manual" function, a "run" coroutine, or both.', file=sys.stderr)
+				fail(
+					f'Error: the plugin "{plugin.name}" in {filename} needs either a "manual" function, a "run" coroutine, or both.',
+					file=sys.stderr,
+				)
 
 			if issubclass(plugin.__class__, PortScan):
 				if plugin.type is None:
-					fail('Error: the PortScan plugin "' + plugin.name + '" in ' + filename + ' requires a type (either tcp or udp).')
+					fail(
+						f'Error: the PortScan plugin "{plugin.name}" in {filename} requires a type (either tcp or udp).'
+					)
 				else:
 					plugin.type = plugin.type.lower()
 					if plugin.type not in ['tcp', 'udp']:
-						fail('Error: the PortScan plugin "' + plugin.name + '" in ' + filename + ' has an invalid type (should be tcp or udp).')
+						fail(
+							f'Error: the PortScan plugin "{plugin.name}" in {filename} has an invalid type (should be tcp or udp).'
+						)
 				self.plugin_types["port"].append(plugin)
 			elif issubclass(plugin.__class__, ServiceScan):
 				self.plugin_types["service"].append(plugin)
 			elif issubclass(plugin.__class__, Report):
 				self.plugin_types["report"].append(plugin)
 			else:
-				fail('Plugin "' + plugin.name + '" in ' + filename + ' is neither a PortScan, ServiceScan, nor a Report.', file=sys.stderr)
+				fail(
+					f'Plugin "{plugin.name}" in {filename} is neither a PortScan, ServiceScan, nor a Report.',
+					file=sys.stderr,
+				)
 
 			plugin.tags = [tag.lower() for tag in plugin.tags]
 
@@ -354,14 +375,13 @@ class AutoRecon(object):
 				plugin.configure()
 			self.plugins[plugin.slug] = plugin
 		else:
-			fail('Error: plugin slug "' + plugin.slug + '" in ' + filename + ' is already assigned.', file=sys.stderr)
+			fail(
+				f'Error: plugin slug "{plugin.slug}" in {filename} is already assigned.',
+				file=sys.stderr,
+			)
 
 	async def execute(self, cmd, target, tag, patterns=None, outfile=None, errfile=None):
-		if patterns:
-			combined_patterns = self.patterns + patterns
-		else:
-			combined_patterns = self.patterns
-
+		combined_patterns = self.patterns + patterns if patterns else self.patterns
 		process = await asyncio.create_subprocess_shell(
 			cmd,
 			stdin=open('/dev/null'),

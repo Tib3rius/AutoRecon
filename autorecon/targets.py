@@ -58,13 +58,13 @@ class Target:
 
 		nmap_extra = target.autorecon.args.nmap
 		if target.autorecon.args.nmap_append:
-			nmap_extra += ' ' + target.autorecon.args.nmap_append
+			nmap_extra += f' {target.autorecon.args.nmap_append}'
 
 		if target.ipversion == 'IPv6':
 			nmap_extra += ' -6'
 			if addressv6 == target.ip:
-				addressv6 = '[' + addressv6 + ']'
-			ipaddressv6 = '[' + ipaddressv6 + ']'
+				addressv6 = f'[{addressv6}]'
+			ipaddressv6 = f'[{ipaddressv6}]'
 
 		plugin = inspect.currentframe().f_back.f_locals['self']
 
@@ -115,11 +115,13 @@ class Service:
 
 	@final
 	def tag(self):
-		return self.protocol + '/' + str(self.port) + '/' + self.name
+		return f'{self.protocol}/{str(self.port)}/{self.name}'
 
 	@final
 	def full_tag(self):
-		return self.protocol + '/' + str(self.port) + '/' + self.name + '/' + ('secure' if self.secure else 'insecure')
+		return f'{self.protocol}/{str(self.port)}/{self.name}/' + (
+			'secure' if self.secure else 'insecure'
+		)
 
 	@final
 	def add_manual_commands(self, description, commands):
@@ -174,7 +176,7 @@ class Service:
 
 		nmap_extra = target.autorecon.args.nmap
 		if target.autorecon.args.nmap_append:
-			nmap_extra += ' ' + target.autorecon.args.nmap_append
+			nmap_extra += f' {target.autorecon.args.nmap_append}'
 
 		if protocol == 'udp':
 			nmap_extra += ' -sU'
@@ -182,15 +184,15 @@ class Service:
 		if target.ipversion == 'IPv6':
 			nmap_extra += ' -6'
 			if addressv6 == target.ip:
-				addressv6 = '[' + addressv6 + ']'
-			ipaddressv6 = '[' + ipaddressv6 + ']'
+				addressv6 = f'[{addressv6}]'
+			ipaddressv6 = f'[{ipaddressv6}]'
 
 		if config['proxychains'] and protocol == 'tcp':
 			nmap_extra += ' -sT'
 
 		plugin = inspect.currentframe().f_back.f_locals['self']
 		cmd = e(cmd)
-		tag = self.tag() + '/' + plugin.slug
+		tag = f'{self.tag()}/{plugin.slug}'
 		plugin_tag = tag
 		if plugin.run_once_boolean:
 			plugin_tag = plugin.slug

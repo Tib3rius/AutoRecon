@@ -25,10 +25,19 @@ class SubdomainEnumeration(ServiceScan):
 		if self.get_global('domain') and self.get_global('domain') not in domains:
 			domains.append(self.get_global('domain'))
 
-		if len(domains) > 0:
+		if domains:
 			for wordlist in self.get_option('wordlist'):
 				name = os.path.splitext(os.path.basename(wordlist))[0]
 				for domain in domains:
-					await service.execute('gobuster dns -d ' + domain + ' -r {addressv6} -w ' + wordlist + ' -o "{scandir}/{protocol}_{port}_' + domain + '_subdomains_' + name + '.txt"')
+					await service.execute(
+						f'gobuster dns -d {domain}'
+						+ ' -r {addressv6} -w '
+						+ wordlist
+						+ ' -o "{scandir}/{protocol}_{port}_'
+						+ domain
+						+ '_subdomains_'
+						+ name
+						+ '.txt"'
+					)
 		else:
 			service.info('The target was not a domain, nor was a domain provided as an option. Skipping subdomain enumeration.')

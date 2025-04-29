@@ -15,7 +15,10 @@ class WinRMDetection(ServiceScan):
 	async def run(self, service):
 		filename = fformat('{scandir}/{protocol}_{port}_winrm-detection.txt')
 		with open(filename, mode='wt', encoding='utf8') as winrm:
-			winrm.write('WinRM was possibly detected running on ' + service.protocol + ' port ' + str(service.port) + '.\nCheck _manual_commands.txt for manual commands you can run against this service.')
+			winrm.write(
+				f'WinRM was possibly detected running on {service.protocol} port {str(service.port)}'
+				+ '.\nCheck _manual_commands.txt for manual commands you can run against this service.'
+			)
 
 	def manual(self, service, plugin_was_run):
 		service.add_manual_commands('Bruteforce logins:', [
