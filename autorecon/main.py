@@ -1223,7 +1223,7 @@ async def run():
 			autorecon.plugins.pop(slug)
 		else:
 			print()
-			error('The following plugins failed checks that prevent AutoRecon from running: ' + ','.join(failed_check_plugin_slugs))
+			error('The following plugins failed checks that prevent AutoRecon from running: ' + ', '.join(failed_check_plugin_slugs))
 			error('Check above output to fix these issues, disable relevant plugins, or run AutoRecon with --ignore-plugin-checks to disable failed plugins at runtime.')
 			print()
 			errors = True
