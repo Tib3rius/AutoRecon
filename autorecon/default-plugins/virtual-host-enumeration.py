@@ -1,6 +1,7 @@
 from autorecon.plugins import ServiceScan
 from shutil import which
 import os, requests, random, string, urllib3
+
 urllib3.disable_warnings()
 
 class VirtualHost(ServiceScan):
@@ -31,9 +32,22 @@ class VirtualHost(ServiceScan):
 			for wordlist in self.get_option('wordlist'):
 				name = os.path.splitext(os.path.basename(wordlist))[0]
 				for hostname in hostnames:
-					wildcard = requests.get(('https' if service.secure else 'http') + '://' + service.target.address + ':' + str(service.port) + '/', headers={'Host':''.join(random.choice(string.ascii_letters) for i in range(20)) + '.' + hostname}, verify=False)
+					try:
+						wildcard = requests.get(
+							('https' if service.secure else 'http') + '://' + service.target.address + ':' + str(service.port) + '/',
+							headers={'Host': ''.join(random.choice(string.ascii_letters) for _ in range(20)) + '.' + hostname},
+							verify=False,
+							allow_redirects=False
+						)
+						size = str(len(wildcard.content))
+					except requests.exceptions.RequestException as e:
+						service.error(f"[!] Wildcard request failed for {hostname}: {e}")
+						continue
 
-					size = str(len(wildcard.content))
-					await service.execute('ffuf -u {http_scheme}://' + hostname + ':{port}/ -t ' + str(self.get_option('threads')) + ' -w ' + wordlist + ' -H "Host: FUZZ.' + hostname + '" -mc all -fs ' + size + ' -r -noninteractive -s | tee "{scandir}/{protocol}_{port}_{http_scheme}_' + hostname + '_vhosts_' + name + '.txt"')
+					await service.execute(
+						'ffuf -u {http_scheme}://' + hostname + ':{port}/ -t ' + str(self.get_option('threads')) +
+						' -w ' + wordlist + ' -H "Host: FUZZ.' + hostname + '" -mc all -fs ' + size +
+						' -r -noninteractive -s | tee "{scandir}/{protocol}_{port}_{http_scheme}_' + hostname + '_vhosts_' + name + '.txt"'
+					)
 		else:
 			service.info('The target was not a hostname, nor was a hostname provided as an option. Skipping virtual host enumeration.')
