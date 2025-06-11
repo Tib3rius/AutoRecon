@@ -1,60 +1,134 @@
-# Scripts Directory
+# AutoRecon Modular Setup System
 
-This directory contains modular scripts that handle different aspects of autorecon setup and maintenance. These scripts are called by the Makefile to keep it clean and organized.
+This directory contains a comprehensive Makefile-based setup system that automates AutoRecon installation, maintenance, and deployment across multiple operating systems.
+
+**Contributor**: neur0map  
+**Compatible with**: AutoRecon by Tib3rius
+
+## Quick Start
+
+```bash
+# Complete local installation
+make setup
+
+# Docker-based setup
+make setup-docker
+
+# Update everything
+make update
+
+# Remove everything
+make clean
+```
+
+## Operating System Support
+
+| OS | Tools | Status |
+|---|---|---|
+| **Kali Linux** | 20+ security tools | ✅ Full Support |
+| **Parrot OS** | 20+ security tools | ✅ Full Support |
+| **Ubuntu/Debian** | 20+ security tools | ✅ Full Support |
+| **macOS** | 15+ tools via Homebrew | ✅ Full Support |
+| **Arch/Manjaro** | Basic tools only | ⚠️ Limited Support |
+| **Windows WSL** | Use Docker | 🐳 Docker Recommended |
 
 ## Script Overview
 
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `system-check.sh` | System prerequisites and OS detection | `./scripts/system-check.sh` |
-| `install-tools.sh` | Security tools installation router | `./scripts/install-tools.sh [OS_ID] [OS_ID_LIKE] [WSL_DETECTED]` |
-| `install-tools-debian.sh` | Debian/Ubuntu specific tool installation | `./scripts/install-tools-debian.sh [WSL_DETECTED]` |
-| `install-tools-macos.sh` | macOS specific tool installation | `./scripts/install-tools-macos.sh` |
-| `install-tools-arch.sh` | Arch Linux specific tool installation | `./scripts/install-tools-arch.sh` |
-| `setup-python.sh` | Python virtual environment setup | `./scripts/setup-python.sh` |
-| `setup-docker.sh` | Docker image building and terminal launch | `./scripts/setup-docker.sh` |
-| `cleanup.sh` | Complete installation cleanup | `./scripts/cleanup.sh` |
-| `update.sh` | Git, tools, and Docker updates | `./scripts/update.sh` |
+| Script | Purpose | Key Features |
+|--------|---------|--------------|
+| `system-check.sh` | Prerequisites & OS detection | Exports `OS_ID`, `OS_ID_LIKE`, `WSL_DETECTED` |
+| `install-tools.sh` | Installation router | Routes to OS-specific installers |
+| `install-tools-debian.sh` | Debian/Ubuntu/Kali tools | 20+ security tools, WSL support |
+| `install-tools-macos.sh` | macOS Homebrew tools | 15+ tools, Python packages |
+| `install-tools-arch.sh` | Arch Linux basic tools | Core tools only |
+| `setup-python.sh` | Virtual environment setup | Creates global `/usr/local/bin/autorecon` |
+| `setup-docker.sh` | Docker management | Image building, container launching |
+| `cleanup.sh` | Complete removal | Removes all components with confirmation |
+| `update.sh` | Maintenance | Git pull, package updates, Docker rebuild |
 
-## Dependencies Between Scripts
+## System Architecture
 
 ```
-system-check.sh
-     ↓ (exports OS variables)
-install-tools.sh → install-tools-debian.sh
-                 → install-tools-macos.sh  
-                 → install-tools-arch.sh
-     ↓
-setup-python.sh
-     ↓
-[Complete setup]
+Makefile (Entry Point)
+├── system-check.sh          (Prerequisites & OS detection)
+├── detect-os.sh             (OS detection helper)
+├── install-tools.sh         (Installation router)
+│   ├── install-tools-debian.sh  (Debian/Ubuntu/Kali/Parrot)
+│   ├── install-tools-macos.sh   (macOS with Homebrew)
+│   └── install-tools-arch.sh    (Arch Linux/Manjaro)
+├── setup-python.sh          (Python environment & global command)
+├── setup-docker.sh          (Docker management)
+├── update.sh                (Maintenance & updates)
+└── cleanup.sh               (Complete removal)
 ```
 
-For updates:
+## Workflow Dependencies
+
 ```
-update.sh → calls → system-check.sh (for OS detection)
+make setup:
+    system-check.sh → detect-os.sh → install-tools.sh → setup-python.sh
+                                           ↓
+                      OS-specific installer (debian/macos/arch)
+
+make update:
+    update.sh → git pull → python update → tools update → docker rebuild
+
+make clean:
+    cleanup.sh → remove venv → remove tools → remove docker → cleanup
 ```
+
+## Command Reference
+
+### Primary Commands
+
+#### `make setup`
+- Detects operating system automatically
+- Installs appropriate security tools
+- Creates Python virtual environment
+- Installs global `autorecon` command
+- Ready-to-use installation
+
+#### `make setup-docker`
+- Builds AutoRecon Docker image
+- Launches interactive terminal
+- Mounts results directory
+- Full security toolkit in container
+
+#### `make clean`
+- Removes Python virtual environment
+- Removes installed security tools (with confirmation)
+- Removes Docker images and containers
+- Cleans up temporary files
+
+#### `make update`
+- Updates git repository
+- Updates Python packages
+- Updates system security tools
+- Rebuilds Docker image if needed
 
 ## Script Features
 
-### Common Features
-- **Modular**: Each script has a single responsibility
+### Design Principles
+- **Modular**: Single responsibility per script
 - **Reusable**: Can be called independently or from Makefile
-- **Source-able**: Functions can be sourced by other scripts
-- **Self-documenting**: Clear output with emojis and status messages
-
-### Error Handling
-- Graceful failure with informative error messages
-- Exit codes properly set for Makefile integration
-- Fallback options when primary methods fail
-
-### OS Support
-- **Linux**: Debian/Ubuntu, Arch/Manjaro, Kali/Parrot
-- **macOS**: Homebrew-based installation
-- **Windows**: WSL detection and compatibility
-- **Fallback**: Basic setup for unsupported systems
+- **Error Handling**: Graceful failures with informative messages
+- **Self-Documenting**: Clear output with emojis and status messages
 
 ## Usage Examples
+
+### First Time Setup
+```bash
+git clone https://github.com/Tib3rius/AutoRecon.git
+cd AutoRecon
+make setup
+autorecon --help
+```
+
+### Docker-Based Setup
+```bash
+make setup-docker
+# Interactive container with full toolkit
+```
 
 ### Direct Script Usage
 ```bash
@@ -72,37 +146,40 @@ source ./scripts/system-check.sh
 ./scripts/cleanup.sh
 ```
 
-### Environment Variable Passing
-```bash
-# Export variables from system-check
-source ./scripts/system-check.sh
-export OS_ID OS_ID_LIKE WSL_DETECTED
-
-# Use in install-tools
-./scripts/install-tools.sh "$OS_ID" "$OS_ID_LIKE" "$WSL_DETECTED"
-```
-
-## Maintenance
+## Development Guidelines
 
 ### Adding New Features
-1. Keep scripts focused on single responsibilities
+1. Maintain single responsibility principle
 2. Use consistent output formatting (emojis + clear messages)
 3. Add proper error handling and exit codes
-4. Update this README when adding new scripts
+4. Update documentation
+5. Test across multiple operating systems
 
-### Testing
-Each script should work independently and be testable on various operating systems:
-- Test on multiple Linux distributions
-- Test on macOS with and without Homebrew
-- Test in WSL environments
-- Test error conditions and fallbacks
+### Testing Checklist
+- [ ] `make setup` works on target OS
+- [ ] `make setup-docker` builds and runs
+- [ ] `make update` functions properly
+- [ ] `make clean` removes everything
+- [ ] Global `autorecon` command works
+- [ ] Error handling for unsupported systems
+- [ ] WSL compatibility verified
 
-## Integration with Makefile
+## Benefits
 
-The Makefile calls these scripts to provide a clean interface:
-- `make setup` → calls system-check, install-tools (→ OS-specific), setup-python
-- `make clean` → calls cleanup.sh
-- `make setup-docker` → calls setup-docker.sh (build + launch terminal)
-- `make update` → calls update.sh
+### For Users
+- **Simplified Installation**: Single command setup
+- **Cross-Platform**: Automated OS detection and tool installation
+- **Maintenance**: Easy updates and cleanup
+- **Docker Option**: Consistent environment across all systems
 
-This modular approach makes the Makefile much cleaner and easier to maintain while providing the same functionality. 
+### For Developers
+- **Consistent Environment**: Standardized setup across contributors
+- **Modular Design**: Easy to modify and extend
+- **Error Handling**: Graceful failures with helpful messages
+- **Documentation**: Self-documenting with comprehensive help
+
+---
+
+**Contributor**: neur0map  
+**Original Project**: AutoRecon by Tib3rius  
+**Enhancement**: Modular setup system for improved accessibility and maintainability 
