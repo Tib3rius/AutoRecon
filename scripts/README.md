@@ -7,6 +7,16 @@ This directory contains a comprehensive Makefile-based setup system that automat
 
 ## Quick Start
 
+### One-Liner Installation
+```bash
+# Local setup with tools
+git clone https://github.com/Tib3rius/AutoRecon.git && cd AutoRecon && make setup
+
+# Docker setup (recommended for non-Kali systems)
+git clone https://github.com/Tib3rius/AutoRecon.git && cd AutoRecon && make setup-docker
+```
+
+### Individual Commands
 ```bash
 # Complete local installation
 make setup
@@ -118,10 +128,12 @@ make clean:
 
 ### First Time Setup
 ```bash
-git clone https://github.com/Tib3rius/AutoRecon.git
-cd AutoRecon
-make setup
+# One-liner installation
+git clone https://github.com/Tib3rius/AutoRecon.git && cd AutoRecon && make setup
+
+# Test installation
 autorecon --help
+autorecon 127.0.0.1
 ```
 
 ### Docker-Based Setup
